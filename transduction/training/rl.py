@@ -12,8 +12,8 @@ from dotenv import load_dotenv
 from huggingface_hub import login
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import (
-    GSPOConfig,
-    GSPOTrainer,
+    GRPOConfig,
+    GRPOTrainer,
 )
 
 from transduction.training.reward_fn import reward_function
@@ -157,10 +157,14 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------
     # 5. GSPO config with transduction-specific parameters
     # ---------------------------------------------------------------------
-    gspo_cfg = GSPOConfig(
+    gspo_cfg = GRPOConfig(
+        importance_sampling_level="sequence",
+        loss_type="grpo",
         output_dir="qwen2.5_0.5b_arc_transduction_rl",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,  # Smaller for 0.5B model
+        beta=0.04,  # not explicitly specified in the paper, but they likely used the same value as in the GRPO paper
+        epsilon=3e-4,  # https://x.com/ChujieZheng/status/1948933507696525392
         num_train_epochs=1,
         learning_rate=1e-5,  # Lower learning rate for RL
         lr_scheduler_type="cosine",
@@ -184,7 +188,7 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------
     # 6. Trainer
     # ---------------------------------------------------------------------
-    trainer = GSPOTrainer(
+    trainer = GRPOTrainer(
         model=model,
         processing_class=tokenizer,
         reward_funcs=[contextual_reward_function],
