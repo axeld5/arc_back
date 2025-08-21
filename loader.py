@@ -98,7 +98,7 @@ def list_evaluation_problems(data_dir: str = ".") -> List[str]:
     Raises:
         FileNotFoundError: If the evaluation directory doesn't exist
     """
-    evaluation_dir = Path(data_dir) / "evaluation"
+    evaluation_dir = Path(data_dir) / "evaluation_data"
     
     if not evaluation_dir.exists():
         raise FileNotFoundError(f"Evaluation directory not found: {evaluation_dir}")
@@ -120,7 +120,7 @@ def list_training_problems(data_dir: str = ".") -> List[str]:
     Raises:
         FileNotFoundError: If the training directory doesn't exist
     """
-    training_dir = Path(data_dir) / "training"
+    training_dir = Path(data_dir) / "training_data"
     
     if not training_dir.exists():
         raise FileNotFoundError(f"Training directory not found: {training_dir}")
