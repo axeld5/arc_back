@@ -148,29 +148,43 @@ if __name__ == "__main__":
     ds = raw_ds.map(to_rl_format, remove_columns=raw_ds.column_names, num_proc=4)
     
     # ---------------------------------------------------------------------
-    # 4. Custom reward function that uses dataset context
+    # 4. Create a closure-based reward function with dataset access
     # ---------------------------------------------------------------------
+    
+    # Create a mapping from prompts to expected outputs for fast lookup
+    prompt_to_expected = {}
+    for example in ds:
+        prompt_to_expected[example["prompt"]] = example["expected_output"]
+    
+    print(f"Created prompt-to-expected mapping with {len(prompt_to_expected)} entries")
+    
     def contextual_reward_function(
         completions: List[str], 
         prompts: List[str],
         **kwargs: Any
     ) -> List[float]:
         """
-        Reward function that extracts expected outputs from the dataset batch.
+        Reward function that looks up expected outputs based on prompts.
         """
-        # Get the current batch from the trainer context
-        # This is a bit hacky but necessary for TRL integration
-        batch = kwargs.get('batch', {})
-        expected_outputs = batch.get('expected_output', [])
+        expected_outputs = []
         
-        if not expected_outputs:
-            # Fallback: return neutral rewards
-            print("Warning: No expected outputs found in batch context")
+        for prompt in prompts:
+            # Look up the expected output for this prompt
+            expected_output = prompt_to_expected.get(prompt, [])
+            expected_outputs.append(expected_output)
+        
+        if not any(expected_outputs):
+            # Fallback: return neutral rewards if no expected outputs found
+            print(f"Warning: No expected outputs found for {len(prompts)} prompts")
             return [0.0] * len(completions)
         
-        # Convert to list format if needed
-        if isinstance(expected_outputs, torch.Tensor):
-            expected_outputs = expected_outputs.tolist()
+        # Debug: Print first few examples on first call
+        if not hasattr(contextual_reward_function, '_debug_printed'):
+            print(f"Debug: First reward function call with {len(completions)} completions")
+            if completions and expected_outputs:
+                print(f"Debug: First completion: {completions[0][:50]}...")
+                print(f"Debug: First expected output shape: {len(expected_outputs[0]) if expected_outputs[0] else 0}")
+            contextual_reward_function._debug_printed = True
         
         # Get rewards and ensure they are Python floats
         rewards = reward_function(completions, expected_outputs)
