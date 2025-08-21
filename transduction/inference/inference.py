@@ -69,7 +69,7 @@ class ARCTransductionInference:
         
         # Set up generation config
         self.generation_config = GenerationConfig(
-            max_new_tokens=512,
+            max_new_tokens=1024,
             temperature=0.1,
             do_sample=True,
             top_p=0.9,
