@@ -191,7 +191,7 @@ def main():
         report_to="tensorboard",
         remove_unused_columns=False,
         # Note: Adjust DeepSpeed config path if needed
-        deepspeed="./ds_config_zero2.json",
+        deepspeed="transduction/training/ds_config_zero2.json",
         ddp_find_unused_parameters=False,
         push_to_hub=True,
         hub_model_id="axel-darmouni/qwen2.5-0.5b-arc-transduction-sft",
