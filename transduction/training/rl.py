@@ -10,6 +10,7 @@ import torch
 from datasets import load_dataset
 from dotenv import load_dotenv
 from huggingface_hub import login
+from peft import PeftModel
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from trl import (
     GRPOConfig,
@@ -70,15 +71,34 @@ if __name__ == "__main__":
         tokenizer.pad_token = tokenizer.eos_token
     
     # ---------------------------------------------------------------------
-    # 2. Loading model (LoRA)
+    # 2. Loading model (Base model + LoRA adapter)
     # ---------------------------------------------------------------------
     attn_impl = "flash_attention_2" if platform.system() == "Linux" else "eager"
-    model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
-        LORA_PATH,
+    
+    # First load the base model
+    base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
+        BASE_MODEL,
         torch_dtype=torch.bfloat16,
         trust_remote_code=True,
         attn_implementation=attn_impl,
-    ).to("cuda")
+    )
+    
+    # Then load the LoRA adapter
+    model = PeftModel.from_pretrained(base_model, LORA_PATH)
+    
+    # Ensure model parameters require gradients for RL training
+    model.train()
+    trainable_params = 0
+    total_params = 0
+    for param in model.parameters():
+        param.requires_grad_(True)
+        total_params += param.numel()
+        if param.requires_grad:
+            trainable_params += param.numel()
+    
+    print(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100 * trainable_params / total_params:.2f}%)")
+    
+    model = model.to("cuda")
     
     # ---------------------------------------------------------------------
     # 3. Dataset ⇒ {"prompt", "expected_output"}
@@ -152,7 +172,9 @@ if __name__ == "__main__":
         if isinstance(expected_outputs, torch.Tensor):
             expected_outputs = expected_outputs.tolist()
         
-        return reward_function(completions, expected_outputs)
+        # Get rewards and ensure they are Python floats
+        rewards = reward_function(completions, expected_outputs)
+        return [float(r) for r in rewards]
     
     # ---------------------------------------------------------------------
     # 5. GSPO config with transduction-specific parameters
