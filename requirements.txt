@@ -1,7 +1,0 @@
-# Core dependencies for ARC transduction inference
-torch>=2.0.0
-transformers>=4.30.0
-accelerate>=0.20.0
-
-# Optional: for better performance
-# bitsandbytes>=0.39.0  # For quantization if needed

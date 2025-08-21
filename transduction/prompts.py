@@ -1,4 +1,4 @@
-PROMPT_V1 = """Task: TRANSDUCTION for ARC. From TRAIN x→y pairs, directly predict TEST.y for TEST.x by pattern imitation.
+PROMPT_V1 = """Task: TRANSDUCTION for ARC. From TRAIN INPUT/OUTPUT grid pairs, directly predict TEST GRID OUTPUT for TEST GRID INPUT by pattern imitation.
 Think silently. Do NOT explain. Output ONLY the final grid, correcting the test output placeholder.
 
 Grid encoding:
