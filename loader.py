@@ -31,7 +31,7 @@ def load_evaluation_problem(problem_id: str, data_dir: str = ".") -> Optional[Di
         FileNotFoundError: If the evaluation directory or problem file doesn't exist
         json.JSONDecodeError: If the problem file contains invalid JSON
     """
-    evaluation_dir = Path(data_dir) / "evaluation"
+    evaluation_dir = Path(data_dir) / "evaluation_data"
     problem_file = evaluation_dir / f"{problem_id}.json"
     
     if not evaluation_dir.exists():
@@ -68,7 +68,7 @@ def load_training_problem(problem_id: str, data_dir: str = ".") -> Optional[Dict
         FileNotFoundError: If the training directory or problem file doesn't exist
         json.JSONDecodeError: If the problem file contains invalid JSON
     """
-    training_dir = Path(data_dir) / "training"
+    training_dir = Path(data_dir) / "training_data"
     problem_file = training_dir / f"{problem_id}.json"
     
     if not training_dir.exists():
