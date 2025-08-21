@@ -182,7 +182,7 @@ if __name__ == "__main__":
         hub_model_id="axel-darmouni/qwen2.5-0.5b-arc-transduction-rl",
         # Uncomment if using DeepSpeed
         #deepspeed="transduction/training/ds_config_zero2.json",
-        ddp_find_unused_parameters=False,
+        #ddp_find_unused_parameters=False,
     )
     
     # ---------------------------------------------------------------------
