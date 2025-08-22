@@ -148,16 +148,27 @@ class MultiSampleInference(InferenceTechnique):
         test_example = problem_data['test'][test_example_idx % len(problem_data['test'])]
         ground_truth = test_example['output']
         
-        # Find the best sample (first correct one, or first parseable one)
-        best_sample = None
+        # Find the best sample (most commonly present grid among parseable samples)
+        grid_counts = {}
+        parseable_samples = []
+        
         for sample in samples:
             if sample['predicted_grid'] is not None:
-                is_correct = self.inference.evaluate_prediction(sample['predicted_grid'], ground_truth)
-                if is_correct:
+                parseable_samples.append(sample)
+                # Convert grid to string for counting
+                grid_str = ';'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
+                grid_counts[grid_str] = grid_counts.get(grid_str, 0) + 1
+        
+        best_sample = None
+        if parseable_samples:
+            # Find the most common grid
+            most_common_grid = max(grid_counts, key=grid_counts.get)
+            # Find the first sample with this grid
+            for sample in parseable_samples:
+                grid_str = ';'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
+                if grid_str == most_common_grid:
                     best_sample = sample
                     break
-                elif best_sample is None:  # First parseable sample
-                    best_sample = sample
         
         # Fallback to first sample if none are parseable
         if best_sample is None:
