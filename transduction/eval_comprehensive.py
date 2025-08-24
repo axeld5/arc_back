@@ -688,6 +688,23 @@ class ComprehensiveARCEvaluator:
                 print(f"  {category:<12}: {result.model_config.name} + {result.inference_config.name} "
                       f"({result.accuracy:.3f})")
     
+    def _convert_tuple_keys_to_strings(self, obj):
+        """Recursively convert tuple keys to strings for JSON serialization."""
+        if isinstance(obj, dict):
+            new_dict = {}
+            for key, value in obj.items():
+                # Convert tuple keys to string representation
+                if isinstance(key, tuple):
+                    new_key = str(key)
+                else:
+                    new_key = key
+                new_dict[new_key] = self._convert_tuple_keys_to_strings(value)
+            return new_dict
+        elif isinstance(obj, list):
+            return [self._convert_tuple_keys_to_strings(item) for item in obj]
+        else:
+            return obj
+    
     def save_results(self, results: List[EvaluationResult], output_file: str):
         """Save evaluation results to JSON file."""
         # Convert results to serializable format
@@ -707,13 +724,13 @@ class ComprehensiveARCEvaluator:
                     'description': result.inference_config.description,
                     'category': result.inference_config.category
                 },
-                'problem_results': result.problem_results,
+                'problem_results': self._convert_tuple_keys_to_strings(result.problem_results),
                 'total_problems': result.total_problems,
                 'correct_predictions': result.correct_predictions,
                 'accuracy': result.accuracy,
                 'avg_inference_time': result.avg_inference_time,
                 'total_time': result.total_time,
-                'metadata': result.metadata
+                'metadata': self._convert_tuple_keys_to_strings(result.metadata)
             }
             serializable_results.append(serializable_result)
         
