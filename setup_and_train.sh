@@ -42,7 +42,7 @@ echo "✓ flash-attn installed successfully"
 
 # Step 3: Generate training data
 echo "Step 3: Generating training data..."
-uv run python -m transduction.data_gen
+uv run python -m transduction.data_gen --k_per_problem 50
 echo "✓ Training data generated successfully"
 
 # Step 4: Run fine-tuning
@@ -57,7 +57,7 @@ echo "✓ RL training completed successfully"
 
 # Step 6: Run evaluation
 echo "Step 6: Starting evaluation with $N_GPUS GPUs..."
-uv run python -m transduction.eval_comprehensive
+uv run python -m transduction.eval_comprehensive --categories airv ttft repeat --all_models --max_problems 20 --output results_3_categories.json
 echo "✓ Evaluation completed successfully"
 
 echo "=================================================="
