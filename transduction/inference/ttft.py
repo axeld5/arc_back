@@ -38,7 +38,7 @@ except ImportError:
     print("Warning: transformers, peft, and/or trl not available. Please install required packages.")
     HF_AVAILABLE = False
 
-from transduction.eval import InferenceTechnique
+from transduction.eval_comprehensive import InferenceTechnique
 from transduction.inference.inference import ARCTransductionInference
 from transduction.data_gen import grid_to_row_strings, format_train_examples
 from transduction.prompts import PROMPT_V1
