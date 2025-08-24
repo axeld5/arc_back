@@ -236,7 +236,7 @@ def sample_problem_multiple_times(problem_data: Dict[str, Any],
     for _ in range(k):
         # Apply augmentations if specified
         if num_augmentations is not None and num_augmentations > 0:
-            augmented_problem, _ = apply_random_augmentations(
+            augmented_problem, _, _ = apply_random_augmentations(
                 problem_data, 
                 num_augmentations=num_augmentations
             )
