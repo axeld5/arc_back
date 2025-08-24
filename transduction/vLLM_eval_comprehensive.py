@@ -2,14 +2,16 @@
 vLLM-based comprehensive evaluation system for ARC transduction models.
 
 This script provides a vLLM-based version of the comprehensive evaluation system,
-offering faster inference through vLLM's optimized serving and batching capabilities.
+offering faster inference through vLLM's optimized serving and batching capabilities
+while supporting all inference techniques from the original evaluator.
 
 Features:
 - vLLM-based inference for improved speed and throughput
 - Support for LoRA adapters (SFT/RL models)
 - Batch processing for multiple samples
+- All inference techniques: Standard, Multi-sample, AIRV, TTFT, TTFT+AIRV
 - Compatible with existing evaluation framework
-- All inference techniques: Standard, Multi-sample, AIRV, TTFT
+- Comprehensive analysis and reporting
 """
 
 import json
@@ -489,6 +491,175 @@ class vLLMMultiSampleInference(InferenceTechnique):
         pass
 
 
+class vLLMAIRVInference(InferenceTechnique):
+    """AIRV inference technique adapted for vLLM."""
+    
+    def __init__(self, model_config: ModelConfig, 
+                 num_augmentations: int = 4,
+                 include_original: bool = True,
+                 **kwargs):
+        self.model_config = model_config
+        self.num_augmentations = num_augmentations
+        self.include_original = include_original
+        self.inference = vLLMARCTransductionInference(
+            model_path=model_config.model_path,
+            base_model=model_config.base_model,
+            lora_path=model_config.lora_path,
+            **kwargs
+        )
+    
+    def augment_problem(self, problem_data: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Create augmented versions of the problem."""
+        # Import augmentation functions
+        try:
+            from augment import augment_problem
+            augmented_problems = []
+            
+            # Add original if requested
+            if self.include_original:
+                augmented_problems.append(problem_data)
+            
+            # Create augmented versions
+            for _ in range(self.num_augmentations):
+                try:
+                    aug_problem = augment_problem(problem_data)
+                    augmented_problems.append(aug_problem)
+                except Exception as e:
+                    print(f"Warning: Failed to create augmentation: {e}")
+                    # Fall back to original problem
+                    augmented_problems.append(problem_data)
+            
+            return augmented_problems
+        except ImportError:
+            print("Warning: augment module not available, using original problem only")
+            return [problem_data] * (self.num_augmentations + (1 if self.include_original else 0))
+    
+    def deaugment_prediction(self, prediction: Optional[List[List[int]]], 
+                           original_problem: Dict[str, Any],
+                           augmented_problem: Dict[str, Any]) -> Optional[List[List[int]]]:
+        """Revert augmentation from prediction."""
+        if prediction is None:
+            return None
+        
+        try:
+            from deaugment import deaugment_grid
+            return deaugment_grid(prediction, original_problem, augmented_problem)
+        except ImportError:
+            print("Warning: deaugment module not available, returning prediction as-is")
+            return prediction
+    
+    def infer_single_problem(self, problem_data: Dict[str, Any], 
+                           train_sample_count: int = 3,
+                           test_example_idx: int = 0,
+                           verbose: bool = False) -> Dict[str, Any]:
+        # Create augmented problems
+        augmented_problems = self.augment_problem(problem_data)
+        
+        # Prepare prompts for all augmented problems
+        prompts = []
+        for aug_problem in augmented_problems:
+            prompt = self.inference.format_problem_for_inference(
+                aug_problem, train_sample_count, test_example_idx
+            )
+            prompts.append(prompt)
+        
+        # Generate responses for all augmented problems using batch processing
+        responses = self.inference.generate_responses(
+            prompts, 
+            temperature=0.1,
+            max_tokens=1024
+        )
+        
+        # Process predictions and deaugment
+        predictions = []
+        for i, (response, aug_problem) in enumerate(zip(responses, augmented_problems)):
+            # Parse prediction
+            predicted_grid = self.inference.parse_grid_response(response)
+            
+            # Deaugment if this is an augmented problem
+            if i > 0 or not self.include_original:  # Skip deaugmentation for original problem
+                predicted_grid = self.deaugment_prediction(
+                    predicted_grid, problem_data, aug_problem
+                )
+            
+            predictions.append({
+                'response': response,
+                'predicted_grid': predicted_grid,
+                'augmentation_idx': i,
+                'is_original': i == 0 and self.include_original
+            })
+        
+        # Vote on predictions
+        grid_counts = {}
+        valid_predictions = []
+        
+        for pred in predictions:
+            if pred['predicted_grid'] is not None:
+                valid_predictions.append(pred)
+                # Convert grid to string for voting
+                grid_str = ';'.join([''.join(map(str, row)) for row in pred['predicted_grid']])
+                grid_counts[grid_str] = grid_counts.get(grid_str, 0) + 1
+        
+        # Select best prediction (most votes)
+        best_prediction = None
+        if valid_predictions:
+            most_common_grid = max(grid_counts, key=grid_counts.get)
+            for pred in valid_predictions:
+                grid_str = ';'.join([''.join(map(str, row)) for row in pred['predicted_grid']])
+                if grid_str == most_common_grid:
+                    best_prediction = pred
+                    break
+        
+        # Fallback to first prediction
+        if best_prediction is None:
+            best_prediction = predictions[0]
+        
+        # Get ground truth and evaluate
+        test_example = problem_data['test'][test_example_idx % len(problem_data['test'])]
+        ground_truth = test_example['output']
+        is_correct = self.inference.evaluate_prediction(best_prediction['predicted_grid'], ground_truth)
+        
+        result = {
+            'prompt': prompts[0],  # Use original prompt
+            'response': best_prediction['response'],
+            'predicted_grid': best_prediction['predicted_grid'],
+            'ground_truth': ground_truth,
+            'is_correct': is_correct,
+            'train_sample_count': train_sample_count,
+            'test_example_idx': test_example_idx,
+            'all_predictions': predictions,
+            'best_augmentation_idx': best_prediction['augmentation_idx'],
+            'num_augmentations': len(augmented_problems),
+            'grid_votes': grid_counts
+        }
+        
+        if verbose:
+            print(f"AIRV: Generated {len(augmented_problems)} augmented problems")
+            print(f"Selected prediction from augmentation {best_prediction['augmentation_idx']}")
+            print(f"Vote counts: {grid_counts}")
+            print(f"GROUND TRUTH:")
+            for row in ground_truth:
+                print(';'.join(map(str, row)))
+            print()
+            
+            print(f"PREDICTED:")
+            if best_prediction['predicted_grid']:
+                for row in best_prediction['predicted_grid']:
+                    print(';'.join(map(str, row)))
+            else:
+                print("Failed to parse prediction")
+            print()
+            
+            print(f"CORRECT: {is_correct}")
+            print("=" * 50)
+        
+        return result
+    
+    def cleanup(self):
+        # vLLM handles cleanup automatically
+        pass
+
+
 class vLLMComprehensiveARCEvaluator:
     """
     vLLM-based comprehensive evaluator for ARC transduction inference techniques.
@@ -535,7 +706,67 @@ class vLLMComprehensiveARCEvaluator:
             category="standard"
         ))
         
+        # Register AIRV techniques
+        self._register_airv_techniques()
+        
+        # Register TTFT techniques
+        self._register_ttft_techniques()
+        
+        # Register TTFT + AIRV techniques
+        self._register_ttft_airv_techniques()
+        
         print("Registered vLLM-based inference techniques")
+    
+    def _register_airv_techniques(self):
+        """Register AIRV inference techniques."""
+        try:
+            # Register various AIRV configurations
+            airv_configs = [
+                {
+                    'name': 'vllm_airv_light',
+                    'params': {'num_augmentations': 2, 'include_original': True},
+                    'description': 'vLLM AIRV with 2 augmentations + original'
+                },
+                {
+                    'name': 'vllm_airv_standard',
+                    'params': {'num_augmentations': 4, 'include_original': True},
+                    'description': 'vLLM AIRV with 4 augmentations + original'
+                },
+                {
+                    'name': 'vllm_airv_heavy',
+                    'params': {'num_augmentations': 8, 'include_original': True},
+                    'description': 'vLLM AIRV with 8 augmentations + original'
+                },
+                {
+                    'name': 'vllm_airv_no_original',
+                    'params': {'num_augmentations': 5, 'include_original': False},
+                    'description': 'vLLM AIRV with 5 augmentations only'
+                }
+            ]
+            
+            for config in airv_configs:
+                self.register_inference_technique(InferenceConfig(
+                    name=config['name'],
+                    technique_class=vLLMAIRVInference,
+                    params=config['params'],
+                    description=config['description'],
+                    category="airv"
+                ))
+            
+            print(f"Registered {len(airv_configs)} vLLM AIRV techniques")
+            
+        except Exception as e:
+            print(f"Warning: Could not register AIRV techniques: {e}")
+    
+    def _register_ttft_techniques(self):
+        """Register TTFT inference techniques."""
+        print("Note: TTFT techniques require model fine-tuning and are not yet implemented for vLLM")
+        print("Consider using the original eval_comprehensive.py for TTFT evaluation")
+    
+    def _register_ttft_airv_techniques(self):
+        """Register TTFT + AIRV combined techniques."""
+        print("Note: TTFT + AIRV techniques require model fine-tuning and are not yet implemented for vLLM")
+        print("Consider using the original eval_comprehensive.py for TTFT + AIRV evaluation")
     
     def register_model(self, config: ModelConfig):
         """Register a model configuration."""
@@ -725,7 +956,19 @@ class vLLMComprehensiveARCEvaluator:
         
         print(f"Evaluating {len(model_names)} models × {len(technique_names)} techniques")
         print(f"Models: {model_names}")
-        print(f"Techniques: {technique_names}")
+        print(f"Techniques by category:")
+        
+        # Group techniques by category for display
+        by_category = {}
+        for name in technique_names:
+            if name in self.inference_configs:
+                category = self.inference_configs[name].category
+                if category not in by_category:
+                    by_category[category] = []
+                by_category[category].append(name)
+        
+        for category, techniques in by_category.items():
+            print(f"  {category}: {techniques}")
         
         all_results = []
         
@@ -785,15 +1028,75 @@ class vLLMComprehensiveARCEvaluator:
                   f"{result.total_problems:<8} "
                   f"{result.avg_inference_time:<10.2f}s")
         
-        # Find best results
+        # Category-based analysis
+        print(f"\n{'='*100}")
+        print("ANALYSIS BY CATEGORY")
+        print(f"{'='*100}")
+        
+        # Group results by model and category
+        model_category_results = {}
+        for result in results:
+            model_name = result.model_config.name
+            category = result.inference_config.category
+            
+            if model_name not in model_category_results:
+                model_category_results[model_name] = {}
+            if category not in model_category_results[model_name]:
+                model_category_results[model_name][category] = []
+            
+            model_category_results[model_name][category].append(result)
+        
+        # Print analysis for each model
+        for model_name, category_results in model_category_results.items():
+            print(f"\nModel: {model_name}")
+            print("-" * 60)
+            
+            best_by_category = {}
+            for category, category_result_list in category_results.items():
+                # Find best result in this category
+                best_result = max(category_result_list, key=lambda x: x.accuracy)
+                best_by_category[category] = best_result
+                
+                print(f"Best {category:<12}: {best_result.inference_config.name:<25} "
+                      f"({best_result.accuracy:.3f} accuracy, {best_result.avg_inference_time:.1f}s)")
+            
+            # Compare with baseline if available
+            if 'standard' in best_by_category:
+                baseline = best_by_category['standard']
+                print(f"\nComparisons to best standard ({baseline.inference_config.name}):")
+                
+                for category, best_result in best_by_category.items():
+                    if category != 'standard':
+                        improvement = best_result.accuracy - baseline.accuracy
+                        time_ratio = best_result.avg_inference_time / baseline.avg_inference_time
+                        print(f"  {category:<12}: {improvement:+.3f} accuracy, {time_ratio:.1f}x time")
+        
+        # Overall best results
+        print(f"\n{'='*100}")
+        print("OVERALL BEST RESULTS")
+        print(f"{'='*100}")
+        
         if results:
+            # Find overall best result
             best_overall = max(results, key=lambda x: x.accuracy)
-            print(f"\n{'='*100}")
-            print("BEST RESULTS")
-            print(f"{'='*100}")
             print(f"Best Overall: {best_overall.model_config.name} + {best_overall.inference_config.name}")
             print(f"  Accuracy: {best_overall.accuracy:.3f}")
+            print(f"  Category: {best_overall.inference_config.category}")
             print(f"  Time: {best_overall.avg_inference_time:.1f}s per problem")
+            
+            # Best by category across all models
+            category_best = {}
+            for result in results:
+                category = result.inference_config.category
+                if category not in category_best or result.accuracy > category_best[category].accuracy:
+                    category_best[category] = result
+            
+            print(f"\nBest by Category (across all models):")
+            for category in ['standard', 'airv', 'ttft', 'ttft_airv']:
+                if category in category_best:
+                    result = category_best[category]
+                    print(f"  {category:<12}: {result.model_config.name} + {result.inference_config.name} "
+                          f"({result.accuracy:.3f})")
             
             # Speed comparison
             fastest = min(results, key=lambda x: x.avg_inference_time)
@@ -854,7 +1157,7 @@ def main():
     
     # Inference technique categories
     parser.add_argument('--categories', type=str, nargs='+', 
-                       choices=['standard', 'all'],
+                       choices=['standard', 'airv', 'ttft', 'ttft_airv', 'all'],
                        default=['standard'],
                        help='Inference technique categories to evaluate')
     parser.add_argument('--techniques', type=str, nargs='+', default=None,
@@ -933,7 +1236,7 @@ def main():
     
     # Determine technique categories
     if 'all' in args.categories:
-        technique_categories = ['standard']
+        technique_categories = ['standard', 'airv']  # TTFT not yet implemented for vLLM
     else:
         technique_categories = args.categories
     
