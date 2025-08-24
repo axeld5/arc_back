@@ -58,7 +58,7 @@ if __name__ == "__main__":
     login(os.getenv("HF_TOKEN"))
     
     # Model and data paths
-    BASE_MODEL = "Qwen/Qwen2.5-0.5B-Instruct"
+    BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507"
     LORA_PATH = "qwen2.5_0.5b_arc_transduction_sft/final"  # SFT LoRA adapter
     DATA_PATH = "transduction/train_dataset.json"  # transduction dataset
     

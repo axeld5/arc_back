@@ -117,7 +117,7 @@ def preprocess_transduction_data(example: Dict[str, Any], tokenizer: AutoTokeniz
 def main():
     """Main training function."""
     # Configuration
-    MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
+    MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
     DATA_FILE = "transduction/train_dataset.json"
     MAX_LEN = 6000
     
