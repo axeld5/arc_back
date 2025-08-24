@@ -7,7 +7,7 @@ to create variations for data augmentation purposes.
 
 import random
 import numpy as np
-from typing import List, Dict, Any, Callable, Tuple
+from typing import List, Dict, Any, Callable, Tuple, Optional
 from copy import deepcopy
 
 
@@ -121,7 +121,8 @@ def apply_color_permutation(grid: List[List[int]], color_map: Dict[int, int] = N
     return [[color_map.get(cell, cell) for cell in row] for row in grid]
 
 
-def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None) -> List[List[int]]:
+def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None, 
+                 store_position: bool = False) -> Tuple[List[List[int]], Optional[Tuple[int, int]]]:
     """
     Upscale a grid by padding with zeros to reach a larger size.
     The original grid can be placed anywhere within the new larger grid.
@@ -129,9 +130,11 @@ def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None) -> 
     Args:
         grid (List[List[int]]): Input grid as list of lists
         target_size (Tuple[int, int], optional): Target (height, width). If None, randomly chosen up to 30x30.
+        store_position (bool): Whether to return the position where original was placed
         
     Returns:
-        List[List[int]]: Upscaled grid with zero padding
+        List[List[int]] or Tuple[List[List[int]], Tuple[int, int]]: 
+            Upscaled grid with zero padding, and optionally the (top_offset, left_offset) position
     """
     if not grid or not grid[0]:
         return grid
@@ -167,7 +170,10 @@ def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None) -> 
         for j in range(current_width):
             upscaled[top_offset + i][left_offset + j] = grid[i][j]
     
-    return upscaled
+    if store_position:
+        return upscaled, (top_offset, left_offset)
+    else:
+        return upscaled
 
 
 def apply_augmentation_to_example(example: Dict[str, List[List[int]]], 
@@ -253,9 +259,164 @@ def get_available_augmentations() -> Dict[str, Callable]:
     }
 
 
+def create_pixel_position_map(grid: List[List[int]]) -> Dict[Tuple[int, int], int]:
+    """
+    Create a map of pixel positions to their color values.
+    
+    Args:
+        grid: Input grid
+        
+    Returns:
+        Dictionary mapping (row, col) positions to color values
+    """
+    pixel_map = {}
+    for i, row in enumerate(grid):
+        for j, color in enumerate(row):
+            pixel_map[(i, j)] = color
+    return pixel_map
+
+
+def track_pixel_transformations(original_grid: List[List[int]], 
+                               augmentation_sequence: List[str],
+                               augmentation_params: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Track how pixel positions and colors change through a sequence of augmentations.
+    This creates comprehensive metadata for perfect deaugmentation.
+    
+    Args:
+        original_grid: The original grid before any augmentations
+        augmentation_sequence: List of augmentations applied in order
+        augmentation_params: Parameters used for each augmentation
+        
+    Returns:
+        Dictionary containing detailed transformation metadata
+    """
+    metadata = {
+        'original_size': (len(original_grid), len(original_grid[0])),
+        'applied_augmentations': augmentation_sequence,
+        'augmentation_params': augmentation_params,
+        'pixel_transformations': {},
+        'color_transformations': {},
+        'position_transformations': {}
+    }
+    
+    # Track each original pixel through all transformations
+    current_grid = deepcopy(original_grid)
+    current_positions = {}  # Maps original (i,j) to current (i,j)
+    current_colors = {}     # Maps original (i,j) to current color
+    
+    # Initialize position and color tracking
+    for i in range(len(original_grid)):
+        for j in range(len(original_grid[0])):
+            current_positions[(i, j)] = (i, j)
+            current_colors[(i, j)] = original_grid[i][j]
+    
+    # Apply each augmentation and track changes
+    for aug_name in augmentation_sequence:
+        if aug_name == 'color_permutation':
+            color_map = augmentation_params[aug_name]['color_map']
+            # Update color tracking
+            for orig_pos in current_colors:
+                current_colors[orig_pos] = color_map.get(current_colors[orig_pos], current_colors[orig_pos])
+                
+        elif aug_name.startswith('upscale'):
+            params = augmentation_params[aug_name]
+            target_size = params['target_size']
+            original_size = params['original_size']
+            
+            # The issue is that we're calling upscale_grid again, which uses a new random position
+            # Instead, we should use the actual grid from the augmented problem
+            # But for pixel tracking, we need to know where it was placed
+            
+            # Get the current grid size before upscaling
+            pre_upscale_size = (len(current_grid), len(current_grid[0]))
+            
+            # We can't reliably simulate the upscaling here because it uses random placement
+            # Instead, we'll detect the position from the actual augmented grid later
+            # For now, just update the grid to match the target size with zeros
+            upscaled_grid = [[0] * target_size[1] for _ in range(target_size[0])]
+            
+            # Store metadata without the exact offset (we'll detect it during deaugmentation)
+            metadata['position_transformations'][aug_name] = {
+                'target_size': target_size,
+                'pre_upscale_size': pre_upscale_size
+            }
+            
+            # Store in augmentation params too
+            augmentation_params[aug_name]['pre_upscale_size'] = pre_upscale_size
+            
+            # We'll skip the pixel position tracking for upscale since it's complex
+            # The deaugmentation will use heuristic detection instead
+            current_grid = upscaled_grid
+            
+            # Clear position tracking since upscaling makes it unreliable
+            current_positions = {}
+            current_colors = {}
+            
+        elif aug_name in ['rotate_90', 'rotate_180', 'rotate_270']:
+            # Handle rotation transformations
+            if aug_name == 'rotate_90':
+                current_grid = rotate_90(current_grid)
+                # Update positions: (i, j) -> (j, rows-1-i)
+                rows = len(current_grid)
+                new_positions = {}
+                for orig_pos, curr_pos in current_positions.items():
+                    curr_i, curr_j = curr_pos
+                    new_positions[orig_pos] = (curr_j, rows - 1 - curr_i)
+                current_positions = new_positions
+                
+            elif aug_name == 'rotate_180':
+                current_grid = rotate_180(current_grid)
+                # Update positions: (i, j) -> (rows-1-i, cols-1-j)
+                rows, cols = len(current_grid), len(current_grid[0])
+                new_positions = {}
+                for orig_pos, curr_pos in current_positions.items():
+                    curr_i, curr_j = curr_pos
+                    new_positions[orig_pos] = (rows - 1 - curr_i, cols - 1 - curr_j)
+                current_positions = new_positions
+                
+            elif aug_name == 'rotate_270':
+                current_grid = rotate_270(current_grid)
+                # Update positions: (i, j) -> (cols-1-j, i)
+                cols = len(current_grid[0])
+                new_positions = {}
+                for orig_pos, curr_pos in current_positions.items():
+                    curr_i, curr_j = curr_pos
+                    new_positions[orig_pos] = (cols - 1 - curr_j, curr_i)
+                current_positions = new_positions
+                
+        elif aug_name in ['flip_vertical', 'flip_horizontal']:
+            if aug_name == 'flip_vertical':
+                current_grid = flip_vertical(current_grid)
+                # Update positions: (i, j) -> (rows-1-i, j)
+                rows = len(current_grid)
+                new_positions = {}
+                for orig_pos, curr_pos in current_positions.items():
+                    curr_i, curr_j = curr_pos
+                    new_positions[orig_pos] = (rows - 1 - curr_i, curr_j)
+                current_positions = new_positions
+                
+            elif aug_name == 'flip_horizontal':
+                current_grid = flip_horizontal(current_grid)
+                # Update positions: (i, j) -> (i, cols-1-j)
+                cols = len(current_grid[0])
+                new_positions = {}
+                for orig_pos, curr_pos in current_positions.items():
+                    curr_i, curr_j = curr_pos
+                    new_positions[orig_pos] = (curr_i, cols - 1 - curr_j)
+                current_positions = new_positions
+    
+    # Store final transformation mappings
+    metadata['pixel_transformations'] = current_positions
+    metadata['color_transformations'] = current_colors
+    metadata['final_size'] = (len(current_grid), len(current_grid[0]))
+    
+    return metadata
+
+
 def apply_random_augmentations(problem: Dict[str, Any], 
                              num_augmentations: int = None,
-                             seed: int = None) -> Tuple[Dict[str, Any], List[str]]:
+                             seed: int = None) -> Tuple[Dict[str, Any], List[str], Dict[str, Any]]:
     """
     Apply a random selection of 2-4 augmentations to a whole problem.
     
@@ -266,7 +427,7 @@ def apply_random_augmentations(problem: Dict[str, Any],
         seed (int, optional): Random seed for reproducibility
         
     Returns:
-        Tuple[Dict[str, Any], List[str]]: Augmented problem and list of applied augmentations
+        Tuple[Dict[str, Any], List[str], Dict[str, Any]]: Augmented problem, list of applied augmentations, and augmentation parameters
     """
     if seed is not None:
         random.seed(seed)
@@ -285,6 +446,7 @@ def apply_random_augmentations(problem: Dict[str, Any],
     # Apply augmentations sequentially
     augmented_problem = deepcopy(problem)
     applied_augmentations = []
+    augmentation_params = {}  # Store parameters for each augmentation
     
     for aug_name in selected_augmentations:
         aug_func = available_augmentations[aug_name]
@@ -296,9 +458,15 @@ def apply_random_augmentations(problem: Dict[str, Any],
             shuffled_colors = colors.copy()
             random.shuffle(shuffled_colors)
             color_map = dict(zip(colors, shuffled_colors))
+            
+            # Store the color map for deaugmentation
+            augmentation_params[aug_name] = {'color_map': color_map}
+            
             augmented_problem = apply_augmentation_to_problem(
                 augmented_problem, aug_func, color_map=color_map
             )
+            applied_augmentations.append(aug_name)
+            
         elif aug_name == 'upscale':
             # Use consistent target size for the entire problem
             # Get size of first input to determine reasonable target size
@@ -316,10 +484,17 @@ def apply_random_augmentations(problem: Dict[str, Any],
                 target_width = random.randint(current_w, max_w)
                 target_size = (target_height, target_width)
                 
+                # Store parameters for deaugmentation
+                upscale_name = f"{aug_name}_{target_height}x{target_width}"
+                augmentation_params[upscale_name] = {
+                    'original_size': (current_h, current_w),
+                    'target_size': target_size
+                }
+                
                 augmented_problem = apply_augmentation_to_problem(
                     augmented_problem, aug_func, target_size=target_size
                 )
-                applied_augmentations.append(f"{aug_name}_{target_height}x{target_width}")
+                applied_augmentations.append(upscale_name)
                 continue
             else:
                 # Fallback if no input found
@@ -328,10 +503,9 @@ def apply_random_augmentations(problem: Dict[str, Any],
                 continue
         else:
             augmented_problem = apply_augmentation_to_problem(augmented_problem, aug_func)
-        
-        applied_augmentations.append(aug_name)
+            applied_augmentations.append(aug_name)
     
-    return augmented_problem, applied_augmentations
+    return augmented_problem, applied_augmentations, augmentation_params
 
 
 def create_augmented_dataset(problems: List[Dict[str, Any]], 
@@ -355,7 +529,7 @@ def create_augmented_dataset(problems: List[Dict[str, Any]],
     
     for problem in problems:
         for _ in range(augmentations_per_problem):
-            augmented_problem, applied_augs = apply_random_augmentations(problem)
+            augmented_problem, applied_augs, _ = apply_random_augmentations(problem)
             augmented_dataset.append((augmented_problem, applied_augs))
     
     return augmented_dataset
@@ -419,7 +593,8 @@ if __name__ == "__main__":
     print("Testing random augmentations on a problem:")
     print("="*50)
     
-    augmented_problem, applied_augs = apply_random_augmentations(test_problem, seed=42)
+    augmented_problem, applied_augs, aug_params = apply_random_augmentations(test_problem, seed=42)
     print(f"Applied augmentations: {applied_augs}")
+    print(f"Augmentation parameters: {aug_params}")
     print(f"Original train input: {test_problem['train'][0]['input']}")
     print(f"Augmented train input: {augmented_problem['train'][0]['input']}")

@@ -209,6 +209,10 @@ if __name__ == "__main__":
         optim="paged_adamw_8bit",
         logging_dir="transduction/rl_tb_logs",
         report_to="tensorboard",
+        use_vllm=True,
+        vllm_mode="colocate",
+        vllm_tensor_parallel_size=1,
+        vllm_gpu_memory_utilization=0.30,
         # GSPO-specific parameters
         num_generations=4,  # G in the paper
         max_prompt_length=2048,  # Match SFT max length

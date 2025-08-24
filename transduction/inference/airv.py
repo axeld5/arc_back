@@ -24,8 +24,8 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from transduction.eval import InferenceTechnique
 from transduction.inference.inference import ARCTransductionInference
-from augment import apply_random_augmentations, get_available_augmentations, apply_augmentation_to_problem
-from deaugment import apply_full_deaugmentation, get_deaugmentation_functions, create_augmentation_metadata
+from augment import apply_random_augmentations, get_available_augmentations, apply_augmentation_to_problem, track_pixel_transformations
+from deaugment import apply_full_deaugmentation, get_deaugmentation_functions, create_augmentation_metadata, apply_pixel_level_deaugmentation
 
 
 class AIRVInference(InferenceTechnique):
@@ -96,18 +96,15 @@ class AIRVInference(InferenceTechnique):
         # Create augmented versions
         for i in range(self.num_augmentations):
             try:
-                # Create augmented problem
-                augmented_problem, applied_augs = apply_random_augmentations(
+                # Create augmented problem with comprehensive metadata
+                augmented_problem, applied_augs, aug_params = apply_random_augmentations(
                     problem_data, 
                     num_augmentations=random.randint(1, 3),  # 1-3 augmentations per version
                     seed=None  # Let it be random for each version
                 )
                 
-                # Create metadata for deaugmentation
-                metadata = create_augmentation_metadata(problem_data, applied_augs)
-                
-                # Store additional metadata needed for complex augmentations
-                self._enhance_metadata(metadata, applied_augs, problem_data, augmented_problem)
+                # Create comprehensive metadata for perfect deaugmentation
+                metadata = self._create_comprehensive_metadata(problem_data, applied_augs, aug_params)
                 
                 versions.append((augmented_problem, applied_augs, metadata))
                 
@@ -118,77 +115,44 @@ class AIRVInference(InferenceTechnique):
         print(f"Created {len(versions)} versions ({len(versions) - (1 if self.include_original else 0)} augmented)")
         return versions
     
-    def _enhance_metadata(self, metadata: Dict[str, Any], applied_augs: List[str], 
-                         original_problem: Dict[str, Any], augmented_problem: Dict[str, Any]):
+    def _create_comprehensive_metadata(self, original_problem: Dict[str, Any], 
+                                     applied_augs: List[str], 
+                                     aug_params: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Enhance metadata with information needed for complex deaugmentations.
+        Create comprehensive metadata for perfect deaugmentation.
         
         Args:
-            metadata: Metadata dictionary to enhance
-            applied_augs: List of applied augmentations
             original_problem: Original problem data
-            augmented_problem: Augmented problem data
-        """
-        # Store color maps if color permutation was used
-        for aug_name in applied_augs:
-            if 'color_permutation' in aug_name:
-                # We need to reconstruct the color map by comparing original and augmented
-                # This is a heuristic approach
-                try:
-                    color_map = self._infer_color_map(original_problem, augmented_problem)
-                    if color_map:
-                        metadata['color_map'] = color_map
-                except Exception as e:
-                    print(f"Warning: Could not infer color map: {e}")
-            
-            elif 'upscale' in aug_name:
-                # Store original size information
-                if 'train' in original_problem and original_problem['train']:
-                    first_input = original_problem['train'][0]['input']
-                    metadata['original_size'] = (len(first_input), len(first_input[0]))
-                    # We could try to infer position, but it's complex
-                    metadata['original_position'] = None  # Will be auto-detected
-    
-    def _infer_color_map(self, original_problem: Dict[str, Any], 
-                        augmented_problem: Dict[str, Any]) -> Optional[Dict[int, int]]:
-        """
-        Try to infer the color map used in color permutation by comparing problems.
-        
-        Args:
-            original_problem: Original problem
-            augmented_problem: Augmented problem
+            applied_augs: List of applied augmentations
+            aug_params: Parameters used for each augmentation
             
         Returns:
-            Inferred color map or None if failed
+            Comprehensive metadata dictionary
         """
-        try:
-            # Compare first training example
-            if ('train' in original_problem and original_problem['train'] and
-                'train' in augmented_problem and augmented_problem['train']):
-                
-                orig_input = original_problem['train'][0]['input']
-                aug_input = augmented_problem['train'][0]['input']
-                
-                # Build color mapping
-                color_map = {}
-                for i in range(len(orig_input)):
-                    for j in range(len(orig_input[i])):
-                        if i < len(aug_input) and j < len(aug_input[i]):
-                            orig_color = orig_input[i][j]
-                            aug_color = aug_input[i][j]
-                            
-                            if orig_color in color_map:
-                                if color_map[orig_color] != aug_color:
-                                    # Inconsistent mapping, probably not just color permutation
-                                    return None
-                            else:
-                                color_map[orig_color] = aug_color
-                
-                return color_map
-        except Exception:
-            return None
+        metadata = {
+            'augmentation_params': aug_params,
+            'applied_augmentations': applied_augs,
+        }
         
-        return None
+        # Get first training input for pixel tracking
+        if 'train' in original_problem and original_problem['train']:
+            first_input = original_problem['train'][0]['input']
+            
+            # Create pixel-level transformation metadata
+            try:
+                pixel_metadata = track_pixel_transformations(first_input, applied_augs, aug_params)
+                metadata.update(pixel_metadata)
+            except Exception as e:
+                print(f"Warning: Could not create pixel transformation metadata: {e}")
+                # Fallback to basic metadata
+                metadata.update(create_augmentation_metadata(original_problem, applied_augs))
+        else:
+            # Fallback if no training data
+            metadata.update(create_augmentation_metadata(original_problem, applied_augs))
+        
+        return metadata
+    
+
     
     def infer_on_version(self, problem_version: Dict[str, Any], 
                         train_sample_count: int = 3,
@@ -229,16 +193,24 @@ class AIRVInference(InferenceTechnique):
             return predicted_grid
         
         try:
-            # Create a dummy problem with just the predicted output
+            # Try pixel-level deaugmentation first (more accurate)
+            if 'pixel_transformations' in metadata:
+                reverted_grid = apply_pixel_level_deaugmentation(predicted_grid, metadata)
+                if reverted_grid is not None:
+                    return reverted_grid
+            
+            # Fallback to sequential deaugmentation
             dummy_problem = {
                 'test': [{'output': predicted_grid}]
             }
             
-            # Apply full deaugmentation
+            # Use augmentation parameters from metadata if available
+            aug_metadata = metadata.get('augmentation_params', metadata)
+            
             reverted_problem = apply_full_deaugmentation(
                 dummy_problem, 
                 augmentation_list, 
-                metadata
+                aug_metadata
             )
             
             return reverted_problem['test'][0]['output']

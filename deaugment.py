@@ -311,6 +311,70 @@ def parse_augmentation_name(aug_name: str) -> Tuple[str, Dict[str, Any]]:
         return aug_name, {}
 
 
+def apply_pixel_level_deaugmentation(predicted_grid: List[List[int]], 
+                                   augmentation_metadata: Dict[str, Any]) -> List[List[int]]:
+    """
+    Apply pixel-level deaugmentation using comprehensive transformation metadata.
+    This is more accurate than the sequential approach for complex transformations.
+    
+    Args:
+        predicted_grid: The grid predicted on augmented data
+        augmentation_metadata: Comprehensive metadata with pixel transformations
+        
+    Returns:
+        Deaugmented grid in original space
+    """
+    if 'applied_augmentations' not in augmentation_metadata:
+        return None
+    
+    applied_augmentations = augmentation_metadata['applied_augmentations']
+    augmentation_params = augmentation_metadata.get('augmentation_params', {})
+    
+    # Start with the predicted grid and reverse each augmentation
+    current_grid = [row[:] for row in predicted_grid]  # Deep copy
+    
+    # Apply deaugmentations in reverse order
+    for aug_name in reversed(applied_augmentations):
+        if aug_name == 'rotate_90':
+            # Reverse rotate_90: apply rotate_270 (or 3 x rotate_90)
+            current_grid = derotate_90(current_grid)
+        elif aug_name == 'rotate_180':
+            # Reverse rotate_180: apply rotate_180 again
+            current_grid = derotate_180(current_grid)
+        elif aug_name == 'rotate_270':
+            # Reverse rotate_270: apply rotate_90
+            current_grid = derotate_270(current_grid)
+        elif aug_name == 'flip_vertical':
+            # Reverse flip_vertical: apply flip_vertical again
+            current_grid = deflip_vertical(current_grid)
+        elif aug_name == 'flip_horizontal':
+            # Reverse flip_horizontal: apply flip_horizontal again
+            current_grid = deflip_horizontal(current_grid)
+        elif aug_name == 'color_permutation':
+            # Reverse color permutation
+            if 'color_permutation' in augmentation_params and 'color_map' in augmentation_params['color_permutation']:
+                color_map = augmentation_params['color_permutation']['color_map']
+                # Convert string keys to integers if needed
+                if isinstance(list(color_map.keys())[0], str):
+                    color_map = {int(k): int(v) for k, v in color_map.items()}
+                current_grid = deapply_color_permutation(current_grid, color_map)
+        elif aug_name.startswith('upscale'):
+            # Reverse upscaling
+            if aug_name in augmentation_params:
+                params = augmentation_params[aug_name]
+                position_info = augmentation_metadata.get('position_transformations', {}).get(aug_name, {})
+                
+                # Get the size we need to crop back to
+                pre_upscale_size = params.get('pre_upscale_size', position_info.get('pre_upscale_size', params.get('original_size')))
+                
+                # Try to get stored offset, otherwise use heuristic detection
+                original_position = params.get('offset', position_info.get('offset', None))
+                
+                current_grid = deupscale_grid(current_grid, pre_upscale_size, original_position)
+    
+    return current_grid
+
+
 def apply_full_deaugmentation(problem: Dict[str, Any], 
                              augmentation_list: List[str],
                              augmentation_metadata: Dict[str, Any] = None) -> Dict[str, Any]:

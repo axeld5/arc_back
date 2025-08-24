@@ -13,8 +13,10 @@ from peft import LoraConfig, get_peft_model
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
-    Trainer,
-    TrainingArguments,
+)
+from trl import (
+    SFTConfig,
+    SFTTrainer,
 )
 
 
@@ -174,7 +176,7 @@ def main():
     collator = DataCollatorForCausalLMWithPadding(tokenizer=tokenizer)
 
     # Training arguments
-    args = TrainingArguments(
+    args = SFTConfig(
         output_dir="qwen2.5_0.5b_arc_transduction_sft",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,  # effective batch size of 8
@@ -198,7 +200,7 @@ def main():
     )
 
     # Initialize trainer
-    trainer = Trainer(
+    trainer = SFTTrainer(
         model=model, 
         args=args, 
         train_dataset=tokenised_ds, 
