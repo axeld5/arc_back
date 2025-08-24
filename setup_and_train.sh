@@ -27,7 +27,7 @@ echo "=================================================="
 
 # Step 1: Install astral-uv
 echo "Step 1: Installing astral-uv..."
-sudo snap install astral-uv --classic
+curl -LsSf https://astral.sh/uv/install.sh | sh
 echo "✓ astral-uv installed successfully"
 
 # Step 2: Sync dependencies
