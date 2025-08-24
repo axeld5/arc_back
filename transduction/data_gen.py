@@ -3,6 +3,14 @@ Data generation for transduction task in ARC.
 
 This module creates training datasets by sampling from training problems and formatting them
 with the transduction prompt for training language models.
+
+Key features:
+- Leave-one-out sampling from training examples
+- Diverse test placeholder generation strategies:
+  * 1/3 probability: All zeros (original behavior)
+  * 1/3 probability: Use a matrix from problem data (input/output from train/test)
+  * 1/3 probability: Use a matrix but modify 1-30 random pixels
+- Optional data augmentation with rotations, flips, color permutations, and upscaling
 """
 
 import json
@@ -58,6 +66,91 @@ def format_train_examples(train_examples: List[Dict[str, List[List[int]]]]) -> s
     return '\n\n'.join(formatted_pairs)
 
 
+def create_test_placeholder(problem_data: Dict[str, Any], 
+                          sampled_train: List[Dict[str, List[List[int]]]], 
+                          test_example: Dict[str, List[List[int]]]) -> str:
+    """
+    Create test placeholder rows with diverse strategies.
+    
+    Args:
+        problem_data: Full problem data
+        sampled_train: Sampled training examples
+        test_example: Current test example
+        
+    Returns:
+        Placeholder string in semicolon-separated format
+    """
+    target_height = len(test_example['input'])
+    target_width = len(test_example['input'][0]) if target_height > 0 else 0
+    
+    # Collect all available matrices from the problem
+    all_matrices = []
+    
+    # Add from sampled training examples
+    for example in sampled_train:
+        all_matrices.append(example['input'])
+        all_matrices.append(example['output'])
+    
+    # Add from test examples (inputs only, not outputs since we don't want to leak)
+    test_examples = problem_data.get('test', [])
+    for example in test_examples:
+        all_matrices.append(example['input'])
+    
+    # Add from other training examples not in sampled_train
+    all_train_examples = []
+    if 'train' in problem_data:
+        all_train_examples.extend(problem_data['train'])
+    if 'arc-gen' in problem_data:
+        all_train_examples.extend(problem_data['arc-gen'])
+    
+    for example in all_train_examples:
+        if example not in sampled_train:
+            all_matrices.append(example['input'])
+            all_matrices.append(example['output'])
+    
+    # Filter matrices that match target dimensions
+    compatible_matrices = []
+    for matrix in all_matrices:
+        if len(matrix) == target_height and (not matrix or len(matrix[0]) == target_width):
+            compatible_matrices.append(matrix)
+    
+    # Choose strategy with specified probabilities
+    strategy = random.choices(['zeros', 'matrix', 'modified_matrix'], weights=[1/3, 1/3, 1/3])[0]
+    
+    if strategy == 'zeros' or not compatible_matrices:
+        # Strategy 1: All zeros (1/3 probability)
+        placeholder_matrix = [['0'] * target_width for _ in range(target_height)]
+    
+    elif strategy == 'matrix':
+        # Strategy 2: Use a matrix from problem data (1/3 probability)
+        chosen_matrix = random.choice(compatible_matrices)
+        placeholder_matrix = [[str(cell) for cell in row] for row in chosen_matrix]
+    
+    else:  # strategy == 'modified_matrix'
+        # Strategy 3: Use matrix but modify 1-30 random pixels (1/3 probability)
+        chosen_matrix = random.choice(compatible_matrices)
+        placeholder_matrix = [[str(cell) for cell in row] for row in chosen_matrix]
+        
+        # Modify random pixels
+        num_modifications = random.randint(1, 30)
+        total_pixels = target_height * target_width
+        
+        # Don't modify more pixels than exist
+        num_modifications = min(num_modifications, total_pixels)
+        
+        # Generate random positions to modify
+        positions = [(i, j) for i in range(target_height) for j in range(target_width)]
+        positions_to_modify = random.sample(positions, num_modifications)
+        
+        for i, j in positions_to_modify:
+            # Random color 0-9
+            placeholder_matrix[i][j] = str(random.randint(0, 9))
+    
+    # Convert to semicolon-separated format
+    placeholder_rows = [''.join(row) for row in placeholder_matrix]
+    return ';'.join(placeholder_rows)
+
+
 def create_transduction_sample(problem_data: Dict[str, Any], 
                               train_sample_count: int, 
                               test_example_idx: int = 0) -> Dict[str, str]:
@@ -105,9 +198,8 @@ def create_transduction_sample(problem_data: Dict[str, Any],
     test_input_formatted = grid_to_row_strings(test_example['input'])
     test_input_str = ';'.join(test_input_formatted)
     
-    # Create a placeholder with same dimensions as test input
-    test_placeholder_rows = ['0' * len(row) for row in test_input_formatted]
-    test_placeholder_str = ';'.join(test_placeholder_rows)
+    # Create diverse test placeholder using new strategy
+    test_placeholder_str = create_test_placeholder(problem_data, sampled_train, test_example)
     
     prompt = PROMPT_V1.format(
         train_pairs=train_pairs_formatted,

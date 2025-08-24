@@ -1,8 +1,17 @@
 """
 Comprehensive evaluation system for ARC transduction models.
 
-This module provides a flexible framework for evaluating different model types
-(instruct, SFT, RL) and inference techniques on ARC problems.
+This script combines all inference techniques:
+- Simple Inference (Standard, Multi-sample)
+- AIRV (Augment, Infer, Revert and Vote)
+- TTFT + Simple Inference
+- TTFT + AIRV Inference
+
+Features:
+- Unified evaluation framework
+- All models evaluation with --all_models flag
+- Individual model selection
+- Comprehensive comparison and analysis
 """
 
 import json
@@ -50,6 +59,7 @@ class InferenceConfig:
     technique_class: type       # Class implementing the inference technique
     params: Dict[str, Any]      # Parameters for the technique
     description: Optional[str] = None
+    category: str = "standard"  # Category: "standard", "airv", "ttft", "ttft_airv"
 
 
 @dataclass
@@ -219,59 +229,52 @@ class MultiSampleInference(InferenceTechnique):
             torch.cuda.empty_cache()
 
 
-class ARCEvaluator:
-    """Main evaluator class for ARC transduction models."""
+class ComprehensiveARCEvaluator:
+    """Comprehensive evaluator class for all ARC transduction inference techniques."""
     
     def __init__(self, data_dir: str = "."):
         self.data_dir = data_dir
         self.model_configs = {}
         self.inference_configs = {}
-        self._register_default_techniques()
+        self._register_all_techniques()
     
-    def _register_default_techniques(self):
-        """Register default inference techniques."""
+    def _register_all_techniques(self):
+        """Register all available inference techniques."""
+        # Standard techniques
         self.register_inference_technique(InferenceConfig(
             name="standard",
             technique_class=StandardInference,
             params={},
-            description="Standard single-sample inference"
+            description="Standard single-sample inference",
+            category="standard"
         ))
         
         self.register_inference_technique(InferenceConfig(
             name="multi_sample_5",
             technique_class=MultiSampleInference,
             params={"num_samples": 5},
-            description="Multi-sample inference with 5 samples"
+            description="Multi-sample inference with 5 samples",
+            category="standard"
         ))
         
         self.register_inference_technique(InferenceConfig(
             name="multi_sample_10",
             technique_class=MultiSampleInference,
             params={"num_samples": 10},
-            description="Multi-sample inference with 10 samples"
+            description="Multi-sample inference with 10 samples",
+            category="standard"
         ))
+        
+        # Register AIRV techniques
+        self._register_airv_techniques()
+        
+        # Register TTFT techniques
+        self._register_ttft_techniques()
+        
+        # Register TTFT + AIRV techniques
+        self._register_ttft_airv_techniques()
     
-    def register_ttft_techniques(self):
-        """Register TTFT inference techniques."""
-        try:
-            from transduction.inference.ttft import TTFTInference, create_ttft_configs
-            
-            # Register TTFT configurations
-            ttft_configs = create_ttft_configs()
-            for config in ttft_configs:
-                self.register_inference_technique(InferenceConfig(
-                    name=f"ttft_{config['name']}",
-                    technique_class=TTFTInference,
-                    params=config['params'],
-                    description=f"TTFT: {config['description']}"
-                ))
-                
-            print(f"Registered {len(ttft_configs)} TTFT techniques")
-            
-        except ImportError as e:
-            print(f"Warning: Could not register TTFT techniques: {e}")
-    
-    def register_airv_techniques(self):
+    def _register_airv_techniques(self):
         """Register AIRV inference techniques."""
         try:
             from transduction.inference.airv import AIRVInference, create_airv_configs
@@ -283,13 +286,86 @@ class ARCEvaluator:
                     name=config['name'],
                     technique_class=AIRVInference,
                     params=config['params'],
-                    description=config['description']
+                    description=config['description'],
+                    category="airv"
                 ))
             
             print(f"Registered {len(airv_configs)} AIRV techniques")
             
         except ImportError as e:
             print(f"Warning: Could not register AIRV techniques: {e}")
+    
+    def _register_ttft_techniques(self):
+        """Register TTFT inference techniques."""
+        try:
+            from transduction.inference.ttft import TTFTInference, create_ttft_configs
+            
+            # Register TTFT configurations
+            ttft_configs = create_ttft_configs()
+            for config in ttft_configs:
+                self.register_inference_technique(InferenceConfig(
+                    name=f"ttft_{config['name']}",
+                    technique_class=TTFTInference,
+                    params=config['params'],
+                    description=f"TTFT + Simple: {config['description']}",
+                    category="ttft"
+                ))
+                
+            print(f"Registered {len(ttft_configs)} TTFT techniques")
+            
+        except ImportError as e:
+            print(f"Warning: Could not register TTFT techniques: {e}")
+    
+    def _register_ttft_airv_techniques(self):
+        """Register TTFT + AIRV combined techniques."""
+        try:
+            from transduction.inference.ttft import TTFTWrapper, create_ttft_configs
+            from transduction.inference.airv import AIRVInference
+            
+            # Create TTFT + AIRV combined class
+            class TTFTAIRVInference:
+                """TTFT + AIRV combined inference technique."""
+                
+                def __init__(self, model_name: str, device: str = "auto", 
+                             ttft_config: dict = None, airv_config: dict = None, **kwargs):
+                    self.ttft_config = ttft_config or {}
+                    self.airv_config = airv_config or {'num_augmentations': 4, 'include_original': True}
+                    
+                    # Create TTFT wrapper for AIRV
+                    self.ttft_wrapper = TTFTWrapper(AIRVInference, self.ttft_config)
+                    self.wrapped_inference = self.ttft_wrapper.create_wrapped_inference(
+                        model_name=model_name,
+                        device=device,
+                        **self.airv_config
+                    )
+                
+                def infer_single_problem(self, problem_data, train_sample_count=3, test_example_idx=0, verbose=False):
+                    return self.wrapped_inference.infer_single_problem(
+                        problem_data, train_sample_count, test_example_idx, verbose
+                    )
+                
+                def cleanup(self):
+                    if hasattr(self.wrapped_inference, 'cleanup'):
+                        self.wrapped_inference.cleanup()
+            
+            # Register TTFT + AIRV combinations (only light and standard to avoid too many)
+            ttft_configs = create_ttft_configs()
+            for config in ttft_configs[:2]:  # Only first 2 configs
+                self.register_inference_technique(InferenceConfig(
+                    name=f"ttft_airv_{config['name']}",
+                    technique_class=TTFTAIRVInference,
+                    params={
+                        'ttft_config': config['params'],
+                        'airv_config': {'num_augmentations': 4, 'include_original': True}
+                    },
+                    description=f"TTFT + AIRV: {config['description']}",
+                    category="ttft_airv"
+                ))
+            
+            print(f"Registered {min(2, len(ttft_configs))} TTFT + AIRV techniques")
+            
+        except ImportError as e:
+            print(f"Warning: Could not register TTFT + AIRV techniques: {e}")
     
     def register_model(self, config: ModelConfig):
         """Register a model configuration."""
@@ -344,11 +420,12 @@ class ARCEvaluator:
         if max_problems:
             problem_ids = problem_ids[:max_problems]
         
-        print(f"\n{'='*60}")
+        print(f"\n{'='*70}")
         print(f"Evaluating: {model_config.name} + {inference_config.name}")
         print(f"Model: {model_config.model_path}")
+        print(f"Category: {inference_config.category}")
         print(f"Problems: {len(problem_ids)} from {dataset_type} set")
-        print(f"{'='*60}")
+        print(f"{'='*70}")
         
         # Initialize inference technique
         technique = inference_config.technique_class(
@@ -420,7 +497,8 @@ class ARCEvaluator:
             metadata={
                 'dataset_type': dataset_type,
                 'train_sample_count': train_sample_count,
-                'max_problems': max_problems
+                'max_problems': max_problems,
+                'category': inference_config.category
             }
         )
         
@@ -435,6 +513,7 @@ class ARCEvaluator:
     
     def evaluate_all_combinations(self,
                                 model_names: Optional[List[str]] = None,
+                                technique_categories: Optional[List[str]] = None,
                                 technique_names: Optional[List[str]] = None,
                                 dataset_type: str = "evaluation",
                                 max_problems: Optional[int] = None,
@@ -452,15 +531,36 @@ class ARCEvaluator:
         # Shuffle for random sampling
         random.shuffle(problem_ids)
         
-        # Determine which models and techniques to evaluate
+        # Determine which models to evaluate
         if model_names is None:
             model_names = list(self.model_configs.keys())
+        
+        # Determine which techniques to evaluate
         if technique_names is None:
-            technique_names = list(self.inference_configs.keys())
+            if technique_categories is None:
+                technique_names = list(self.inference_configs.keys())
+            else:
+                # Filter by categories
+                technique_names = []
+                for name, config in self.inference_configs.items():
+                    if config.category in technique_categories:
+                        technique_names.append(name)
         
         print(f"Evaluating {len(model_names)} models × {len(technique_names)} techniques")
         print(f"Models: {model_names}")
-        print(f"Techniques: {technique_names}")
+        print(f"Techniques by category:")
+        
+        # Group techniques by category for display
+        by_category = {}
+        for name in technique_names:
+            if name in self.inference_configs:
+                category = self.inference_configs[name].category
+                if category not in by_category:
+                    by_category[category] = []
+                by_category[category].append(name)
+        
+        for category, techniques in by_category.items():
+            print(f"  {category}: {techniques}")
         
         all_results = []
         
@@ -490,20 +590,8 @@ class ARCEvaluator:
                     print(f"Error evaluating {model_name} + {technique_name}: {e}")
                     continue
         
-        # Print summary
-        print(f"\n{'='*80}")
-        print("EVALUATION SUMMARY")
-        print(f"{'='*80}")
-        print(f"{'Model':<15} {'Technique':<15} {'Accuracy':<10} {'Correct':<8} {'Total':<8} {'Avg Time':<10}")
-        print("-" * 80)
-        
-        for result in all_results:
-            print(f"{result.model_config.name:<15} "
-                  f"{result.inference_config.name:<15} "
-                  f"{result.accuracy:<10.3f} "
-                  f"{result.correct_predictions:<8} "
-                  f"{result.total_problems:<8} "
-                  f"{result.avg_inference_time:<10.2f}s")
+        # Print comprehensive summary
+        self._print_comprehensive_summary(all_results)
         
         # Save results if requested
         if output_file:
@@ -511,6 +599,94 @@ class ARCEvaluator:
             self.save_results(all_results, output_file)
         
         return all_results
+    
+    def _print_comprehensive_summary(self, results: List[EvaluationResult]):
+        """Print comprehensive summary of all results."""
+        print(f"\n{'='*100}")
+        print("COMPREHENSIVE EVALUATION SUMMARY")
+        print(f"{'='*100}")
+        
+        # Overall summary table
+        print(f"{'Model':<12} {'Technique':<20} {'Category':<12} {'Accuracy':<10} {'Correct':<8} {'Total':<8} {'Avg Time':<10}")
+        print("-" * 100)
+        
+        for result in results:
+            print(f"{result.model_config.name:<12} "
+                  f"{result.inference_config.name:<20} "
+                  f"{result.inference_config.category:<12} "
+                  f"{result.accuracy:<10.3f} "
+                  f"{result.correct_predictions:<8} "
+                  f"{result.total_problems:<8} "
+                  f"{result.avg_inference_time:<10.2f}s")
+        
+        # Category-based analysis
+        print(f"\n{'='*100}")
+        print("ANALYSIS BY CATEGORY")
+        print(f"{'='*100}")
+        
+        # Group results by model and category
+        model_category_results = {}
+        for result in results:
+            model_name = result.model_config.name
+            category = result.inference_config.category
+            
+            if model_name not in model_category_results:
+                model_category_results[model_name] = {}
+            if category not in model_category_results[model_name]:
+                model_category_results[model_name][category] = []
+            
+            model_category_results[model_name][category].append(result)
+        
+        # Print analysis for each model
+        for model_name, category_results in model_category_results.items():
+            print(f"\nModel: {model_name}")
+            print("-" * 60)
+            
+            best_by_category = {}
+            for category, category_result_list in category_results.items():
+                # Find best result in this category
+                best_result = max(category_result_list, key=lambda x: x.accuracy)
+                best_by_category[category] = best_result
+                
+                print(f"Best {category:<12}: {best_result.inference_config.name:<20} "
+                      f"({best_result.accuracy:.3f} accuracy, {best_result.avg_inference_time:.1f}s)")
+            
+            # Compare with baseline if available
+            if 'standard' in best_by_category:
+                baseline = best_by_category['standard']
+                print(f"\nComparisons to best standard ({baseline.inference_config.name}):")
+                
+                for category, best_result in best_by_category.items():
+                    if category != 'standard':
+                        improvement = best_result.accuracy - baseline.accuracy
+                        time_ratio = best_result.avg_inference_time / baseline.avg_inference_time
+                        print(f"  {category:<12}: {improvement:+.3f} accuracy, {time_ratio:.1f}x time")
+        
+        # Overall best results
+        print(f"\n{'='*100}")
+        print("OVERALL BEST RESULTS")
+        print(f"{'='*100}")
+        
+        # Find overall best result
+        best_overall = max(results, key=lambda x: x.accuracy)
+        print(f"Best Overall: {best_overall.model_config.name} + {best_overall.inference_config.name}")
+        print(f"  Accuracy: {best_overall.accuracy:.3f}")
+        print(f"  Category: {best_overall.inference_config.category}")
+        print(f"  Time: {best_overall.avg_inference_time:.1f}s per problem")
+        
+        # Best by category across all models
+        category_best = {}
+        for result in results:
+            category = result.inference_config.category
+            if category not in category_best or result.accuracy > category_best[category].accuracy:
+                category_best[category] = result
+        
+        print(f"\nBest by Category (across all models):")
+        for category in ['standard', 'airv', 'ttft', 'ttft_airv']:
+            if category in category_best:
+                result = category_best[category]
+                print(f"  {category:<12}: {result.model_config.name} + {result.inference_config.name} "
+                      f"({result.accuracy:.3f})")
     
     def save_results(self, results: List[EvaluationResult], output_file: str):
         """Save evaluation results to JSON file."""
@@ -528,7 +704,8 @@ class ARCEvaluator:
                 'inference_config': {
                     'name': result.inference_config.name,
                     'params': result.inference_config.params,
-                    'description': result.inference_config.description
+                    'description': result.inference_config.description,
+                    'category': result.inference_config.category
                 },
                 'problem_results': result.problem_results,
                 'total_problems': result.total_problems,
@@ -552,20 +729,22 @@ def main():
     # Model configuration
     parser.add_argument('--base_model', type=str, default="Qwen/Qwen2.5-0.5B-Instruct",
                        help='Base model for instruct/SFT/RL variants')
-    parser.add_argument('--models', type=str, nargs='+', default=None,
-                       help='Specific models to evaluate (default: all available)')
+    parser.add_argument('--all_models', action='store_true',
+                       help='Evaluate all available models')
+    parser.add_argument('--model_name', type=str, default=None,
+                       help='Specific model to evaluate (required if --all_models is not set)')
     parser.add_argument('--sft_path', type=str, default="qwen2.5_0.5b_arc_transduction_sft/final",
                        help='Path to SFT model')
     parser.add_argument('--rl_path', type=str, default="qwen2.5_0.5b_arc_transduction_rl/final",
                        help='Path to RL model')
     
-    # Inference techniques
+    # Inference technique categories
+    parser.add_argument('--categories', type=str, nargs='+', 
+                       choices=['standard', 'airv', 'ttft', 'ttft_airv', 'all'],
+                       default=['all'],
+                       help='Inference technique categories to evaluate')
     parser.add_argument('--techniques', type=str, nargs='+', default=None,
-                       help='Inference techniques to use (default: all available)')
-    parser.add_argument('--enable_ttft', action='store_true',
-                       help='Enable TTFT (Test-Time Fine-Tuning) techniques')
-    parser.add_argument('--enable_airv', action='store_true',
-                       help='Enable AIRV (Augment, Infer, Revert, Vote) techniques')
+                       help='Specific techniques to evaluate (overrides --categories)')
     
     # Evaluation settings
     parser.add_argument('--data_dir', type=str, default=".",
@@ -573,13 +752,13 @@ def main():
     parser.add_argument('--dataset', type=str, choices=['evaluation', 'training'], 
                        default='evaluation',
                        help='Dataset to evaluate on')
-    parser.add_argument('--max_problems', type=int, default=50,
+    parser.add_argument('--max_problems', type=int, default=20,
                        help='Maximum number of problems to evaluate')
     parser.add_argument('--train_samples', type=int, default=3,
                        help='Number of training examples to use per problem')
     
     # Output and misc
-    parser.add_argument('--output', type=str, default=None,
+    parser.add_argument('--output', type=str, default="comprehensive_results.json",
                        help='Output file to save detailed results')
     parser.add_argument('--seed', type=int, default=42,
                        help='Random seed for reproducibility')
@@ -588,20 +767,17 @@ def main():
     
     args = parser.parse_args()
     
+    # Validate model selection
+    if not args.all_models and args.model_name is None:
+        parser.error("Either --all_models must be set or --model_name must be specified")
+    
     # Set random seed
     random.seed(args.seed)
     if HF_AVAILABLE:
         torch.manual_seed(args.seed)
     
     # Initialize evaluator
-    evaluator = ARCEvaluator(data_dir=args.data_dir)
-    
-    # Register advanced techniques if requested
-    if args.enable_ttft:
-        evaluator.register_ttft_techniques()
-    
-    if args.enable_airv:
-        evaluator.register_airv_techniques()
+    evaluator = ComprehensiveARCEvaluator(data_dir=args.data_dir)
     
     # Set up models
     evaluator.setup_default_models(base_model=args.base_model)
@@ -625,9 +801,30 @@ def main():
             description=f"Custom RL model: {args.rl_path}"
         ))
     
-    # Run evaluation
+    # Determine which models to evaluate
+    if args.all_models:
+        model_names = None  # Will use all available models
+        print("🚀 Evaluating ALL available models")
+    else:
+        model_names = [args.model_name]
+        print(f"🎯 Evaluating single model: {args.model_name}")
+    
+    # Determine technique categories
+    if 'all' in args.categories:
+        technique_categories = ['standard', 'airv', 'ttft', 'ttft_airv']
+    else:
+        technique_categories = args.categories
+    
+    print(f"📊 Technique categories: {technique_categories}")
+    print(f"📁 Dataset: {args.dataset}")
+    print(f"🔢 Max problems: {args.max_problems}")
+    
+    # Run comprehensive evaluation
+    start_time = time.time()
+    
     results = evaluator.evaluate_all_combinations(
-        model_names=args.models,
+        model_names=model_names,
+        technique_categories=technique_categories,
         technique_names=args.techniques,
         dataset_type=args.dataset,
         max_problems=args.max_problems,
@@ -636,7 +833,12 @@ def main():
         verbose=args.verbose
     )
     
-    print(f"\nEvaluation completed! Evaluated {len(results)} model-technique combinations.")
+    total_time = time.time() - start_time
+    
+    print(f"\n🎉 Comprehensive evaluation completed!")
+    print(f"⏱️ Total time: {total_time:.1f}s")
+    print(f"📊 Evaluated {len(results)} model-technique combinations")
+    print(f"💾 Results saved to: {args.output}")
 
 
 if __name__ == "__main__":
