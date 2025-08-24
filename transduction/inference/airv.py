@@ -215,6 +215,11 @@ class AIRVInference(InferenceTechnique):
             
             return reverted_problem['test'][0]['output']
             
+        except IndexError as e:
+            print(f"Warning: Failed to revert output with augmentations {augmentation_list}: list index out of range")
+            print(f"  Predicted grid shape: {len(predicted_grid)}x{len(predicted_grid[0]) if predicted_grid else 0}")
+            print(f"  Available metadata keys: {list(metadata.keys())}")
+            return None
         except Exception as e:
             print(f"Warning: Failed to revert output with augmentations {augmentation_list}: {e}")
             return None
