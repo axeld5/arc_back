@@ -264,6 +264,26 @@ class ComprehensiveARCEvaluator:
             description="Multi-sample inference with 10 samples",
             category="standard"
         ))
+
+        # Register Repeat-Placeholder technique
+        try:
+            from transduction.inference.repeat import RepeatPlaceholderInference
+            self.register_inference_technique(InferenceConfig(
+                name="repeat_placeholder_2pass",
+                technique_class=RepeatPlaceholderInference,
+                params={"num_passes": 2},
+                description="Two-pass inference reusing model output as placeholder",
+                category="standard"
+            ))
+            self.register_inference_technique(InferenceConfig(
+                name="repeat_placeholder_8pass",
+                technique_class=RepeatPlaceholderInference,
+                params={"num_passes": 8},
+                description="Eight-pass inference reusing model output as placeholder",
+                category="standard"
+            ))
+        except ImportError as e:
+            print(f"Warning: Could not register RepeatPlaceholderInference: {e}")
         
         # Register AIRV techniques
         self._register_airv_techniques()
@@ -414,7 +434,9 @@ class ComprehensiveARCEvaluator:
                                   dataset_type: str = "evaluation",
                                   max_problems: Optional[int] = None,
                                   train_sample_count: int = 3,
-                                  verbose: bool = False) -> EvaluationResult:
+                                  verbose: bool = False,
+                                  save_model_outputs: bool = False,
+                                  print_model_outputs: bool = False) -> EvaluationResult:
         """Evaluate a single model-technique combination."""
         
         if max_problems:
@@ -458,6 +480,45 @@ class ComprehensiveARCEvaluator:
                         train_sample_count=train_sample_count,
                         verbose=verbose
                     )
+                    # Optionally collect raw model outputs across techniques
+                    if save_model_outputs or print_model_outputs:
+                        collected_outputs = []
+                        try:
+                            # Standard response
+                            if isinstance(result, dict) and 'response' in result and isinstance(result['response'], str):
+                                collected_outputs.append(result['response'])
+                            # Multi-sample responses
+                            if 'all_samples' in result and isinstance(result['all_samples'], list):
+                                for s in result['all_samples']:
+                                    resp = s.get('response') if isinstance(s, dict) else None
+                                    if isinstance(resp, str):
+                                        collected_outputs.append(resp)
+                            # AIRV per-version responses
+                            if 'version_results' in result and isinstance(result['version_results'], list):
+                                for vr in result['version_results']:
+                                    if isinstance(vr, dict) and 'inference_result' in vr and isinstance(vr['inference_result'], dict):
+                                        resp = vr['inference_result'].get('response')
+                                        if isinstance(resp, str):
+                                            collected_outputs.append(resp)
+                            # Repeat inference pass responses
+                            if 'all_pass_results' in result and isinstance(result['all_pass_results'], list):
+                                for pr in result['all_pass_results']:
+                                    if isinstance(pr, dict):
+                                        resp = pr.get('response')
+                                        if isinstance(resp, str):
+                                            collected_outputs.append(resp)
+                        except Exception:
+                            pass
+                        if save_model_outputs:
+                            result['all_model_outputs'] = collected_outputs
+                        if print_model_outputs and collected_outputs:
+                            print("RAW MODEL OUTPUTS ({}):".format(len(collected_outputs)))
+                            for idx, out in enumerate(collected_outputs, 1):
+                                try:
+                                    print(f"[{idx}] {out}")
+                                except Exception:
+                                    # Fallback safe print
+                                    print(f"[{idx}] <unprintable output>")
                     inference_time = time.time() - inference_start
                     total_inference_time += inference_time
                     
@@ -498,7 +559,9 @@ class ComprehensiveARCEvaluator:
                 'dataset_type': dataset_type,
                 'train_sample_count': train_sample_count,
                 'max_problems': max_problems,
-                'category': inference_config.category
+                'category': inference_config.category,
+                'save_model_outputs': save_model_outputs,
+                'print_model_outputs': print_model_outputs
             }
         )
         
@@ -519,7 +582,9 @@ class ComprehensiveARCEvaluator:
                                 max_problems: Optional[int] = None,
                                 train_sample_count: int = 3,
                                 output_file: Optional[str] = None,
-                                verbose: bool = False) -> List[EvaluationResult]:
+                                verbose: bool = False,
+                                save_model_outputs: bool = False,
+                                print_model_outputs: bool = False) -> List[EvaluationResult]:
         """Evaluate all specified model-technique combinations."""
         
         # Get problem IDs
@@ -582,7 +647,9 @@ class ComprehensiveARCEvaluator:
                         dataset_type=dataset_type,
                         max_problems=max_problems,
                         train_sample_count=train_sample_count,
-                        verbose=verbose
+                        verbose=verbose,
+                        save_model_outputs=save_model_outputs,
+                        print_model_outputs=print_model_outputs
                     )
                     all_results.append(result)
                     
@@ -781,6 +848,10 @@ def main():
                        help='Random seed for reproducibility')
     parser.add_argument('--verbose', action='store_true',
                        help='Verbose output')
+    parser.add_argument('--save_model_outputs', action='store_true',
+                       help='Collect and store raw model outputs for each problem')
+    parser.add_argument('--print_model_outputs', action='store_true',
+                       help='Print raw model outputs for each problem to stdout')
     
     args = parser.parse_args()
     
@@ -847,7 +918,9 @@ def main():
         max_problems=args.max_problems,
         train_sample_count=args.train_samples,
         output_file=args.output,
-        verbose=args.verbose
+        verbose=args.verbose,
+        save_model_outputs=args.save_model_outputs,
+        print_model_outputs=args.print_model_outputs
     )
     
     total_time = time.time() - start_time
