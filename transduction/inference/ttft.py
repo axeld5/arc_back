@@ -300,15 +300,22 @@ class TTFTInference(InferenceTechnique):
             # Enable training mode
             model.train()
             
-            # Ensure gradients are enabled for LoRA parameters
+            # Ensure gradients are enabled for LoRA parameters (only floating point)
             for name, param in model.named_parameters():
-                if 'lora_' in name:
+                if 'lora_' in name and param.dtype.is_floating_point:
                     param.requires_grad = True
+                elif 'lora_' in name and not param.dtype.is_floating_point:
+                    print(f"Warning: Skipping gradient for non-floating point LoRA param: {name} (dtype: {param.dtype})")
+                    param.requires_grad = False
         else:
-            # For full fine-tuning, enable gradients for all parameters
+            # For full fine-tuning, enable gradients for floating point parameters only
             model.train()
-            for param in model.parameters():
-                param.requires_grad = True
+            for name, param in model.named_parameters():
+                if param.dtype.is_floating_point:
+                    param.requires_grad = True
+                else:
+                    print(f"Warning: Skipping gradient for non-floating point param: {name} (dtype: {param.dtype})")
+                    param.requires_grad = False
         
         print(f"Model prepared for training. Using LoRA: {self.use_lora}")
         return model
@@ -490,8 +497,18 @@ class TTFTInference(InferenceTechnique):
             num_proc=1  # Keep it simple for test-time fine-tuning
         )
         
+        # Validate dataset dtypes
+        print("Validating dataset dtypes...")
+        sample = tokenized_dataset[0]
+        print(f"Sample input_ids type: {type(sample['input_ids'])}")
+        print(f"Sample attention_mask type: {type(sample['attention_mask'])}")  
+        print(f"Sample labels type: {type(sample['labels'])}")
+        
         # Prepare model for fine-tuning (avoid deepcopy issues with quantized models)
         model = self._prepare_model_for_training()
+        
+        # Check if the base model is quantized for training config
+        is_quantized = hasattr(self.base_model, 'config') and getattr(self.base_model.config, 'quantization_config', None) is not None
         
         # Create temporary directory for training outputs
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -507,12 +524,14 @@ class TTFTInference(InferenceTechnique):
                 learning_rate=self.ttft_learning_rate,
                 warmup_steps=0,
                 lr_scheduler_type="constant",
-                fp16=self.device != "cpu",
+                fp16=self.device != "cpu" and not is_quantized,  # Disable fp16 for quantized models
+                bf16=False,  # Explicitly disable bf16 to avoid dtype conflicts
                 logging_steps=1000,  # Minimal logging
                 save_steps=1000,  # Don't save during training
                 save_total_limit=0,  # Don't save checkpoints
                 report_to=None,  # No reporting
                 remove_unused_columns=False,
+                dataloader_pin_memory=False,  # Reduce memory pressure
             )
             
             # Initialize trainer
