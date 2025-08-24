@@ -7,9 +7,10 @@ with the transduction prompt for training language models.
 Key features:
 - Leave-one-out sampling from training examples
 - Diverse test placeholder generation strategies:
-  * 1/3 probability: All zeros (original behavior)
-  * 1/3 probability: Use a matrix from problem data (input/output from train/test)
-  * 1/3 probability: Use a matrix but modify 1-30 random pixels
+  * 1/4 probability: All zeros (original behavior)
+  * 1/4 probability: Use a matrix from problem data (input/output from train/test)
+  * 1/4 probability: Use a matrix but modify 1-30 random pixels
+  * 1/4 probability: Use the ground-truth test output as placeholder
 - Optional data augmentation with rotations, flips, color permutations, and upscaling
 """
 
@@ -114,20 +115,20 @@ def create_test_placeholder(problem_data: Dict[str, Any],
         if len(matrix) == target_height and (not matrix or len(matrix[0]) == target_width):
             compatible_matrices.append(matrix)
     
-    # Choose strategy with specified probabilities
-    strategy = random.choices(['zeros', 'matrix', 'modified_matrix'], weights=[1/3, 1/3, 1/3])[0]
+    # Choose strategy with specified probabilities (1/4 each)
+    strategy = random.choices(['zeros', 'matrix', 'modified_matrix', 'ground_truth'], weights=[1/4, 1/4, 1/4, 1/4])[0]
     
-    if strategy == 'zeros' or not compatible_matrices:
-        # Strategy 1: All zeros (1/3 probability)
+    if strategy == 'zeros' or (strategy in ['matrix', 'modified_matrix'] and not compatible_matrices):
+        # Strategy 1: All zeros
         placeholder_matrix = [['0'] * target_width for _ in range(target_height)]
     
     elif strategy == 'matrix':
-        # Strategy 2: Use a matrix from problem data (1/3 probability)
+        # Strategy 2: Use a matrix from problem data
         chosen_matrix = random.choice(compatible_matrices)
         placeholder_matrix = [[str(cell) for cell in row] for row in chosen_matrix]
     
-    else:  # strategy == 'modified_matrix'
-        # Strategy 3: Use matrix but modify 1-30 random pixels (1/3 probability)
+    elif strategy == 'modified_matrix':
+        # Strategy 3: Use matrix but modify 1-30 random pixels
         chosen_matrix = random.choice(compatible_matrices)
         placeholder_matrix = [[str(cell) for cell in row] for row in chosen_matrix]
         
@@ -145,6 +146,15 @@ def create_test_placeholder(problem_data: Dict[str, Any],
         for i, j in positions_to_modify:
             # Random color 0-9
             placeholder_matrix[i][j] = str(random.randint(0, 9))
+
+    else:  # strategy == 'ground_truth'
+        # Strategy 4: Use the ground-truth output as placeholder
+        gt = test_example.get('output')
+        if gt is not None and len(gt) == target_height and (not gt or len(gt[0]) == target_width):
+            placeholder_matrix = [[str(cell) for cell in row] for row in gt]
+        else:
+            # Fallback to zeros if dimensions mismatch
+            placeholder_matrix = [['0'] * target_width for _ in range(target_height)]
     
     # Convert to semicolon-separated format
     placeholder_rows = [''.join(row) for row in placeholder_matrix]
