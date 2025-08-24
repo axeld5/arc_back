@@ -22,7 +22,7 @@ import os
 # Add parent directories to path for imports
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from transduction.eval import InferenceTechnique
+from transduction.eval_comprehensive import InferenceTechnique
 from transduction.inference.inference import ARCTransductionInference
 from augment import apply_random_augmentations, get_available_augmentations, apply_augmentation_to_problem, track_pixel_transformations
 from deaugment import apply_full_deaugmentation, get_deaugmentation_functions, create_augmentation_metadata, apply_pixel_level_deaugmentation
