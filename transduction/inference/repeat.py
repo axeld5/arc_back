@@ -101,7 +101,21 @@ class RepeatPlaceholderInference:
             next_placeholder = self._grid_to_placeholder_str(predicted_grid, test_example['input'])
 
         final = all_results[-1]
-        final['all_pass_results'] = all_results
+        # Build a sanitized, acyclic view of all pass results to avoid recursion issues
+        sanitized_pass_results = []
+        for idx, res in enumerate(all_results, 1):
+            try:
+                sanitized_pass_results.append({
+                    'pass_idx': idx,
+                    'response': res.get('response'),
+                    'predicted_grid': res.get('predicted_grid'),
+                    'is_correct': res.get('is_correct') if isinstance(res, dict) else None
+                })
+            except Exception:
+                sanitized_pass_results.append({'pass_idx': idx})
+
+        final['all_pass_results'] = sanitized_pass_results
+        final['pass_count'] = self.num_passes
         final['inference_method'] = 'repeat_placeholder'
         if verbose:
             print(f"Repeat passes: {self.num_passes}, final correct: {final['is_correct']}")
