@@ -273,14 +273,14 @@ class ComprehensiveARCEvaluator:
                 technique_class=RepeatPlaceholderInference,
                 params={"num_passes": 2},
                 description="Two-pass inference reusing model output as placeholder",
-                category="standard"
+                category="repeat"
             ))
             self.register_inference_technique(InferenceConfig(
                 name="repeat_placeholder_8pass",
                 technique_class=RepeatPlaceholderInference,
                 params={"num_passes": 8},
                 description="Eight-pass inference reusing model output as placeholder",
-                category="standard"
+                category="repeat"
             ))
         except ImportError as e:
             print(f"Warning: Could not register RepeatPlaceholderInference: {e}")
@@ -824,7 +824,7 @@ def main():
     
     # Inference technique categories
     parser.add_argument('--categories', type=str, nargs='+', 
-                       choices=['standard', 'airv', 'ttft', 'ttft_airv', 'all'],
+                       choices=['standard', 'airv', 'ttft', 'ttft_airv', 'repeat', 'all'],
                        default=['all'],
                        help='Inference technique categories to evaluate')
     parser.add_argument('--techniques', type=str, nargs='+', default=None,
@@ -899,7 +899,7 @@ def main():
     
     # Determine technique categories
     if 'all' in args.categories:
-        technique_categories = ['standard', 'airv', 'ttft', 'ttft_airv']
+        technique_categories = ['standard', 'airv', 'ttft', 'ttft_airv', 'repeat']
     else:
         technique_categories = args.categories
     
