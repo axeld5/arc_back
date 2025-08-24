@@ -569,6 +569,30 @@ class TTFTInference(InferenceTechnique):
                     except Exception:
                         pass
         
+        # Disable gradient checkpointing and switch to eval mode for inference
+        try:
+            if hasattr(model, 'gradient_checkpointing_disable'):
+                model.gradient_checkpointing_disable()
+        except Exception:
+            pass
+        try:
+            model.eval()
+        except Exception:
+            pass
+        # Ensure no params require grad during inference
+        try:
+            for param in model.parameters():
+                if param.requires_grad:
+                    param.requires_grad = False
+        except Exception:
+            pass
+        # Ensure caching is enabled for inference
+        try:
+            if hasattr(model, 'config'):
+                model.config.use_cache = True
+        except Exception:
+            pass
+
         print("Fine-tuning completed!")
         return model
     
