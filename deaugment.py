@@ -140,13 +140,25 @@ def deupscale_grid(grid: List[List[int]],
     if current_height == orig_height and current_width == orig_width:
         return grid
     
+    # Validate original size is reasonable
+    if orig_height <= 0 or orig_width <= 0:
+        print(f"Warning: Invalid original size {original_size}")
+        return grid
+    
     if original_position is not None:
         # Use provided position
         top_offset, left_offset = original_position
+        # Clamp to valid bounds
+        top_offset = max(0, min(top_offset, current_height - orig_height))
+        left_offset = max(0, min(left_offset, current_width - orig_width))
     else:
         # Try to find the original content by looking for non-zero region
         # This is a heuristic and may not always work perfectly
-        top_offset, left_offset = find_content_position(grid, original_size)
+        try:
+            top_offset, left_offset = find_content_position(grid, original_size)
+        except Exception as e:
+            print(f"Warning: Failed to find content position: {e}")
+            top_offset, left_offset = 0, 0
     
     # Extract the original region
     cropped = []
@@ -154,7 +166,8 @@ def deupscale_grid(grid: List[List[int]],
         row = []
         for j in range(orig_width):
             if (top_offset + i < current_height and 
-                left_offset + j < current_width):
+                left_offset + j < current_width and
+                top_offset + i >= 0 and left_offset + j >= 0):
                 row.append(grid[top_offset + i][left_offset + j])
             else:
                 row.append(0)  # Fallback if out of bounds
@@ -178,22 +191,35 @@ def find_content_position(grid: List[List[int]], original_size: Tuple[int, int])
     orig_height, orig_width = original_size
     current_height, current_width = len(grid), len(grid[0])
     
+    # Validate inputs
+    if orig_height > current_height or orig_width > current_width:
+        print(f"Warning: Original size {original_size} larger than current size {current_height}x{current_width}")
+        return (0, 0)
+    
     best_score = -1
     best_position = (0, 0)
     
     # Try all possible positions
-    for top in range(current_height - orig_height + 1):
-        for left in range(current_width - orig_width + 1):
+    max_top = max(0, current_height - orig_height + 1)
+    max_left = max(0, current_width - orig_width + 1)
+    
+    for top in range(max_top):
+        for left in range(max_left):
             # Count non-zero elements in this region
             score = 0
-            for i in range(orig_height):
-                for j in range(orig_width):
-                    if grid[top + i][left + j] != 0:
-                        score += 1
-            
-            if score > best_score:
-                best_score = score
-                best_position = (top, left)
+            try:
+                for i in range(orig_height):
+                    for j in range(orig_width):
+                        if (top + i < current_height and left + j < current_width and 
+                            grid[top + i][left + j] != 0):
+                            score += 1
+                
+                if score > best_score:
+                    best_score = score
+                    best_position = (top, left)
+            except IndexError:
+                # Skip this position if out of bounds
+                continue
     
     return best_position
 
@@ -335,42 +361,52 @@ def apply_pixel_level_deaugmentation(predicted_grid: List[List[int]],
     
     # Apply deaugmentations in reverse order
     for aug_name in reversed(applied_augmentations):
-        if aug_name == 'rotate_90':
-            # Reverse rotate_90: apply rotate_270 (or 3 x rotate_90)
-            current_grid = derotate_90(current_grid)
-        elif aug_name == 'rotate_180':
-            # Reverse rotate_180: apply rotate_180 again
-            current_grid = derotate_180(current_grid)
-        elif aug_name == 'rotate_270':
-            # Reverse rotate_270: apply rotate_90
-            current_grid = derotate_270(current_grid)
-        elif aug_name == 'flip_vertical':
-            # Reverse flip_vertical: apply flip_vertical again
-            current_grid = deflip_vertical(current_grid)
-        elif aug_name == 'flip_horizontal':
-            # Reverse flip_horizontal: apply flip_horizontal again
-            current_grid = deflip_horizontal(current_grid)
-        elif aug_name == 'color_permutation':
-            # Reverse color permutation
-            if 'color_permutation' in augmentation_params and 'color_map' in augmentation_params['color_permutation']:
-                color_map = augmentation_params['color_permutation']['color_map']
-                # Convert string keys to integers if needed
-                if isinstance(list(color_map.keys())[0], str):
-                    color_map = {int(k): int(v) for k, v in color_map.items()}
-                current_grid = deapply_color_permutation(current_grid, color_map)
-        elif aug_name.startswith('upscale'):
-            # Reverse upscaling
-            if aug_name in augmentation_params:
-                params = augmentation_params[aug_name]
-                position_info = augmentation_metadata.get('position_transformations', {}).get(aug_name, {})
-                
-                # Get the size we need to crop back to
-                pre_upscale_size = params.get('pre_upscale_size', position_info.get('pre_upscale_size', params.get('original_size')))
-                
-                # Try to get stored offset, otherwise use heuristic detection
-                original_position = params.get('offset', position_info.get('offset', None))
-                
-                current_grid = deupscale_grid(current_grid, pre_upscale_size, original_position)
+        try:
+            if aug_name == 'rotate_90':
+                # Reverse rotate_90: apply rotate_270 (or 3 x rotate_90)
+                current_grid = derotate_90(current_grid)
+            elif aug_name == 'rotate_180':
+                # Reverse rotate_180: apply rotate_180 again
+                current_grid = derotate_180(current_grid)
+            elif aug_name == 'rotate_270':
+                # Reverse rotate_270: apply rotate_90
+                current_grid = derotate_270(current_grid)
+            elif aug_name == 'flip_vertical':
+                # Reverse flip_vertical: apply flip_vertical again
+                current_grid = deflip_vertical(current_grid)
+            elif aug_name == 'flip_horizontal':
+                # Reverse flip_horizontal: apply flip_horizontal again
+                current_grid = deflip_horizontal(current_grid)
+            elif aug_name == 'color_permutation':
+                # Reverse color permutation
+                if 'color_permutation' in augmentation_params and 'color_map' in augmentation_params['color_permutation']:
+                    color_map = augmentation_params['color_permutation']['color_map']
+                    # Convert string keys to integers if needed
+                    if color_map and len(color_map) > 0:
+                        # Safe way to check key type
+                        first_key = next(iter(color_map.keys()))
+                        if isinstance(first_key, str):
+                            color_map = {int(k): int(v) for k, v in color_map.items()}
+                    current_grid = deapply_color_permutation(current_grid, color_map)
+            elif aug_name.startswith('upscale'):
+                # Reverse upscaling
+                if aug_name in augmentation_params:
+                    params = augmentation_params[aug_name]
+                    position_info = augmentation_metadata.get('position_transformations', {}).get(aug_name, {})
+                    
+                    # Get the size we need to crop back to
+                    pre_upscale_size = params.get('pre_upscale_size', position_info.get('pre_upscale_size', params.get('original_size')))
+                    
+                    if pre_upscale_size is not None:
+                        # Try to get stored offset, otherwise use heuristic detection
+                        original_position = params.get('offset', position_info.get('offset', None))
+                        current_grid = deupscale_grid(current_grid, pre_upscale_size, original_position)
+                    else:
+                        print(f"Warning: No size information for deaugmenting {aug_name}")
+        except Exception as e:
+            print(f"Warning: Error deaugmenting {aug_name}: {e}")
+            # Continue with other deaugmentations
+            continue
     
     return current_grid
 
@@ -398,42 +434,61 @@ def apply_full_deaugmentation(problem: Dict[str, Any],
     
     # Apply deaugmentations in reverse order
     for aug_name in reversed(augmentation_list):
-        base_name, params = parse_augmentation_name(aug_name)
-        
-        if base_name not in deaugmentation_funcs:
-            print(f"Warning: No deaugmentation function for '{base_name}'")
-            continue
-        
-        deaug_func = deaugmentation_funcs[base_name]
-        
-        # Handle special cases that need additional parameters
-        if base_name == 'color_permutation':
-            # Need the original color map
-            color_map = augmentation_metadata.get('color_map')
-            if color_map:
-                deaugmented_problem = apply_deaugmentation_to_problem(
-                    deaugmented_problem, deaug_func, color_map=color_map
-                )
-            else:
-                print(f"Warning: No color_map provided for deaugmenting {aug_name}")
-        elif base_name == 'upscale':
-            # Need original size and optionally original position
-            original_size = augmentation_metadata.get('original_size')
-            original_position = augmentation_metadata.get('original_position')
+        try:
+            base_name, params = parse_augmentation_name(aug_name)
             
-            if original_size:
-                deaugmented_problem = apply_deaugmentation_to_problem(
-                    deaugmented_problem, deaug_func, 
-                    original_size=original_size,
-                    original_position=original_position
-                )
+            if base_name not in deaugmentation_funcs:
+                print(f"Warning: No deaugmentation function for '{base_name}'")
+                continue
+            
+            deaug_func = deaugmentation_funcs[base_name]
+            
+            # Handle special cases that need additional parameters
+            if base_name == 'color_permutation':
+                # Need the original color map - try multiple possible locations
+                color_map = None
+                if 'color_permutation' in augmentation_metadata:
+                    color_map = augmentation_metadata['color_permutation'].get('color_map')
+                elif 'color_map' in augmentation_metadata:
+                    color_map = augmentation_metadata['color_map']
+                
+                if color_map:
+                    deaugmented_problem = apply_deaugmentation_to_problem(
+                        deaugmented_problem, deaug_func, color_map=color_map
+                    )
+                else:
+                    print(f"Warning: No color_map provided for deaugmenting {aug_name}")
+            elif base_name == 'upscale':
+                # Need original size and optionally original position
+                # Try multiple possible locations for the parameters
+                original_size = None
+                original_position = None
+                
+                # Look in different places for upscale parameters
+                if aug_name in augmentation_metadata:
+                    upscale_params = augmentation_metadata[aug_name]
+                    original_size = upscale_params.get('original_size') or upscale_params.get('pre_upscale_size')
+                    original_position = upscale_params.get('offset') or upscale_params.get('original_position')
+                elif 'original_size' in augmentation_metadata:
+                    original_size = augmentation_metadata['original_size']
+                    original_position = augmentation_metadata.get('original_position')
+                
+                if original_size:
+                    deaugmented_problem = apply_deaugmentation_to_problem(
+                        deaugmented_problem, deaug_func, 
+                        original_size=original_size,
+                        original_position=original_position
+                    )
+                else:
+                    print(f"Warning: No original_size provided for deaugmenting {aug_name}")
             else:
-                print(f"Warning: No original_size provided for deaugmenting {aug_name}")
-        else:
-            # Simple deaugmentation without extra parameters
-            deaugmented_problem = apply_deaugmentation_to_problem(
-                deaugmented_problem, deaug_func
-            )
+                # Simple deaugmentation without extra parameters
+                deaugmented_problem = apply_deaugmentation_to_problem(
+                    deaugmented_problem, deaug_func
+                )
+        except Exception as e:
+            print(f"Warning: Error deaugmenting {aug_name}: {e}")
+            continue
     
     return deaugmented_problem
 
