@@ -44,7 +44,7 @@ class DataCollatorForCausalLMWithPadding:
         # 3) pad labels to the same sequence length – fill with -100
         max_len = batch["input_ids"].size(1)
         batch["labels"] = torch.stack([
-            torch.tensor(label + [self.label_pad_token_id] * (max_len - len(label)))
+            torch.tensor(label + [self.label_pad_token_id] * (max_len - len(label)), dtype=torch.long)
             for label in labels
         ])
 
