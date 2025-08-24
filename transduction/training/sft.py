@@ -119,7 +119,7 @@ def main():
     # Configuration
     MODEL_NAME = "Qwen/Qwen2.5-0.5B-Instruct"
     DATA_FILE = "transduction/train_dataset.json"
-    MAX_LEN = 2048
+    MAX_LEN = 6000
     
     # Load environment and login
     load_dotenv()

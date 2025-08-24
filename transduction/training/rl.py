@@ -269,7 +269,7 @@ if __name__ == "__main__":
         vllm_gpu_memory_utilization=0.30,
         # GSPO-specific parameters
         num_generations=4,  # G in the paper
-        max_prompt_length=2048,  # Match SFT max length
+        max_prompt_length=6000,  # Match SFT max length
         max_completion_length=1024,  # Enough for transduction outputs
         remove_unused_columns=False,  # Keep expected_output
         push_to_hub=True,

@@ -1,0 +1,55 @@
+{
+  "failure_analysis": {
+    "total_failures": 44,
+    "error_types": {
+      "AUGMENT_ERROR": 44
+    },
+    "problematic_augmentations": {
+      "upscale": 44,
+      "rotate_90": 17,
+      "flip_vertical": 17,
+      "rotate_180": 16,
+      "rotate_270": 16,
+      "flip_horizontal": 16,
+      "color_permutation": 16
+    },
+    "error_messages": {
+      "AUGMENT_ERROR": [
+        "Failed to apply augmentations"
+      ]
+    }
+  },
+  "partial_analysis": {
+    "total_partial": 349,
+    "size_mismatches": 0,
+    "size_mismatch_examples": [],
+    "partial_augmentations": {
+      "upscale": 349,
+      "flip_vertical": 139,
+      "rotate_90": 138,
+      "rotate_270": 130,
+      "rotate_180": 128,
+      "flip_horizontal": 128,
+      "color_permutation": 98
+    }
+  },
+  "upscale_analysis": {
+    "upscale_failures": 44,
+    "upscale_partials": 349,
+    "upscale_size_issues": 0,
+    "size_issue_examples": []
+  },
+  "suggested_fixes": [
+    "CRITICAL FIX: 44 upscale operations are failing completely. This suggests issues with the upscale augmentation itself, not just deaugmentation. Check for edge cases where target size is invalid or grid processing fails.",
+    "AUGMENT FIX: 44 augmentation operations are failing. Add better error handling and validation in the augmentation pipeline. Check for invalid grid sizes, empty grids, or malformed data.",
+    "ROBUSTNESS FIX: Add comprehensive validation at each step of the augmentation pipeline. Validate grid sizes, check for empty grids, and ensure all metadata is properly structured.",
+    "METADATA FIX: Standardize the metadata structure across all augmentation types. Ensure consistent parameter passing between augmentation and deaugmentation functions.",
+    "POSITION FIX: For upscale operations, store the actual placement position during augmentation instead of relying on heuristic detection during deaugmentation. This will eliminate most upscale-related reversion issues."
+  ],
+  "improvement_potential": {
+    "current_success_rate": 95.88785046728971,
+    "potential_success_rate": 100.0,
+    "current_perfect_rate": 63.27102803738318,
+    "potential_perfect_rate": 63.27102803738318
+  }
+}
