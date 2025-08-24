@@ -226,6 +226,7 @@ class TTFTInference(InferenceTechnique):
             top_p=0.9,
             pad_token_id=self.tokenizer.eos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
+            use_cache=True,
         )
         
         print("Base model loaded successfully!")
@@ -316,6 +317,13 @@ class TTFTInference(InferenceTechnique):
                 else:
                     print(f"Warning: Skipping gradient for non-floating point param: {name} (dtype: {param.dtype})")
                     param.requires_grad = False
+        
+        # Disable KV caching during training to avoid Qwen warnings with gradient checkpointing
+        if hasattr(model, 'config'):
+            try:
+                model.config.use_cache = False
+            except Exception:
+                pass
         
         print(f"Model prepared for training. Using LoRA: {self.use_lora}")
         return model
@@ -526,6 +534,7 @@ class TTFTInference(InferenceTechnique):
                 lr_scheduler_type="constant",
                 fp16=self.device != "cpu" and not is_quantized,  # Disable fp16 for quantized models
                 bf16=False,  # Explicitly disable bf16 to avoid dtype conflicts
+                gradient_checkpointing=True,
                 logging_steps=1000,  # Minimal logging
                 save_steps=1000,  # Don't save during training
                 save_total_limit=0,  # Don't save checkpoints
@@ -543,7 +552,22 @@ class TTFTInference(InferenceTechnique):
             )
             
             # Fine-tune
-            trainer.train()
+            prev_use_cache = None
+            if hasattr(model, 'config'):
+                prev_use_cache = getattr(model.config, 'use_cache', None)
+                try:
+                    model.config.use_cache = False
+                except Exception:
+                    pass
+            try:
+                trainer.train()
+            finally:
+                # Restore caching preference after training
+                if hasattr(model, 'config'):
+                    try:
+                        model.config.use_cache = True if prev_use_cache is None else prev_use_cache
+                    except Exception:
+                        pass
         
         print("Fine-tuning completed!")
         return model
@@ -571,6 +595,14 @@ class TTFTInference(InferenceTechnique):
         inference.tokenizer = self.tokenizer
         inference.model = model
         inference.generation_config = self.generation_config
+        # Ensure caching is enabled for inference
+        try:
+            if hasattr(model, 'config'):
+                model.config.use_cache = True
+            if hasattr(inference, 'generation_config'):
+                inference.generation_config.use_cache = True
+        except Exception:
+            pass
         
         # Perform inference
         return inference.infer_single_problem(
