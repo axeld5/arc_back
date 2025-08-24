@@ -29,7 +29,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 # HuggingFace and training imports
 try:
     import torch
-    from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, BitsAndBytesConfig
     from peft import LoraConfig, get_peft_model, PeftModel
     from trl import SFTTrainer, SFTConfig
     from datasets import Dataset
@@ -143,12 +143,27 @@ class TTFTInference(InferenceTechnique):
                 base_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
                 print(f"Loading base model: {base_model_name}")
                 
-                base_model = AutoModelForCausalLM.from_pretrained(
-                    base_model_name,
-                    torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-                    device_map=self.device if self.device != "cpu" else None,
-                    trust_remote_code=True
-                )
+                if self.device != "cpu":
+                    # Configure 8-bit quantization for GPU inference
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_8bit=True,
+                        bnb_8bit_compute_dtype=torch.bfloat16,
+                        bnb_8bit_use_double_quant=True,
+                    )
+                    
+                    base_model = AutoModelForCausalLM.from_pretrained(
+                        base_model_name,
+                        quantization_config=quantization_config,
+                        device_map="auto",
+                        trust_remote_code=True
+                    )
+                else:
+                    # CPU inference without quantization
+                    base_model = AutoModelForCausalLM.from_pretrained(
+                        base_model_name,
+                        torch_dtype=torch.float32,
+                        trust_remote_code=True
+                    )
                 
                 # Load LoRA adapter
                 print(f"Loading LoRA adapter: {self.model_name}")
@@ -158,24 +173,52 @@ class TTFTInference(InferenceTechnique):
                 print(f"Failed to load as LoRA adapter: {e}")
                 print("Trying to load as full model...")
                 # Fallback to loading as full model
-                self.base_model = AutoModelForCausalLM.from_pretrained(
-                    self.model_name,
-                    torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-                    device_map=self.device if self.device != "cpu" else None,
-                    trust_remote_code=True
-                )
+                if self.device != "cpu":
+                    # Configure 8-bit quantization for GPU inference
+                    quantization_config = BitsAndBytesConfig(
+                        load_in_8bit=True,
+                        bnb_8bit_compute_dtype=torch.bfloat16,
+                        bnb_8bit_use_double_quant=True,
+                    )
+                    
+                    self.base_model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        quantization_config=quantization_config,
+                        device_map="auto",
+                        trust_remote_code=True
+                    )
+                else:
+                    # CPU inference without quantization
+                    self.base_model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        torch_dtype=torch.float32,
+                        trust_remote_code=True
+                    )
         else:
             # This is a HuggingFace model name
             print(f"Loading from HuggingFace: {self.model_name}")
-            self.base_model = AutoModelForCausalLM.from_pretrained(
-                self.model_name,
-                torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-                device_map=self.device if self.device != "cpu" else None,
-                trust_remote_code=True
-            )
-        
-        if self.device == "cpu":
-            self.base_model = self.base_model.to(self.device)
+            if self.device != "cpu":
+                # Configure 8-bit quantization for GPU inference
+                quantization_config = BitsAndBytesConfig(
+                    load_in_8bit=True,
+                    bnb_8bit_compute_dtype=torch.bfloat16,
+                    bnb_8bit_use_double_quant=True,
+                )
+                
+                self.base_model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    quantization_config=quantization_config,
+                    device_map="auto",
+                    trust_remote_code=True
+                )
+            else:
+                # CPU inference without quantization
+                self.base_model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    torch_dtype=torch.float32,
+                    trust_remote_code=True
+                )
+                self.base_model = self.base_model.to(self.device)
         
         # Set up generation config
         self.generation_config = GenerationConfig(

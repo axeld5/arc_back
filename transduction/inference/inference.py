@@ -25,7 +25,7 @@ from transduction.data_gen import grid_to_row_strings, format_train_examples
 # HuggingFace imports
 try:
     import torch
-    from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+    from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, BitsAndBytesConfig
     HF_AVAILABLE = True
 except ImportError:
     print("Warning: transformers and/or torch not available. Please install with: pip install transformers torch")
@@ -54,17 +54,30 @@ class ARCTransductionInference:
         print(f"Loading model: {model_name}")
         print(f"Using device: {self.device}")
         
-        # Load tokenizer and model
+        # Load tokenizer and model with 8-bit quantization
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-        self.model = AutoModelForCausalLM.from_pretrained(
-            model_name,
-            torch_dtype=torch.float16 if self.device != "cpu" else torch.float32,
-            device_map=self.device if self.device != "cpu" else None,
-            trust_remote_code=True
-        )
         
-        # Move to device if using CPU
-        if self.device == "cpu":
+        if self.device != "cpu":
+            # Configure 8-bit quantization for GPU inference
+            quantization_config = BitsAndBytesConfig(
+                load_in_8bit=True,
+                bnb_8bit_compute_dtype=torch.bfloat16,
+                bnb_8bit_use_double_quant=True,
+            )
+            
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                quantization_config=quantization_config,
+                device_map="auto",
+                trust_remote_code=True
+            )
+        else:
+            # CPU inference without quantization
+            self.model = AutoModelForCausalLM.from_pretrained(
+                model_name,
+                torch_dtype=torch.float32,
+                trust_remote_code=True
+            )
             self.model = self.model.to(self.device)
         
         # Set up generation config

@@ -184,17 +184,18 @@ def main():
         learning_rate=2e-4,
         warmup_steps=100,
         lr_scheduler_type="cosine",
-        fp16=False,  # we're already in BF16
-        bf16=True,
+        fp16=False,  # we're using 8-bit quantization
+        bf16=False,  # disabled for quantized training
         logging_steps=25,
         save_steps=500,
         save_total_limit=2,
         logging_dir="transduction/tb_logs",
         report_to="tensorboard",
         remove_unused_columns=False,
-        # Note: Adjust DeepSpeed config path if needed
-        deepspeed="transduction/training/ds_config_zero2.json",
-        ddp_find_unused_parameters=False,
+        # DeepSpeed disabled for quantized training (not compatible)
+        # deepspeed="transduction/training/ds_config_zero2.json",
+        # ddp_find_unused_parameters=False,
+        optim="paged_adamw_8bit",  # Use 8-bit optimizer for memory efficiency
         push_to_hub=True,
         hub_model_id="axel-darmouni/qwen2.5-0.5b-arc-transduction-sft",
     )
