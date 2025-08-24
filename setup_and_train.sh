@@ -37,6 +37,8 @@ echo "✓ Dependencies synced successfully"
 
 # Step 2.5: Install flash-attn
 echo "Step 2.5: Installing flash-attn..."
+uv pip install torch
+uv pip install setuptools
 uv pip install flash-attn --no-build-isolation --no-cache-dir
 echo "✓ flash-attn installed successfully"
 
