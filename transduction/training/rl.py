@@ -94,17 +94,63 @@ if __name__ == "__main__":
     # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
     model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
-    # Ensure model parameters require gradients for RL training
+    # Ensure only LoRA parameters require gradients for RL training
     model.train()
     trainable_params = 0
     total_params = 0
+    
+    # First, disable gradients for all parameters
     for param in model.parameters():
-        param.requires_grad_(True)
+        param.requires_grad_(False)
         total_params += param.numel()
-        if param.requires_grad:
-            trainable_params += param.numel()
+    
+    # Then enable gradients only for LoRA parameters (floating point tensors)
+    lora_keywords = ['lora_', 'adapter', 'peft', 'modules_to_save']
+    for name, param in model.named_parameters():
+        # Check if this is a LoRA parameter
+        is_lora_param = any(keyword in name.lower() for keyword in lora_keywords)
+        
+        if is_lora_param:
+            # Only enable gradients for floating point parameters
+            if param.dtype.is_floating_point:
+                param.requires_grad_(True)
+                trainable_params += param.numel()
+                print(f"Enabled gradients for LoRA parameter: {name} (dtype: {param.dtype})")
+            else:
+                print(f"Skipping non-floating point LoRA parameter: {name} (dtype: {param.dtype})")
     
     print(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100 * trainable_params / total_params:.2f}%)")
+    
+    # Verify we have trainable parameters
+    if trainable_params == 0:
+        print("Warning: No trainable parameters found! This might indicate an issue with LoRA adapter loading.")
+        print("Trying alternative approach using PEFT methods...")
+        
+        # Alternative: Use PEFT's get_trainable_parameters method if available
+        try:
+            if hasattr(model, 'get_trainable_parameters'):
+                trainable_param_names = model.get_trainable_parameters()
+                for name, param in model.named_parameters():
+                    if name in trainable_param_names and param.dtype.is_floating_point:
+                        param.requires_grad_(True)
+                        trainable_params += param.numel()
+                        print(f"Enabled gradients via PEFT method: {name}")
+            else:
+                # Final fallback: enable gradients for any floating point parameters with reasonable size
+                for name, param in model.named_parameters():
+                    if (param.dtype.is_floating_point and 
+                        param.numel() < 10000000 and  # Less than 10M parameters
+                        ('weight' in name.lower() or 'bias' in name.lower())):
+                        param.requires_grad_(True)
+                        trainable_params += param.numel()
+                        print(f"Enabled gradients (fallback): {name}")
+        except Exception as e:
+            print(f"Error in fallback gradient setup: {e}")
+        
+        print(f"Updated trainable parameters: {trainable_params:,}")
+        
+        if trainable_params == 0:
+            raise RuntimeError("No trainable parameters found! Cannot proceed with RL training.")
     
     # Model is already on correct device due to device_map="auto"
     
