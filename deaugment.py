@@ -447,10 +447,21 @@ def apply_full_deaugmentation(problem: Dict[str, Any],
             if base_name == 'color_permutation':
                 # Need the original color map - try multiple possible locations
                 color_map = None
-                if 'color_permutation' in augmentation_metadata:
-                    color_map = augmentation_metadata['color_permutation'].get('color_map')
-                elif 'color_map' in augmentation_metadata:
-                    color_map = augmentation_metadata['color_map']
+                
+                # First try the augmentation_params structure (most common)
+                if 'augmentation_params' in augmentation_metadata:
+                    aug_params = augmentation_metadata['augmentation_params']
+                    if 'color_permutation' in aug_params:
+                        color_map = aug_params['color_permutation'].get('color_map')
+                    elif aug_name in aug_params:
+                        color_map = aug_params[aug_name].get('color_map')
+                
+                # Fallback to older metadata structure
+                if not color_map:
+                    if 'color_permutation' in augmentation_metadata:
+                        color_map = augmentation_metadata['color_permutation'].get('color_map')
+                    elif 'color_map' in augmentation_metadata:
+                        color_map = augmentation_metadata['color_map']
                 
                 if color_map:
                     deaugmented_problem = apply_deaugmentation_to_problem(
@@ -458,20 +469,32 @@ def apply_full_deaugmentation(problem: Dict[str, Any],
                     )
                 else:
                     print(f"Warning: No color_map provided for deaugmenting {aug_name}")
+                    print(f"Available metadata keys: {list(augmentation_metadata.keys())}")
+                    if 'augmentation_params' in augmentation_metadata:
+                        print(f"Available augmentation_params keys: {list(augmentation_metadata['augmentation_params'].keys())}")
             elif base_name == 'upscale':
                 # Need original size and optionally original position
                 # Try multiple possible locations for the parameters
                 original_size = None
                 original_position = None
                 
-                # Look in different places for upscale parameters
-                if aug_name in augmentation_metadata:
-                    upscale_params = augmentation_metadata[aug_name]
-                    original_size = upscale_params.get('original_size') or upscale_params.get('pre_upscale_size')
-                    original_position = upscale_params.get('offset') or upscale_params.get('original_position')
-                elif 'original_size' in augmentation_metadata:
-                    original_size = augmentation_metadata['original_size']
-                    original_position = augmentation_metadata.get('original_position')
+                # First try the augmentation_params structure (most common)
+                if 'augmentation_params' in augmentation_metadata:
+                    aug_params = augmentation_metadata['augmentation_params']
+                    if aug_name in aug_params:
+                        upscale_params = aug_params[aug_name]
+                        original_size = upscale_params.get('original_size') or upscale_params.get('pre_upscale_size')
+                        original_position = upscale_params.get('offset') or upscale_params.get('original_position')
+                
+                # Fallback to older metadata structure
+                if not original_size:
+                    if aug_name in augmentation_metadata:
+                        upscale_params = augmentation_metadata[aug_name]
+                        original_size = upscale_params.get('original_size') or upscale_params.get('pre_upscale_size')
+                        original_position = upscale_params.get('offset') or upscale_params.get('original_position')
+                    elif 'original_size' in augmentation_metadata:
+                        original_size = augmentation_metadata['original_size']
+                        original_position = augmentation_metadata.get('original_position')
                 
                 if original_size:
                     deaugmented_problem = apply_deaugmentation_to_problem(
@@ -481,6 +504,9 @@ def apply_full_deaugmentation(problem: Dict[str, Any],
                     )
                 else:
                     print(f"Warning: No original_size provided for deaugmenting {aug_name}")
+                    print(f"Available metadata keys: {list(augmentation_metadata.keys())}")
+                    if 'augmentation_params' in augmentation_metadata:
+                        print(f"Available augmentation_params keys: {list(augmentation_metadata['augmentation_params'].keys())}")
             else:
                 # Simple deaugmentation without extra parameters
                 deaugmented_problem = apply_deaugmentation_to_problem(

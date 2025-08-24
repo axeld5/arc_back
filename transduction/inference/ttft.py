@@ -30,7 +30,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 try:
     import torch
     from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig, BitsAndBytesConfig
-    from peft import LoraConfig, get_peft_model, PeftModel
+    from peft import LoraConfig, get_peft_model, PeftModel, prepare_model_for_kbit_training
     from trl import SFTTrainer, SFTConfig
     from datasets import Dataset
     HF_AVAILABLE = True
@@ -136,8 +136,6 @@ class TTFTInference(InferenceTechnique):
             print(f"Loading from local path (likely SFT/RL model): {self.model_name}")
             try:
                 # Try loading as LoRA adapter first
-                from peft import PeftModel
-                
                 # We need to determine the base model
                 # For now, assume Qwen2.5-0.5B-Instruct as base
                 base_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
@@ -231,6 +229,89 @@ class TTFTInference(InferenceTechnique):
         )
         
         print("Base model loaded successfully!")
+    
+    def _prepare_model_for_training(self) -> AutoModelForCausalLM:
+        """
+        Prepare a model for training, handling quantized models properly.
+        
+        Returns:
+            Model ready for training
+        """
+        # Check if the base model is quantized
+        is_quantized = hasattr(self.base_model, 'config') and getattr(self.base_model.config, 'quantization_config', None) is not None
+        
+        if is_quantized:
+            print("Detected quantized model, preparing for training...")
+            # For quantized models, we need to prepare them for training
+            # Enable gradient checkpointing to reduce memory usage
+            self.base_model.gradient_checkpointing_enable()
+            
+            # Prepare model for int8 training if using 8-bit quantization
+            model = prepare_model_for_kbit_training(self.base_model)
+        else:
+            # For non-quantized models, we can create a proper copy
+            print("Preparing non-quantized model for training...")
+            # Create a new instance instead of deepcopy to avoid gradient issues
+            if os.path.exists(self.model_name):
+                # Local model path
+                try:
+                    # Try loading as LoRA adapter first
+                    base_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+                    base_model = AutoModelForCausalLM.from_pretrained(
+                        base_model_name,
+                        torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
+                        trust_remote_code=True
+                    )
+                    if self.device == "cpu":
+                        base_model = base_model.to(self.device)
+                    model = PeftModel.from_pretrained(base_model, self.model_name)
+                except Exception:
+                    # Fallback to loading as full model
+                    model = AutoModelForCausalLM.from_pretrained(
+                        self.model_name,
+                        torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
+                        trust_remote_code=True
+                    )
+                    if self.device == "cpu":
+                        model = model.to(self.device)
+            else:
+                # HuggingFace model name
+                model = AutoModelForCausalLM.from_pretrained(
+                    self.model_name,
+                    torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
+                    trust_remote_code=True
+                )
+                if self.device == "cpu":
+                    model = model.to(self.device)
+        
+        # Apply LoRA if requested
+        if self.use_lora:
+            print("Applying LoRA configuration...")
+            lora_config = LoraConfig(
+                r=self.lora_r,
+                lora_alpha=self.lora_alpha,
+                target_modules=["q_proj", "v_proj"],
+                bias="none",
+                lora_dropout=0.05,
+                task_type="CAUSAL_LM",
+            )
+            model = get_peft_model(model, lora_config)
+            
+            # Enable training mode
+            model.train()
+            
+            # Ensure gradients are enabled for LoRA parameters
+            for name, param in model.named_parameters():
+                if 'lora_' in name:
+                    param.requires_grad = True
+        else:
+            # For full fine-tuning, enable gradients for all parameters
+            model.train()
+            for param in model.parameters():
+                param.requires_grad = True
+        
+        print(f"Model prepared for training. Using LoRA: {self.use_lora}")
+        return model
     
     def create_leave_one_out_data(self, problem_data: Dict[str, Any]) -> List[Tuple[List[Dict], Dict]]:
         """
@@ -401,7 +482,7 @@ class TTFTInference(InferenceTechnique):
         
         # Preprocess dataset
         def preprocess_fn(example):
-            return preprocess_transduction_data(example, self.tokenizer, 2048)
+            return preprocess_transduction_data(example, self.tokenizer, 6000)
         
         tokenized_dataset = dataset.map(
             preprocess_fn,
@@ -409,20 +490,8 @@ class TTFTInference(InferenceTechnique):
             num_proc=1  # Keep it simple for test-time fine-tuning
         )
         
-        # Create a copy of the base model for fine-tuning
-        model = deepcopy(self.base_model)
-        
-        if self.use_lora:
-            # Configure LoRA for efficient fine-tuning
-            lora_config = LoraConfig(
-                r=self.lora_r,
-                lora_alpha=self.lora_alpha,
-                target_modules=["q_proj", "v_proj"],
-                bias="none",
-                lora_dropout=0.05,
-                task_type="CAUSAL_LM",
-            )
-            model = get_peft_model(model, lora_config)
+        # Prepare model for fine-tuning (avoid deepcopy issues with quantized models)
+        model = self._prepare_model_for_training()
         
         # Create temporary directory for training outputs
         with tempfile.TemporaryDirectory() as temp_dir:
