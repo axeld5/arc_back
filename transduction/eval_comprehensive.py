@@ -811,7 +811,7 @@ def main():
     parser = argparse.ArgumentParser(description='Comprehensive ARC Transduction Evaluation')
     
     # Model configuration
-    parser.add_argument('--base_model', type=str, default="Qwen/Qwen2.5-0.5B-Instruct",
+    parser.add_argument('--base_model', type=str, default="Qwen/Qwen3-30B-A3B-Instruct-2507",
                        help='Base model for instruct/SFT/RL variants')
     parser.add_argument('--all_models', action='store_true',
                        help='Evaluate all available models')
