@@ -11,7 +11,7 @@ from datasets import load_dataset
 from dotenv import load_dotenv
 from huggingface_hub import login
 from peft import PeftModel
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 from trl import (
     GRPOConfig,
     GRPOTrainer,
@@ -75,15 +75,23 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------
     attn_impl = "flash_attention_2" if platform.system() == "Linux" else "eager"
     
-    # First load the base model
-    base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
-        torch_dtype=torch.bfloat16,
-        trust_remote_code=True,
-        attn_implementation=attn_impl,
+    # Configure quantization: 8-bit model loading
+    quantization_config = BitsAndBytesConfig(
+        load_in_8bit=True,
+        bnb_8bit_compute_dtype=torch.bfloat16,
+        bnb_8bit_use_double_quant=True,
     )
     
-    # Then load the LoRA adapter
+    # First load the base model with 8-bit quantization
+    base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
+        BASE_MODEL,
+        quantization_config=quantization_config,
+        trust_remote_code=True,
+        attn_implementation=attn_impl,
+        device_map="auto",
+    )
+    
+    # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
     model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
     # Ensure model parameters require gradients for RL training
@@ -98,7 +106,7 @@ if __name__ == "__main__":
     
     print(f"Trainable parameters: {trainable_params:,} / {total_params:,} ({100 * trainable_params / total_params:.2f}%)")
     
-    model = model.to("cuda")
+    # Model is already on correct device due to device_map="auto"
     
     # ---------------------------------------------------------------------
     # 3. Dataset ⇒ {"prompt", "expected_output"}
