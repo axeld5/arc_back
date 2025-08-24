@@ -138,7 +138,7 @@ class TTFTInference(InferenceTechnique):
                 # Try loading as LoRA adapter first
                 # We need to determine the base model
                 # For now, assume Qwen2.5-0.5B-Instruct as base
-                base_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+                base_model_name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
                 print(f"Loading base model: {base_model_name}")
                 
                 if self.device != "cpu":
