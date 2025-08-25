@@ -437,6 +437,27 @@ def create_airv_configs() -> List[Dict[str, Any]]:
     """
     configs = [
         {
+            'name': 'airv_standard',
+            'params': {
+                'num_augmentations': 8,
+                'include_original': True,
+                'temperature': 0.1
+            },
+            'description': 'Standard AIRV with 8 augmentations'
+        },
+    ]
+    
+    return configs
+
+def create_long_airv_configs() -> List[Dict[str, Any]]:
+    """
+    Create a set of AIRV configuration variants for experimentation.
+    
+    Returns:
+        List of configuration dictionaries
+    """
+    configs = [
+        {
             'name': 'airv_light',
             'params': {
                 'num_augmentations': 4,

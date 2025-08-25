@@ -762,8 +762,31 @@ class TTFTWrapper:
         
         return base_inference
 
-
 def create_ttft_configs() -> List[Dict[str, Any]]:
+    """
+    Create a set of TTFT configuration variants for experimentation.
+    
+    Returns:
+        List of configuration dictionaries
+    """
+    configs = [
+        {
+            'name': 'ttft_heavy',
+            'params': {
+                'num_augmentations': 6,
+                'ttft_epochs': 2,
+                'ttft_learning_rate': 2e-5,
+                'use_lora': True,
+                'lora_r': 32,
+                'lora_alpha': 64
+            },
+            'description': 'Heavy TTFT with extensive fine-tuning'
+        },
+    ]
+    
+    return configs
+
+def create_long_ttft_configs() -> List[Dict[str, Any]]:
     """
     Create a set of TTFT configuration variants for experimentation.
     
