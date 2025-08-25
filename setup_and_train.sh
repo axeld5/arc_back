@@ -44,7 +44,7 @@ echo "✓ flash-attn installed successfully"
 
 # Step 3: Generate training data
 echo "Step 3: Generating training data..."
-uv run python transduction/data_gen.py --k_per_problem 50
+#uv run python transduction/data_gen.py --k_per_problem 50
 echo "✓ Training data generated successfully"
 
 # Step 4: Run fine-tuning
