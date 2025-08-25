@@ -216,7 +216,7 @@ def main():
         output_dir="qwen3_30b_a3b_arc_transduction_sft",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
-        num_train_epochs=3,
+        num_train_epochs=1,
         learning_rate=2e-4,
         warmup_steps=100,
         lr_scheduler_type="cosine",
