@@ -256,14 +256,6 @@ class ComprehensiveARCEvaluator:
             description="Multi-sample inference with 5 samples",
             category="standard"
         ))
-        
-        self.register_inference_technique(InferenceConfig(
-            name="multi_sample_10",
-            technique_class=MultiSampleInference,
-            params={"num_samples": 10},
-            description="Multi-sample inference with 10 samples",
-            category="standard"
-        ))
 
         # Register Repeat-Placeholder technique
         try:
