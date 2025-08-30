@@ -86,7 +86,7 @@ if __name__ == "__main__":
     # First load the base model with 8-bit quantization
     base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
         BASE_MODEL,
-        quantization_config=quantization_config,
+        #quantization_config=quantization_config,
         trust_remote_code=True,
         attn_implementation=attn_impl,
         device_map="auto",
