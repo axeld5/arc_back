@@ -23,11 +23,11 @@ def check_array(output_string: str) -> bool:
         True if the string can be parsed into a valid array, False otherwise
         
     Examples:
-        >>> check_array("12;34;56")
+        >>> check_array("12\n34\n56")
         True
         >>> check_array("1a;23")
         False
-        >>> check_array("12;34;")
+        >>> check_array("12\n34\n")
         False
         >>> check_array("")
         False
@@ -44,16 +44,16 @@ def check_array(output_string: str) -> bool:
         return False
     
     # Look for semicolon-separated format first
-    if ';' in response:
+    if '\n' in response:
         # Extract the part that looks like a grid (digits and semicolons)
-        grid_match = re.search(r'[0-9;]+', response)
+        grid_match = re.search(r'[0-9\n]+', response)
         if not grid_match:
             return False
         
         grid_str = grid_match.group()
         
         try:
-            rows = grid_str.split(';')
+            rows = grid_str.split('\n')
             if not rows:
                 return False
             
@@ -112,7 +112,7 @@ def check_value(output_string: str, expected_value: List[List[int]]) -> bool:
         True if the parsed output matches expected_value exactly, False otherwise
         
     Examples:
-        >>> check_value("12;34", [[1, 2], [3, 4]])
+        >>> check_value("12\n34", [[1, 2], [3, 4]])
         True
         >>> check_value("12;35", [[1, 2], [3, 4]])
         False
@@ -151,7 +151,7 @@ def parse_grid_from_string(output_string: str) -> Optional[List[List[int]]]:
         Parsed grid as list of lists of integers, or None if parsing fails
         
     Examples:
-        >>> parse_grid_from_string("12;34")
+        >>> parse_grid_from_string("12\n34")
         [[1, 2], [3, 4]]
         >>> parse_grid_from_string("invalid")
         None
@@ -165,16 +165,16 @@ def parse_grid_from_string(output_string: str) -> Optional[List[List[int]]]:
         return None
     
     # Look for semicolon-separated format first
-    if ';' in response:
+    if '\n' in response:
         # Extract the part that looks like a grid (digits and semicolons)
-        grid_match = re.search(r'[0-9;]+', response)
+        grid_match = re.search(r'[0-9\n]+', response)
         if not grid_match:
             return None
         
         grid_str = grid_match.group()
         
         try:
-            rows = grid_str.split(';')
+            rows = grid_str.split('\n')
             grid = []
             
             for row in rows:

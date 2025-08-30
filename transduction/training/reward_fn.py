@@ -27,9 +27,9 @@ def reward_function(
         List of reward scores corresponding to each completion
         
     Examples:
-        >>> reward_function(["12;34"], [[[1, 2], [3, 4]]])
+        >>> reward_function(["12\n34"], [[[1, 2], [3, 4]]])
         [1.0]
-        >>> reward_function(["12;35"], [[[1, 2], [3, 4]]])
+        >>> reward_function(["12\n35"], [[[1, 2], [3, 4]]])
         [0.0]
         >>> reward_function(["invalid"], [[[1, 2], [3, 4]]])
         [-1.0]
