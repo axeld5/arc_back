@@ -171,7 +171,8 @@ def dataloader_kwargs(workers=8, pin=True, persistent=True, prefetch=6):
 def main():
     """Main training function (64-token tokenizer)."""
     # --- Config ---
-    MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+    #MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+    MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
     DATA_FILE = "transduction/train_dataset.json"
     MAX_LEN = 9200
 
