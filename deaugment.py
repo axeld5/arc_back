@@ -20,8 +20,18 @@ def derotate_90(grid: List[List[int]]) -> List[List[int]]:
     Returns:
         List[List[int]]: Derotated grid
     """
-    if not grid or not grid[0]:
+    # Validate input
+    if not grid:
         return grid
+    
+    # Handle edge case where grid might not be a proper list
+    try:
+        if not isinstance(grid, list):
+            raise ValueError(f"Expected list, got {type(grid)}")
+        if not grid[0] or not isinstance(grid[0], list):
+            return grid
+    except (IndexError, TypeError) as e:
+        raise ValueError(f"Invalid grid format: {e}")
     
     rows, cols = len(grid), len(grid[0])
     derotated = [[0] * rows for _ in range(cols)]
@@ -43,8 +53,20 @@ def derotate_180(grid: List[List[int]]) -> List[List[int]]:
     Returns:
         List[List[int]]: Derotated grid
     """
+    # Validate input
     if not grid:
         return grid
+    
+    # Handle edge case where grid might not be a proper list
+    try:
+        if not isinstance(grid, list):
+            raise ValueError(f"Expected list, got {type(grid)}")
+        # Ensure all rows are lists
+        for i, row in enumerate(grid):
+            if not isinstance(row, list):
+                raise ValueError(f"Row {i} is not a list: {type(row)}")
+    except TypeError as e:
+        raise ValueError(f"Invalid grid format: {e}")
     
     return [row[::-1] for row in grid[::-1]]
 
@@ -59,8 +81,18 @@ def derotate_270(grid: List[List[int]]) -> List[List[int]]:
     Returns:
         List[List[int]]: Derotated grid
     """
-    if not grid or not grid[0]:
+    # Validate input
+    if not grid:
         return grid
+    
+    # Handle edge case where grid might not be a proper list
+    try:
+        if not isinstance(grid, list):
+            raise ValueError(f"Expected list, got {type(grid)}")
+        if not grid[0] or not isinstance(grid[0], list):
+            return grid
+    except (IndexError, TypeError) as e:
+        raise ValueError(f"Invalid grid format: {e}")
     
     rows, cols = len(grid), len(grid[0])
     derotated = [[0] * rows for _ in range(cols)]
@@ -82,6 +114,21 @@ def deflip_vertical(grid: List[List[int]]) -> List[List[int]]:
     Returns:
         List[List[int]]: Deflipped grid
     """
+    # Validate input
+    if not grid:
+        return grid
+    
+    # Handle edge case where grid might not be a proper list
+    try:
+        if not isinstance(grid, list):
+            raise ValueError(f"Expected list, got {type(grid)}")
+        # Ensure all rows are lists
+        for i, row in enumerate(grid):
+            if not isinstance(row, list):
+                raise ValueError(f"Row {i} is not a list: {type(row)}")
+    except TypeError as e:
+        raise ValueError(f"Invalid grid format: {e}")
+    
     return grid[::-1]
 
 
@@ -95,6 +142,21 @@ def deflip_horizontal(grid: List[List[int]]) -> List[List[int]]:
     Returns:
         List[List[int]]: Deflipped grid
     """
+    # Validate input
+    if not grid:
+        return grid
+    
+    # Handle edge case where grid might not be a proper list
+    try:
+        if not isinstance(grid, list):
+            raise ValueError(f"Expected list, got {type(grid)}")
+        # Ensure all rows are lists
+        for i, row in enumerate(grid):
+            if not isinstance(row, list):
+                raise ValueError(f"Row {i} is not a list: {type(row)}")
+    except TypeError as e:
+        raise ValueError(f"Invalid grid format: {e}")
+    
     return [row[::-1] for row in grid]
 
 
@@ -289,6 +351,57 @@ def apply_deaugmentation_to_problem(problem: Dict[str, Any],
     return deaugmented_problem
 
 
+def desample_permutation(problem: Dict[str, Any], 
+                        train_permutation: List[int] = None,
+                        arcgen_permutation: List[int] = None) -> Dict[str, Any]:
+    """
+    Inverse of sample_permutation: restore the original order of training examples.
+    
+    Args:
+        problem (Dict[str, Any]): Problem dictionary with 'train', 'test', etc.
+        train_permutation (List[int], optional): The permutation indices used during augmentation
+        arcgen_permutation (List[int], optional): The permutation indices for arc-gen examples
+        
+    Returns:
+        Dict[str, Any]: Problem with training examples restored to original order
+    """
+    depermuted_problem = deepcopy(problem)
+    
+    # Restore training examples order
+    if ('train' in depermuted_problem and train_permutation is not None and 
+        len(depermuted_problem['train']) == len(train_permutation)):
+        
+        current_examples = depermuted_problem['train'][:]
+        restored_examples = [None] * len(train_permutation)
+        
+        # The permutation tells us: current_position -> original_position
+        # To reverse it: restored_examples[original_pos] = current_examples[current_pos]
+        for current_pos, original_pos in enumerate(train_permutation):
+            if current_pos < len(current_examples):
+                restored_examples[original_pos] = current_examples[current_pos]
+        
+        # Filter out any None values (safety check)
+        depermuted_problem['train'] = [ex for ex in restored_examples if ex is not None]
+    
+    # Restore arc-gen examples order
+    if ('arc-gen' in depermuted_problem and arcgen_permutation is not None and 
+        len(depermuted_problem['arc-gen']) == len(arcgen_permutation)):
+        
+        current_examples = depermuted_problem['arc-gen'][:]
+        restored_examples = [None] * len(arcgen_permutation)
+        
+        # The permutation tells us: current_position -> original_position
+        for current_pos, original_pos in enumerate(arcgen_permutation):
+            if current_pos < len(current_examples):
+                restored_examples[original_pos] = current_examples[current_pos]
+        
+        # Filter out any None values (safety check)
+        depermuted_problem['arc-gen'] = [ex for ex in restored_examples if ex is not None]
+    
+    # Test examples remain unchanged
+    return depermuted_problem
+
+
 def get_deaugmentation_functions() -> Dict[str, Callable]:
     """
     Get a dictionary of all available deaugmentation functions.
@@ -303,7 +416,8 @@ def get_deaugmentation_functions() -> Dict[str, Callable]:
         'flip_vertical': deflip_vertical,
         'flip_horizontal': deflip_horizontal,
         'color_permutation': deapply_color_permutation,
-        'upscale': deupscale_grid
+        'upscale': deupscale_grid,
+        'sample_permutation': desample_permutation
     }
 
 
@@ -328,9 +442,9 @@ def parse_augmentation_name(aug_name: str) -> Tuple[str, Dict[str, Any]]:
                 height, width = map(int, size_str.split('x'))
                 return base_name, {'target_size': (height, width)}
         
-        # For rotate_90, rotate_180, etc., flip operations, and color_permutation, return the full name
-        if base_name in ['rotate', 'flip', 'color']:
-            return aug_name, {}  # Return full name like "rotate_90", "flip_vertical", "color_permutation"
+        # For rotate_90, rotate_180, etc., flip operations, color_permutation, and sample_permutation, return the full name
+        if base_name in ['rotate', 'flip', 'color', 'sample']:
+            return aug_name, {}  # Return full name like "rotate_90", "flip_vertical", "color_permutation", "sample_permutation"
         
         return base_name, {}
     else:
@@ -399,7 +513,12 @@ def apply_pixel_level_deaugmentation(predicted_grid: List[List[int]],
                     
                     if pre_upscale_size is not None:
                         # Try to get stored offset, otherwise use heuristic detection
-                        original_position = params.get('offset', position_info.get('offset', None))
+                        original_position = (
+                            params.get('offset')
+                            or params.get('original_position')
+                            or position_info.get('offset')
+                            or position_info.get('original_position')
+                        )
                         current_grid = deupscale_grid(current_grid, pre_upscale_size, original_position)
                     else:
                         print(f"Warning: No size information for deaugmenting {aug_name}")
@@ -409,6 +528,147 @@ def apply_pixel_level_deaugmentation(predicted_grid: List[List[int]],
             continue
     
     return current_grid
+
+
+def apply_tracked_deaugmentation(problem: Dict[str, Any], 
+                                tracker: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Apply deaugmentation using precise tracking metadata instead of reversing permutations.
+    
+    Args:
+        problem (Dict[str, Any]): Augmented problem to deaugment
+        tracker (Dict[str, Any]): Tracking metadata from augmentation process
+        
+    Returns:
+        Dict[str, Any]: Deaugmented problem
+    """
+    if not tracker or 'applied_augmentations' not in tracker:
+        print("Warning: No tracking metadata provided")
+        return problem
+    
+    deaugmented_problem = deepcopy(problem)
+    applied_augmentations = tracker['applied_augmentations']
+    augmentation_metadata = tracker['augmentation_metadata']
+    
+    # Apply deaugmentations in reverse order
+    for aug_id in reversed(applied_augmentations):
+        if aug_id not in augmentation_metadata:
+            print(f"Warning: No metadata found for augmentation {aug_id}")
+            continue
+            
+        metadata = augmentation_metadata[aug_id]
+        aug_type = metadata['type']
+        
+        try:
+            if aug_type == 'color_permutation':
+                # Use the stored inverse color map
+                inverse_color_map = metadata['inverse_color_map']
+                
+                # Apply to all examples
+                if 'train' in deaugmented_problem:
+                    for example in deaugmented_problem['train']:
+                        if 'input' in example:
+                            example['input'] = [[inverse_color_map.get(cell, cell) for cell in row] 
+                                              for row in example['input']]
+                        if 'output' in example:
+                            example['output'] = [[inverse_color_map.get(cell, cell) for cell in row] 
+                                               for row in example['output']]
+                
+                if 'test' in deaugmented_problem:
+                    for example in deaugmented_problem['test']:
+                        if 'input' in example:
+                            example['input'] = [[inverse_color_map.get(cell, cell) for cell in row] 
+                                              for row in example['input']]
+                        if 'output' in example:
+                            example['output'] = [[inverse_color_map.get(cell, cell) for cell in row] 
+                                               for row in example['output']]
+                            
+            elif aug_type == 'sample_permutation':
+                # Use the stored inverse permutation
+                if 'train_inverse_permutation' in metadata:
+                    inverse_perm = metadata['train_inverse_permutation']
+                    if 'train' in deaugmented_problem and len(deaugmented_problem['train']) == len(inverse_perm):
+                        current_examples = deaugmented_problem['train'][:]
+                        restored_examples = [None] * len(inverse_perm)
+                        
+                        # Apply inverse permutation: restored[orig_pos] = current[new_pos]
+                        for orig_pos, new_pos in enumerate(inverse_perm):
+                            if new_pos < len(current_examples):
+                                restored_examples[orig_pos] = current_examples[new_pos]
+                        
+                        # Filter out None values
+                        deaugmented_problem['train'] = [ex for ex in restored_examples if ex is not None]
+                
+                if 'arcgen_inverse_permutation' in metadata:
+                    inverse_perm = metadata['arcgen_inverse_permutation']
+                    if 'arc-gen' in deaugmented_problem and len(deaugmented_problem['arc-gen']) == len(inverse_perm):
+                        current_examples = deaugmented_problem['arc-gen'][:]
+                        restored_examples = [None] * len(inverse_perm)
+                        
+                        # Apply inverse permutation
+                        for orig_pos, new_pos in enumerate(inverse_perm):
+                            if new_pos < len(current_examples):
+                                restored_examples[orig_pos] = current_examples[new_pos]
+                        
+                        deaugmented_problem['arc-gen'] = [ex for ex in restored_examples if ex is not None]
+            
+            elif aug_type == 'upscale':
+                # Use the stored placement information to crop back
+                original_size = metadata['original_size']
+                placement_offset = metadata['placement_offset']
+                
+                # Apply to all examples
+                if 'train' in deaugmented_problem:
+                    for example in deaugmented_problem['train']:
+                        if 'input' in example:
+                            example['input'] = deupscale_grid(
+                                example['input'], original_size, placement_offset
+                            )
+                        if 'output' in example:
+                            example['output'] = deupscale_grid(
+                                example['output'], original_size, placement_offset
+                            )
+                
+                if 'test' in deaugmented_problem:
+                    for example in deaugmented_problem['test']:
+                        if 'input' in example:
+                            example['input'] = deupscale_grid(
+                                example['input'], original_size, placement_offset
+                            )
+                        if 'output' in example:
+                            example['output'] = deupscale_grid(
+                                example['output'], original_size, placement_offset
+                            )
+            
+            elif metadata.get('requires_reversal', False):
+                # Handle simple transformations that need reversal
+                deaug_funcs = get_deaugmentation_functions()
+                if aug_type in deaug_funcs:
+                    deaug_func = deaug_funcs[aug_type]
+                    
+                    # Validate that we have proper grid data before deaugmenting
+                    valid_problem = True
+                    if 'train' in deaugmented_problem:
+                        for example in deaugmented_problem['train']:
+                            if ('input' in example and not isinstance(example['input'], list)) or \
+                               ('output' in example and not isinstance(example['output'], list)):
+                                valid_problem = False
+                                break
+                    
+                    if valid_problem:
+                        deaugmented_problem = apply_deaugmentation_to_problem(
+                            deaugmented_problem, deaug_func
+                        )
+                    else:
+                        print(f"Warning: Invalid grid data for {aug_type}, skipping deaugmentation")
+                else:
+                    print(f"Warning: No deaugmentation function for {aug_type}")
+                    
+        except Exception as e:
+            print(f"Warning: Error deaugmenting {aug_id}: {e}")
+            continue
+    
+    return deaugmented_problem
 
 
 def apply_full_deaugmentation(problem: Dict[str, Any], 
@@ -472,6 +732,33 @@ def apply_full_deaugmentation(problem: Dict[str, Any],
                     print(f"Available metadata keys: {list(augmentation_metadata.keys())}")
                     if 'augmentation_params' in augmentation_metadata:
                         print(f"Available augmentation_params keys: {list(augmentation_metadata['augmentation_params'].keys())}")
+            elif base_name == 'sample_permutation':
+                # Need permutation information
+                train_permutation = None
+                arcgen_permutation = None
+                
+                # Try to get permutation data from metadata
+                if 'augmentation_params' in augmentation_metadata:
+                    aug_params = augmentation_metadata['augmentation_params']
+                    if aug_name in aug_params:
+                        perm_params = aug_params[aug_name]
+                        train_permutation = perm_params.get('train_permutation')
+                        arcgen_permutation = perm_params.get('arcgen_permutation')
+                
+                # Fallback to older metadata structure
+                if not train_permutation and not arcgen_permutation:
+                    if aug_name in augmentation_metadata:
+                        perm_params = augmentation_metadata[aug_name]
+                        train_permutation = perm_params.get('train_permutation')
+                        arcgen_permutation = perm_params.get('arcgen_permutation')
+                
+                # Apply deaugmentation directly to the problem (not per-example)
+                deaugmented_problem = deaug_func(
+                    deaugmented_problem,
+                    train_permutation=train_permutation,
+                    arcgen_permutation=arcgen_permutation
+                )
+                
             elif base_name == 'upscale':
                 # Need original size and optionally original position
                 # Try multiple possible locations for the parameters

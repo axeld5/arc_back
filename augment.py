@@ -122,7 +122,8 @@ def apply_color_permutation(grid: List[List[int]], color_map: Dict[int, int] = N
 
 
 def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None, 
-                 store_position: bool = False) -> Tuple[List[List[int]], Optional[Tuple[int, int]]]:
+                 store_position: bool = False,
+                 placement_offset: Optional[Tuple[int, int]] = None) -> Tuple[List[List[int]], Optional[Tuple[int, int]]]:
     """
     Upscale a grid by padding with zeros to reach a larger size.
     The original grid can be placed anywhere within the new larger grid.
@@ -130,6 +131,8 @@ def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None,
     Args:
         grid (List[List[int]]): Input grid as list of lists
         target_size (Tuple[int, int], optional): Target (height, width). If None, randomly chosen up to 30x30.
+        placement_offset (Tuple[int, int], optional): If provided, place the original grid at this
+            (top_offset, left_offset) within the upscaled grid. If None, a random valid offset is chosen.
         store_position (bool): Whether to return the position where original was placed
         
     Returns:
@@ -155,12 +158,18 @@ def upscale_grid(grid: List[List[int]], target_size: Tuple[int, int] = None,
     target_height = max(target_height, current_height)
     target_width = max(target_width, current_width)
     
-    # Randomly choose where to place the original grid within the new grid
+    # Choose where to place the original grid within the new grid
     max_top_offset = target_height - current_height
     max_left_offset = target_width - current_width
     
-    top_offset = random.randint(0, max_top_offset)
-    left_offset = random.randint(0, max_left_offset)
+    if placement_offset is not None:
+        top_offset, left_offset = placement_offset
+        # Clamp to valid bounds
+        top_offset = max(0, min(top_offset, max_top_offset))
+        left_offset = max(0, min(left_offset, max_left_offset))
+    else:
+        top_offset = random.randint(0, max_top_offset)
+        left_offset = random.randint(0, max_left_offset)
     
     # Create the new grid filled with zeros
     upscaled = [[0] * target_width for _ in range(target_height)]
@@ -241,6 +250,51 @@ def apply_augmentation_to_problem(problem: Dict[str, Any],
     return augmented_problem
 
 
+def sample_permutation(problem: Dict[str, Any], seed: int = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Permute the order of training examples within a problem.
+    Test examples remain unchanged.
+    
+    Args:
+        problem (Dict[str, Any]): Problem dictionary with 'train', 'test', etc.
+        seed (int, optional): Random seed for reproducibility
+        
+    Returns:
+        Tuple[Dict[str, Any], Dict[str, Any]]: (Problem with training examples shuffled, permutation metadata)
+    """
+    if seed is not None:
+        random.seed(seed)
+    
+    permuted_problem = deepcopy(problem)
+    metadata = {}
+    
+    # Shuffle only the training examples and track the permutation
+    if 'train' in permuted_problem and len(permuted_problem['train']) > 1:
+        original_examples = permuted_problem['train'][:]
+        indices = list(range(len(original_examples)))
+        random.shuffle(indices)
+        
+        # Apply the shuffled order
+        permuted_problem['train'] = [original_examples[i] for i in indices]
+        
+        # Store the permutation mapping: current_position -> original_position
+        metadata['train_permutation'] = indices
+    
+    # Also shuffle arc-gen examples if present
+    if 'arc-gen' in permuted_problem and len(permuted_problem['arc-gen']) > 1:
+        original_examples = permuted_problem['arc-gen'][:]
+        indices = list(range(len(original_examples)))
+        random.shuffle(indices)
+        
+        # Apply the shuffled order
+        permuted_problem['arc-gen'] = [original_examples[i] for i in indices]
+        
+        # Store the permutation mapping
+        metadata['arcgen_permutation'] = indices
+    
+    # Test examples remain unchanged
+    return permuted_problem, metadata
+
 def get_available_augmentations() -> Dict[str, Callable]:
     """
     Get a dictionary of all available augmentation functions.
@@ -255,7 +309,25 @@ def get_available_augmentations() -> Dict[str, Callable]:
         'flip_vertical': flip_vertical,
         'flip_horizontal': flip_horizontal,
         'color_permutation': apply_color_permutation,
-        'upscale': upscale_grid
+        'upscale': upscale_grid,
+        'sample_permutation': sample_permutation,
+    }
+
+
+def get_available_airv_augmentations() -> Dict[str, Callable]:
+    """
+    Get a dictionary of all available augmentation functions.
+    
+    Returns:
+        Dict[str, Callable]: Dictionary mapping augmentation names to functions
+    """
+    return {
+        'rotate_90': rotate_90,
+        'rotate_180': rotate_180,
+        'rotate_270': rotate_270,
+        'flip_vertical': flip_vertical,
+        'flip_horizontal': flip_horizontal,
+        'color_permutation': apply_color_permutation,
     }
 
 
@@ -414,11 +486,198 @@ def track_pixel_transformations(original_grid: List[List[int]],
     return metadata
 
 
-def apply_random_augmentations(problem: Dict[str, Any], 
-                             num_augmentations: int = None,
-                             seed: int = None) -> Tuple[Dict[str, Any], List[str], Dict[str, Any]]:
+def create_augmentation_tracker() -> Dict[str, Any]:
     """
-    Apply a random selection of 2-4 augmentations to a whole problem.
+    Create an augmentation tracker to record where and how augmentations are applied.
+    
+    Returns:
+        Dict[str, Any]: Tracker dictionary with metadata storage
+    """
+    return {
+        'applied_augmentations': [],
+        'augmentation_metadata': {},
+        'grid_transformations': {},  # Track specific grid transformations
+        'position_mappings': {},     # Track position changes
+        'original_dimensions': {},   # Track original sizes
+        'application_order': []      # Track order of application
+    }
+
+
+def apply_upscale_with_offset(grid: List[List[int]], target_size: Tuple[int, int], 
+                            placement_offset: Tuple[int, int]) -> List[List[int]]:
+    """
+    Apply upscaling with a specific placement offset.
+    
+    Args:
+        grid: Input grid to upscale
+        target_size: Target (height, width)
+        placement_offset: (top_offset, left_offset) where to place the grid
+        
+    Returns:
+        List[List[int]]: Upscaled grid
+    """
+    if not grid or not grid[0]:
+        return grid
+    
+    current_height = len(grid)
+    current_width = len(grid[0])
+    target_height, target_width = target_size
+    top_offset, left_offset = placement_offset
+    
+    # Create the new grid filled with zeros
+    upscaled = [[0] * target_width for _ in range(target_height)]
+    
+    # Place the original grid at the specified position
+    for i in range(current_height):
+        for j in range(current_width):
+            if (top_offset + i < target_height and left_offset + j < target_width):
+                upscaled[top_offset + i][left_offset + j] = grid[i][j]
+    
+    return upscaled
+
+
+def track_upscale_application(grid: List[List[int]], target_size: Tuple[int, int], 
+                            tracker: Dict[str, Any], aug_id: str) -> Tuple[List[List[int]], Tuple[int, int]]:
+    """
+    Apply upscaling while tracking the exact position where content was placed.
+    
+    Args:
+        grid: Input grid to upscale
+        target_size: Target (height, width)
+        tracker: Augmentation tracker
+        aug_id: Unique identifier for this augmentation
+        
+    Returns:
+        Tuple[List[List[int]], Tuple[int, int]]: (upscaled_grid, (top_offset, left_offset))
+    """
+    if not grid or not grid[0]:
+        return grid, (0, 0)
+    
+    current_height = len(grid)
+    current_width = len(grid[0])
+    target_height, target_width = target_size
+    
+    # Ensure target size is at least as large as current size
+    target_height = max(target_height, current_height)
+    target_width = max(target_width, current_width)
+    
+    # Randomly choose where to place the original grid within the new grid
+    max_top_offset = target_height - current_height
+    max_left_offset = target_width - current_width
+    
+    top_offset = random.randint(0, max_top_offset)
+    left_offset = random.randint(0, max_left_offset)
+    
+    # Create the new grid filled with zeros
+    upscaled = [[0] * target_width for _ in range(target_height)]
+    
+    # Place the original grid at the chosen position
+    for i in range(current_height):
+        for j in range(current_width):
+            upscaled[top_offset + i][left_offset + j] = grid[i][j]
+    
+    # Track the transformation
+    tracker['augmentation_metadata'][aug_id] = {
+        'type': 'upscale',
+        'original_size': (current_height, current_width),
+        'target_size': target_size,
+        'placement_offset': (top_offset, left_offset),
+        'final_size': (target_height, target_width)
+    }
+    
+    return upscaled, (top_offset, left_offset)
+
+
+def track_color_permutation_application(grid: List[List[int]], color_map: Dict[int, int],
+                                      tracker: Dict[str, Any], aug_id: str) -> List[List[int]]:
+    """
+    Apply color permutation while tracking the exact mapping used.
+    
+    Args:
+        grid: Input grid
+        color_map: Color mapping to apply
+        tracker: Augmentation tracker
+        aug_id: Unique identifier for this augmentation
+        
+    Returns:
+        List[List[int]]: Grid with colors permuted
+    """
+    result = [[color_map.get(cell, cell) for cell in row] for row in grid]
+    
+    # Track the transformation
+    tracker['augmentation_metadata'][aug_id] = {
+        'type': 'color_permutation',
+        'color_map': color_map.copy(),
+        'inverse_color_map': {v: k for k, v in color_map.items()}
+    }
+    
+    return result
+
+
+def track_permutation_application(problem: Dict[str, Any], tracker: Dict[str, Any], 
+                                aug_id: str, seed: int = None) -> Dict[str, Any]:
+    """
+    Apply sample permutation while tracking the exact permutation used.
+    
+    Args:
+        problem: Problem to permute
+        tracker: Augmentation tracker
+        aug_id: Unique identifier for this augmentation
+        seed: Random seed
+        
+    Returns:
+        Dict[str, Any]: Problem with permuted examples
+    """
+    if seed is not None:
+        random.seed(seed)
+    
+    permuted_problem = deepcopy(problem)
+    permutation_data = {}
+    
+    # Shuffle training examples and track the permutation
+    if 'train' in permuted_problem and len(permuted_problem['train']) > 1:
+        original_examples = permuted_problem['train'][:]
+        indices = list(range(len(original_examples)))
+        random.shuffle(indices)
+        
+        # Apply the shuffled order
+        permuted_problem['train'] = [original_examples[i] for i in indices]
+        
+        # Store the permutation mapping: new_position -> original_position
+        permutation_data['train_permutation'] = indices
+        permutation_data['train_inverse_permutation'] = [0] * len(indices)
+        for new_pos, orig_pos in enumerate(indices):
+            permutation_data['train_inverse_permutation'][orig_pos] = new_pos
+    
+    # Also shuffle arc-gen examples if present
+    if 'arc-gen' in permuted_problem and len(permuted_problem['arc-gen']) > 1:
+        original_examples = permuted_problem['arc-gen'][:]
+        indices = list(range(len(original_examples)))
+        random.shuffle(indices)
+        
+        # Apply the shuffled order
+        permuted_problem['arc-gen'] = [original_examples[i] for i in indices]
+        
+        # Store the permutation mapping
+        permutation_data['arcgen_permutation'] = indices
+        permutation_data['arcgen_inverse_permutation'] = [0] * len(indices)
+        for new_pos, orig_pos in enumerate(indices):
+            permutation_data['arcgen_inverse_permutation'][orig_pos] = new_pos
+    
+    # Track the transformation
+    tracker['augmentation_metadata'][aug_id] = {
+        'type': 'sample_permutation',
+        **permutation_data
+    }
+    
+    return permuted_problem
+
+
+def apply_random_augmentations_with_tracking(problem: Dict[str, Any], 
+                                           num_augmentations: int = None,
+                                           seed: int = None) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """
+    Apply a random selection of 2-4 augmentations to a whole problem with precise tracking.
     
     Args:
         problem (Dict[str, Any]): Problem dictionary to augment
@@ -427,7 +686,7 @@ def apply_random_augmentations(problem: Dict[str, Any],
         seed (int, optional): Random seed for reproducibility
         
     Returns:
-        Tuple[Dict[str, Any], List[str], Dict[str, Any]]: Augmented problem, list of applied augmentations, and augmentation parameters
+        Tuple[Dict[str, Any], Dict[str, Any]]: (Augmented problem, tracking metadata)
     """
     if seed is not None:
         random.seed(seed)
@@ -437,6 +696,9 @@ def apply_random_augmentations(problem: Dict[str, Any],
     else:
         num_augmentations = max(2, min(4, num_augmentations))
     
+    # Create tracker
+    tracker = create_augmentation_tracker()
+    
     available_augmentations = get_available_augmentations()
     augmentation_names = list(available_augmentations.keys())
     
@@ -445,13 +707,13 @@ def apply_random_augmentations(problem: Dict[str, Any],
     
     # Apply augmentations sequentially
     augmented_problem = deepcopy(problem)
-    applied_augmentations = []
-    augmentation_params = {}  # Store parameters for each augmentation
     
-    for aug_name in selected_augmentations:
-        aug_func = available_augmentations[aug_name]
+    for i, aug_name in enumerate(selected_augmentations):
+        aug_id = f"{aug_name}_{i}"  # Unique identifier
+        tracker['applied_augmentations'].append(aug_id)
+        tracker['application_order'].append(aug_name)
         
-        # Handle special cases that need additional parameters
+        # Handle special cases that need tracking
         if aug_name == 'color_permutation':
             # Generate a consistent color map for the entire problem
             colors = list(range(10))
@@ -459,17 +721,40 @@ def apply_random_augmentations(problem: Dict[str, Any],
             random.shuffle(shuffled_colors)
             color_map = dict(zip(colors, shuffled_colors))
             
-            # Store the color map for deaugmentation
-            augmentation_params[aug_name] = {'color_map': color_map}
+            # Store the main metadata for this augmentation
+            tracker['augmentation_metadata'][aug_id] = {
+                'type': 'color_permutation',
+                'color_map': color_map.copy(),
+                'inverse_color_map': {v: k for k, v in color_map.items()}
+            }
             
-            augmented_problem = apply_augmentation_to_problem(
-                augmented_problem, aug_func, color_map=color_map
+            # Apply to all examples (we don't need to track each individual grid)
+            if 'train' in augmented_problem:
+                for example in augmented_problem['train']:
+                    if 'input' in example:
+                        example['input'] = [[color_map.get(cell, cell) for cell in row] 
+                                          for row in example['input']]
+                    if 'output' in example:
+                        example['output'] = [[color_map.get(cell, cell) for cell in row] 
+                                           for row in example['output']]
+            
+            if 'test' in augmented_problem:
+                for example in augmented_problem['test']:
+                    if 'input' in example:
+                        example['input'] = [[color_map.get(cell, cell) for cell in row] 
+                                          for row in example['input']]
+                    if 'output' in example:
+                        example['output'] = [[color_map.get(cell, cell) for cell in row] 
+                                           for row in example['output']]
+            
+        elif aug_name == 'sample_permutation':
+            # Apply sample permutation with tracking
+            augmented_problem = track_permutation_application(
+                augmented_problem, tracker, aug_id, seed
             )
-            applied_augmentations.append(aug_name)
             
         elif aug_name == 'upscale':
             # Use consistent target size for the entire problem
-            # Get size of first input to determine reasonable target size
             first_input = None
             if 'train' in augmented_problem and augmented_problem['train']:
                 first_input = augmented_problem['train'][0]['input']
@@ -484,26 +769,104 @@ def apply_random_augmentations(problem: Dict[str, Any],
                 target_width = random.randint(current_w, max_w)
                 target_size = (target_height, target_width)
                 
-                # Store parameters for deaugmentation
-                upscale_name = f"{aug_name}_{target_height}x{target_width}"
-                augmentation_params[upscale_name] = {
+                # Use a single consistent placement for all grids in the problem
+                # Randomly choose where to place the original grid within the new grid
+                max_top_offset = target_height - current_h
+                max_left_offset = target_width - current_w
+                
+                top_offset = random.randint(0, max_top_offset)
+                left_offset = random.randint(0, max_left_offset)
+                placement_offset = (top_offset, left_offset)
+                
+                # Store the main metadata for this augmentation
+                tracker['augmentation_metadata'][aug_id] = {
+                    'type': 'upscale',
                     'original_size': (current_h, current_w),
-                    'target_size': target_size
+                    'target_size': target_size,
+                    'placement_offset': placement_offset,
+                    'final_size': target_size
                 }
                 
-                augmented_problem = apply_augmentation_to_problem(
-                    augmented_problem, aug_func, target_size=target_size
-                )
-                applied_augmentations.append(upscale_name)
-                continue
-            else:
-                # Fallback if no input found
-                augmented_problem = apply_augmentation_to_problem(augmented_problem, aug_func)
-                applied_augmentations.append(aug_name)
-                continue
+                # Apply to all examples using the same placement
+                if 'train' in augmented_problem:
+                    for example in augmented_problem['train']:
+                        if 'input' in example:
+                            example['input'] = apply_upscale_with_offset(
+                                example['input'], target_size, placement_offset
+                            )
+                        if 'output' in example:
+                            example['output'] = apply_upscale_with_offset(
+                                example['output'], target_size, placement_offset
+                            )
+                
+                if 'test' in augmented_problem:
+                    for example in augmented_problem['test']:
+                        if 'input' in example:
+                            example['input'] = apply_upscale_with_offset(
+                                example['input'], target_size, placement_offset
+                            )
+                        if 'output' in example:
+                            example['output'] = apply_upscale_with_offset(
+                                example['output'], target_size, placement_offset
+                            )
         else:
+            # Simple augmentations (rotations, flips) - apply directly
+            aug_func = available_augmentations[aug_name]
             augmented_problem = apply_augmentation_to_problem(augmented_problem, aug_func)
-            applied_augmentations.append(aug_name)
+            
+            # Track that this augmentation was applied (even if no special metadata needed)
+            tracker['augmentation_metadata'][aug_id] = {
+                'type': aug_name,
+                'requires_reversal': True
+            }
+    
+    return augmented_problem, tracker
+
+
+def apply_random_augmentations(problem: Dict[str, Any], 
+                             num_augmentations: int = None,
+                             seed: int = None) -> Tuple[Dict[str, Any], List[str], Dict[str, Any]]:
+    """
+    Apply a random selection of 2-4 augmentations to a whole problem.
+    This is the legacy interface - prefer apply_random_augmentations_with_tracking for new code.
+    
+    Args:
+        problem (Dict[str, Any]): Problem dictionary to augment
+        num_augmentations (int, optional): Number of augmentations to apply (2-4).
+                                         If None, randomly chosen.
+        seed (int, optional): Random seed for reproducibility
+        
+    Returns:
+        Tuple[Dict[str, Any], List[str], Dict[str, Any]]: Augmented problem, list of applied augmentations, and augmentation parameters
+    """
+    augmented_problem, tracker = apply_random_augmentations_with_tracking(
+        problem, num_augmentations, seed
+    )
+    
+    # Convert tracker to legacy format
+    applied_augmentations = tracker['application_order']
+    augmentation_params = {}
+    
+    # Convert metadata to legacy format
+    for aug_id, metadata in tracker['augmentation_metadata'].items():
+        aug_type = metadata['type']
+        if aug_type == 'color_permutation':
+            augmentation_params['color_permutation'] = {
+                'color_map': metadata['color_map']
+            }
+        elif aug_type == 'sample_permutation':
+            augmentation_params['sample_permutation'] = {
+                k: v for k, v in metadata.items() if k != 'type'
+            }
+        elif aug_type == 'upscale':
+            # Use the first upscale metadata found and propagate placement_offset for precise deaugmentation
+            if 'upscale' not in augmentation_params:
+                augmentation_params['upscale'] = {
+                    'original_size': metadata['original_size'],
+                    'target_size': metadata['target_size'],
+                    'offset': metadata.get('placement_offset'),
+                    'original_position': metadata.get('placement_offset')
+                }
     
     return augmented_problem, applied_augmentations, augmentation_params
 
@@ -598,3 +961,21 @@ if __name__ == "__main__":
     print(f"Augmentation parameters: {aug_params}")
     print(f"Original train input: {test_problem['train'][0]['input']}")
     print(f"Augmented train input: {augmented_problem['train'][0]['input']}")
+    
+    print("\n" + "="*50)
+    print("Testing sample permutation augmentation:")
+    print("="*50)
+    
+    # Test sample permutation specifically
+    print("Original training examples order:")
+    for i, example in enumerate(test_problem['train']):
+        print(f"  Example {i}: input={example['input']}")
+    
+    permuted_problem, perm_metadata = sample_permutation(test_problem, seed=123)
+    print("\nAfter sample permutation:")
+    for i, example in enumerate(permuted_problem['train']):
+        print(f"  Example {i}: input={example['input']}")
+    print(f"Permutation metadata: {perm_metadata}")
+        
+    # Test that test examples remain unchanged
+    print(f"\nTest examples unchanged: {test_problem['test'] == permuted_problem['test']}")

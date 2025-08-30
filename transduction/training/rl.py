@@ -58,8 +58,9 @@ if __name__ == "__main__":
     login(os.getenv("HF_TOKEN"))
     
     # Model and data paths
-    BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507"
-    LORA_PATH = "qwen2.5_0.5b_arc_transduction_sft/final"  # SFT LoRA adapter
+    #BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+    BASE_MODEL = "Qwen/Qwen2.5-1.5B-Instruct"
+    LORA_PATH = "qwen3_30b_a3b_arc_transduction_sft/final"  # SFT LoRA adapter
     DATA_PATH = "transduction/train_dataset.json"  # transduction dataset
     
     # ---------------------------------------------------------------------
@@ -250,7 +251,7 @@ if __name__ == "__main__":
     gspo_cfg = GRPOConfig(
         importance_sampling_level="sequence",
         loss_type="grpo",
-        output_dir="qwen2.5_0.5b_arc_transduction_rl",
+        output_dir="qwen3_30b_a3b_arc_transduction_rl",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=4,  # Smaller for 0.5B model
         beta=0.04,  # not explicitly specified in the paper, but they likely used the same value as in the GRPO paper
@@ -273,7 +274,7 @@ if __name__ == "__main__":
         max_completion_length=1024,  # Enough for transduction outputs
         remove_unused_columns=False,  # Keep expected_output
         push_to_hub=True,
-        hub_model_id="axel-darmouni/qwen2.5-0.5b-arc-transduction-rl",
+        hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-rl",
         # Uncomment if using DeepSpeed
         #deepspeed="transduction/training/ds_config_zero2.json",
         #ddp_find_unused_parameters=False,
@@ -294,13 +295,13 @@ if __name__ == "__main__":
     trainer.train()
     
     print("Saving final model...")
-    trainer.save_model("qwen2.5_0.5b_arc_transduction_rl/final")
+    trainer.save_model("qwen3_30b_a3b_arc_transduction_rl/final")
     
     # Optional: Save to hub
     if os.getenv("HF_TOKEN"):
         print("Pushing to Hugging Face Hub...")
         model.push_to_hub(
-            "axel-darmouni/qwen2.5-0.5b-arc-transduction-rl",
+            "axel-darmouni/qwen3-30b-a3b-arc-transduction-rl",
             tokenizer=tokenizer,
             token=os.getenv("HF_TOKEN"),
         )

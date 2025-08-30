@@ -24,7 +24,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from transduction.eval_comprehensive import InferenceTechnique
 from transduction.inference.inference import ARCTransductionInference
-from augment import apply_random_augmentations, get_available_augmentations, apply_augmentation_to_problem, track_pixel_transformations
+from augment import apply_random_augmentations, get_available_airv_augmentations, apply_augmentation_to_problem, track_pixel_transformations
 from deaugment import apply_full_deaugmentation, get_deaugmentation_functions, create_augmentation_metadata, apply_pixel_level_deaugmentation
 
 
@@ -66,7 +66,7 @@ class AIRVInference(InferenceTechnique):
         self.inference.generation_config.top_p = 0.9
         
         # Get augmentation functions
-        self.augmentation_funcs = get_available_augmentations()
+        self.augmentation_funcs = get_available_airv_augmentations()
         self.deaugmentation_funcs = get_deaugmentation_functions()
         
         print(f"AIRV initialized with {num_augmentations} augmentations")

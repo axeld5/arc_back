@@ -59,10 +59,10 @@ def format_train_examples(train_examples: List[Dict[str, List[List[int]]]]) -> s
         input_rows = grid_to_row_strings(example['input'])
         output_rows = grid_to_row_strings(example['output'])
         
-        input_str = ';'.join(input_rows)
-        output_str = ';'.join(output_rows)
+        input_str = '\n'.join(input_rows)
+        output_str = '\n'.join(output_rows)
         
-        formatted_pairs.append(f"TRAIN INPUT {i}: {input_str}\nTRAIN OUTPUT {i}: {output_str}")
+        formatted_pairs.append(f"I\n{input_str}\nO\n{output_str}")
     
     return '\n\n'.join(formatted_pairs)
 
@@ -158,7 +158,7 @@ def create_test_placeholder(problem_data: Dict[str, Any],
     
     # Convert to semicolon-separated format
     placeholder_rows = [''.join(row) for row in placeholder_matrix]
-    return ';'.join(placeholder_rows)
+    return '\n'.join(placeholder_rows)
 
 
 def create_transduction_sample(problem_data: Dict[str, Any], 
@@ -206,7 +206,7 @@ def create_transduction_sample(problem_data: Dict[str, Any],
     # Format the prompt
     train_pairs_formatted = format_train_examples(sampled_train)
     test_input_formatted = grid_to_row_strings(test_example['input'])
-    test_input_str = ';'.join(test_input_formatted)
+    test_input_str = '\n'.join(test_input_formatted)
     
     # Create diverse test placeholder using new strategy
     test_placeholder_str = create_test_placeholder(problem_data, sampled_train, test_example)
@@ -219,7 +219,7 @@ def create_transduction_sample(problem_data: Dict[str, Any],
     
     # Target output
     target_output = grid_to_row_strings(test_example['output'])
-    target_output_str = ';'.join(target_output)
+    target_output_str = '\n'.join(target_output)
     
     return {
         'input': prompt,

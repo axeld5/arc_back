@@ -1,23 +1,55 @@
-"""Supervised Fine-Tuning script for ARC Transduction task — stable edition."""
+"""Supervised Fine-Tuning script for ARC Transduction task — 64-token edition (Qwen)."""
 
 import os
 import platform
-from typing import Any, Dict, List, Tuple, Optional
+from typing import Any, Dict, List
 from dataclasses import dataclass
 
 import torch
 from datasets import load_dataset
 from dotenv import load_dotenv
 from huggingface_hub import login
-from peft import LoraConfig, get_peft_model
+from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import (
     AutoModelForCausalLM,
     AutoTokenizer,
+    PreTrainedTokenizerFast,
     TrainerCallback,
     TrainerControl,
     TrainerState,
+    BitsAndBytesConfig
 )
+from tokenizers import Tokenizer, models, pre_tokenizers, normalizers, Regex
 from trl import SFTConfig, SFTTrainer
+
+# =========================
+# 64-token tokenizer
+# =========================
+
+TOKENS = [
+    "<bos>", "<eos>", "<pad>", "<unk>",  # 4 specials
+    "\n",                                      # control/space
+    *list("0123456789"),                               # 10 digits
+    *list("ABCDEFGHIJKLMNOPQRSTUVWXYZ"),               # 26 letters (drop if unused)
+    *list("abcdefghjklmnpqrstuvwxyz"),               # 24 letters (drop if unused)
+]
+
+def build_char_tokenizer(save_dir: str = "tiny64_tokenizer") -> PreTrainedTokenizerFast:
+    vocab = {tok: i for i, tok in enumerate(TOKENS)}
+    t = Tokenizer(models.WordLevel(vocab=vocab, unk_token="<unk>"))
+    # Split every character (DOTALL so '.' matches newlines), but keep the characters as tokens.
+    t.normalizer = normalizers.Sequence([])
+    t.pre_tokenizer = pre_tokenizers.Split(Regex("(?s)."), behavior="isolated")
+
+    hf_tok = PreTrainedTokenizerFast(
+        tokenizer_object=t,
+        bos_token="<bos>",
+        eos_token="<eos>",
+        unk_token="<unk>",
+        pad_token="<pad>",
+    )
+    hf_tok.save_pretrained(save_dir)
+    return hf_tok
 
 # =========================
 # Speed & safety helpers
@@ -40,11 +72,6 @@ def pick_attn_impl(force_flash: bool = False) -> str:
     return "sdpa"
 
 def maybe_compile(model, enable: bool, backend: str = "aot_eager", mode: str = "reduce-overhead", dynamic: bool = True):
-    """
-    Safe torch.compile wrapper.
-    Default OFF because Qwen3-MoE + Inductor can crash with shape guards.
-    If you turn it on, we use a safer backend (aot_eager) + dynamic shapes.
-    """
     if not enable:
         print("[info] torch.compile disabled (safe default).")
         return model
@@ -61,7 +88,7 @@ def maybe_compile(model, enable: bool, backend: str = "aot_eager", mode: str = "
 @dataclass
 class DataCollatorForCausalLMWithPadding:
     """Data collator for causal language modeling with padding."""
-    tokenizer: AutoTokenizer
+    tokenizer: PreTrainedTokenizerFast
     pad_to_multiple_of: int | None = 8
     label_pad_token_id: int = -100
 
@@ -77,14 +104,18 @@ class DataCollatorForCausalLMWithPadding:
         ])
         return batch  # type: ignore
 
-def preprocess_transduction_data(example: Dict[str, Any], tokenizer: AutoTokenizer, max_len: int) -> Dict[str, Any]:
-    """Preprocess transduction dataset for training."""
-    messages = [
-        {"role": "user", "content": example["input"]},
-        {"role": "assistant", "content": example["output"]},
-    ]
-    full_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
-    prefix_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+# Compose training text using our tiny vocab (no chat template).
+def format_example(example: Dict[str, Any]) -> tuple[str, str]:
+    # You can change the separators if your data expects something else.
+    # Keep them inside the 64-token vocab.
+    inp = str(example["input"])
+    out = str(example["output"])
+    prefix = "<bos>\n" + inp + "\n"
+    full = prefix + out + "<eos>"
+    return prefix, full
+
+def preprocess_transduction_data(example: Dict[str, Any], tokenizer: PreTrainedTokenizerFast, max_len: int) -> Dict[str, Any]:
+    prefix_text, full_text = format_example(example)
 
     full_tokens = tokenizer(full_text, truncation=True, max_length=max_len, padding=False)
     prefix_tokens = tokenizer(prefix_text, truncation=True, max_length=max_len, padding=False)
@@ -92,10 +123,18 @@ def preprocess_transduction_data(example: Dict[str, Any], tokenizer: AutoTokeniz
     input_ids = full_tokens["input_ids"]
     attention_mask = full_tokens["attention_mask"]
 
+    # Label masking for the prefix
     labels = list(input_ids)
     prefix_len = len(prefix_tokens["input_ids"])
     for i in range(min(prefix_len, len(labels))):
         labels[i] = -100
+
+    # (Optional) warn if unknowns appear
+    unk = tokenizer.unk_token_id
+    unk_count = sum(1 for x in input_ids if x == unk)
+    if unk_count:
+        # lightweight runtime warning – comment out if noisy
+        print(f"[warn] {unk_count} <unk> tokens encountered; consider adjusting your 64-token vocab.")
 
     return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
@@ -130,15 +169,18 @@ def dataloader_kwargs(workers=8, pin=True, persistent=True, prefetch=6):
 # =========================
 
 def main():
-    """Main training function."""
+    """Main training function (64-token tokenizer)."""
     # --- Config ---
     MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
     DATA_FILE = "transduction/train_dataset.json"
-    MAX_LEN = 6000
+    MAX_LEN = 9200
+
+    # Toggle: try to copy a few rows (digits/newline) from base tokenizer before training.
+    COPY_SOME_PRETRAINED_ROWS = False
 
     # Safety: keep compile OFF unless you purposely re-enable.
-    USE_COMPILE = False           # <-- turn to True only if you want to try compile
-    COMPILE_BACKEND = "aot_eager" # safer than inductor here
+    USE_COMPILE = False
+    COMPILE_BACKEND = "aot_eager"
     COMPILE_DYNAMIC = True
 
     FORCE_FLASH = True
@@ -157,37 +199,75 @@ def main():
     if os.getenv("HF_TOKEN"):
         login(os.getenv("HF_TOKEN"))
 
-    # --- Tokenizer ---
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True, use_fast=True)
+    # --- Build our tiny tokenizer (64 tokens) ---
+    tokenizer = build_char_tokenizer(save_dir="tiny64_tokenizer")
     tokenizer.padding_side = "right"
     if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token
+        tokenizer.pad_token = tokenizer.eos_token  # safety
 
     # --- Model ---
     attn_impl = pick_attn_impl(force_flash=FORCE_FLASH)
     print(f"[info] attn_implementation={attn_impl}")
 
+    bnb_cfg = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_quant_type="nf4",          # good default
+        bnb_4bit_use_double_quant=True,
+        bnb_4bit_compute_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+    )
+
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
-        torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
         trust_remote_code=True,
         attn_implementation=attn_impl,
         device_map="auto",
+        quantization_config=bnb_cfg,        # <<< 4-bit
+        torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,  # compute dtype
     )
+
+    # Resize model to 64-token vocab (this re-initializes embeddings + LM head)
+    n_tokens = len(tokenizer)
+    model.resize_token_embeddings(n_tokens)
+    model.config.vocab_size = n_tokens
+    model.config.bos_token_id = tokenizer.bos_token_id
+    model.config.eos_token_id = tokenizer.eos_token_id
+    model.config.pad_token_id = tokenizer.pad_token_id
+    model = prepare_model_for_kbit_training(model)  # cast norms to fp32, etc.
+
+    # (Optional) copy specific rows from the base tokenizer if you want a tiny head-start.
+    if COPY_SOME_PRETRAINED_ROWS:
+        try:
+            base_tok = AutoTokenizer.from_pretrained(MODEL_NAME, trust_remote_code=True, use_fast=True)
+            keep = ["\n", *list("0123456789")]
+            emb = model.get_input_embeddings()
+            lm = model.get_output_embeddings()
+            with torch.no_grad():
+                for t in keep:
+                    if t in TOKENS:
+                        new_id = TOKENS.index(t)
+                        old_id = base_tok.convert_tokens_to_ids(t)
+                        if old_id is not None and old_id != base_tok.unk_token_id and old_id < emb.weight.shape[0]:
+                            emb.weight[new_id].copy_(emb.weight[old_id])
+                            if lm is not None and hasattr(lm, "weight") and old_id < lm.weight.shape[0]:
+                                lm.weight[new_id].copy_(lm.weight[old_id])
+            print("[info] Copied a subset of pretrained rows into the 64-token embeddings.")
+        except Exception as e:
+            print(f"[warn] Could not copy rows from base tokenizer: {e}")
 
     # Gradient checkpointing (forces use_cache=False internally)
     model.gradient_checkpointing_enable()
     if hasattr(model, "config"):
-        model.config.use_cache = False  # avoid warning; ensures consistency with GC
+        model.config.use_cache = False
 
     # LoRA (attention-side)
     lora_cfg = LoraConfig(
-        r=32,
-        lora_alpha=64,
-        target_modules=["q_proj", "v_proj"],  # or ["q_proj","k_proj","v_proj","o_proj"]
+        r=256,
+        lora_alpha=24,
+        target_modules=["q_proj", "k_prod", "v_proj", "o_proj"],  # or ["q_proj","k_proj","v_proj","o_proj"]
         bias="none",
         lora_dropout=0.05,
         task_type="CAUSAL_LM",
+        modules_to_save=["embed_tokens", "lm_head"],
     )
     model = get_peft_model(model, lora_cfg)  # type: ignore
     model.print_trainable_parameters()  # type: ignore
@@ -213,12 +293,12 @@ def main():
 
     # --- Training args ---
     args = SFTConfig(
-        output_dir="qwen3_30b_a3b_arc_transduction_sft",
-        per_device_train_batch_size=1,
-        gradient_accumulation_steps=8,
-        num_train_epochs=1,
+        output_dir="qwen3_30b_a3b_arc_transduction_sft_64tok",
+        per_device_train_batch_size=4,
+        gradient_accumulation_steps=2,
+        num_train_epochs=3,
         learning_rate=2e-4,
-        warmup_steps=100,
+        warmup_ratio=0.25,
         lr_scheduler_type="cosine",
         fp16=not use_bf16,
         bf16=use_bf16,
@@ -230,7 +310,7 @@ def main():
         remove_unused_columns=False,
         optim="paged_adamw_8bit",
         push_to_hub=True,
-        hub_model_id="axel-darmouni/qwen2.5-0.5b-arc-transduction-sft",
+        hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-sft-64tok",
         **dataloader_kwargs(workers=NUM_WORKERS, pin=True, persistent=True, prefetch=PREFETCH_FACTOR),
     )
 
@@ -242,14 +322,16 @@ def main():
         train_dataset=tokenised_ds,
         data_collator=collator,
         callbacks=callbacks,
+        tokenizer=tokenizer,  # ensure correct padding/decoding
     )
 
     print("Starting training...")
     trainer.train()
 
     print("Saving final model...")
-    trainer.save_model("qwen3_30b_a3b_arc_transduction_sft/final")
-    tokenizer.save_pretrained("qwen3_30b_a3b_arc_transduction_sft/final")
+    out_dir = "qwen3_30b_a3b_arc_transduction_sft_64tok/final"
+    trainer.save_model(out_dir)
+    tokenizer.save_pretrained(out_dir)
 
     if os.getenv("HF_TOKEN"):
         print("Pushing adapter to Hugging Face Hub...")
