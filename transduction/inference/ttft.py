@@ -122,12 +122,30 @@ class TTFTInference(InferenceTechnique):
     
     def _init_tokenizer(self):
         """Initialize the tokenizer."""
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        # Load tokenizer (handles custom tokenizers from new_sft)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+            print(f"[info] Loaded tokenizer from: {self.model_name}")
+        except Exception as e:
+            # If loading fails, try to extract base model name and load from there
+            print(f"[warn] Could not load tokenizer from {self.model_name} ({e})")
+            raise
         
         # Configure tokenizer padding (consistent with SFT training)
         self.tokenizer.padding_side = "right"
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
+    
+    def _maybe_resize_embeddings(self, model):
+        """Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)."""
+        if len(self.tokenizer) != model.config.vocab_size:
+            print(f"[info] Resizing model embeddings from {model.config.vocab_size} to {len(self.tokenizer)} tokens")
+            model.resize_token_embeddings(len(self.tokenizer))
+            model.config.vocab_size = len(self.tokenizer)
+            model.config.bos_token_id = self.tokenizer.bos_token_id
+            model.config.eos_token_id = self.tokenizer.eos_token_id
+            model.config.pad_token_id = self.tokenizer.pad_token_id
+        return model
     
     def _init_base_model(self):
         """Initialize the base model (can be instruct, SFT, or RL model)."""
@@ -158,6 +176,7 @@ class TTFTInference(InferenceTechnique):
                         device_map="auto",
                         trust_remote_code=True
                     )
+                    base_model = self._maybe_resize_embeddings(base_model)
                 else:
                     # CPU inference without quantization
                     base_model = AutoModelForCausalLM.from_pretrained(
@@ -165,6 +184,7 @@ class TTFTInference(InferenceTechnique):
                         torch_dtype=torch.float32,
                         trust_remote_code=True
                     )
+                    base_model = self._maybe_resize_embeddings(base_model)
                 
                 # Load LoRA adapter
                 print(f"Loading LoRA adapter: {self.model_name}")
@@ -188,6 +208,7 @@ class TTFTInference(InferenceTechnique):
                         device_map="auto",
                         trust_remote_code=True
                     )
+                    self.base_model = self._maybe_resize_embeddings(self.base_model)
                 else:
                     # CPU inference without quantization
                     self.base_model = AutoModelForCausalLM.from_pretrained(
@@ -195,6 +216,7 @@ class TTFTInference(InferenceTechnique):
                         torch_dtype=torch.float32,
                         trust_remote_code=True
                     )
+                    self.base_model = self._maybe_resize_embeddings(self.base_model)
         else:
             # This is a HuggingFace model name
             print(f"Loading from HuggingFace: {self.model_name}")
@@ -212,6 +234,7 @@ class TTFTInference(InferenceTechnique):
                     device_map="auto",
                     trust_remote_code=True
                 )
+                self.base_model = self._maybe_resize_embeddings(self.base_model)
             else:
                 # CPU inference without quantization
                 self.base_model = AutoModelForCausalLM.from_pretrained(
@@ -219,6 +242,7 @@ class TTFTInference(InferenceTechnique):
                     torch_dtype=torch.float32,
                     trust_remote_code=True
                 )
+                self.base_model = self._maybe_resize_embeddings(self.base_model)
                 self.base_model = self.base_model.to(self.device)
         
         # Set up generation config
@@ -266,6 +290,7 @@ class TTFTInference(InferenceTechnique):
                         torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
                         trust_remote_code=True
                     )
+                    base_model = self._maybe_resize_embeddings(base_model)
                     if self.device == "cpu":
                         base_model = base_model.to(self.device)
                     model = PeftModel.from_pretrained(base_model, self.model_name)
@@ -276,6 +301,7 @@ class TTFTInference(InferenceTechnique):
                         torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
                         trust_remote_code=True
                     )
+                    model = self._maybe_resize_embeddings(model)
                     if self.device == "cpu":
                         model = model.to(self.device)
             else:
@@ -285,6 +311,7 @@ class TTFTInference(InferenceTechnique):
                     torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
                     trust_remote_code=True
                 )
+                model = self._maybe_resize_embeddings(model)
                 if self.device == "cpu":
                     model = model.to(self.device)
         

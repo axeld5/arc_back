@@ -64,9 +64,15 @@ if __name__ == "__main__":
     DATA_PATH = "transduction/train_dataset.json"  # transduction dataset
     
     # ---------------------------------------------------------------------
-    # 1. Tokenizer (ChatML template)
+    # 1. Tokenizer (try to load from SFT checkpoint first, fallback to base model)
     # ---------------------------------------------------------------------
-    tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
+    # First try to load tokenizer from the SFT checkpoint (handles new_sft with custom tokenizer)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(LORA_PATH, trust_remote_code=True)
+        print(f"[info] Loaded tokenizer from SFT checkpoint: {LORA_PATH}")
+    except Exception as e:
+        print(f"[warn] Could not load tokenizer from SFT checkpoint ({e}), falling back to base model")
+        tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL, trust_remote_code=True)
     
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -85,15 +91,24 @@ if __name__ == "__main__":
     
     # First load the base model with 8-bit quantization
     base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
-        LORA_PATH,
+        BASE_MODEL,
         #quantization_config=quantization_config,
         trust_remote_code=True,
         attn_implementation=attn_impl,
         device_map="auto",
     )
     
+    # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)
+    if len(tokenizer) != base_model.config.vocab_size:
+        print(f"[info] Resizing model embeddings from {base_model.config.vocab_size} to {len(tokenizer)} tokens")
+        base_model.resize_token_embeddings(len(tokenizer))
+        base_model.config.vocab_size = len(tokenizer)
+        base_model.config.bos_token_id = tokenizer.bos_token_id
+        base_model.config.eos_token_id = tokenizer.eos_token_id
+        base_model.config.pad_token_id = tokenizer.pad_token_id
+    
     # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
-    #model = PeftModel.from_pretrained(base_model, LORA_PATH)
+    model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
     # Enable input gradients for LoRA model (required for RL training)
     model.enable_input_require_grads()

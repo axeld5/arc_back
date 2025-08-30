@@ -54,8 +54,15 @@ class ARCTransductionInference:
         print(f"Loading model: {model_name}")
         print(f"Using device: {self.device}")
         
-        # Load tokenizer and model with 8-bit quantization
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+        # Load tokenizer (try to load from model path first for custom tokenizers, fallback to extracting base model)
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
+            print(f"[info] Loaded tokenizer from: {model_name}")
+        except Exception as e:
+            # If loading fails, try to extract base model name and load from there
+            print(f"[warn] Could not load tokenizer from {model_name} ({e})")
+            # This is a fallback - in practice you might want to handle this more gracefully
+            raise
         
         # Configure tokenizer padding (consistent with SFT training)
         self.tokenizer.padding_side = "right"
@@ -76,6 +83,15 @@ class ARCTransductionInference:
                 device_map="auto",
                 trust_remote_code=True
             )
+            
+            # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)
+            if len(self.tokenizer) != self.model.config.vocab_size:
+                print(f"[info] Resizing model embeddings from {self.model.config.vocab_size} to {len(self.tokenizer)} tokens")
+                self.model.resize_token_embeddings(len(self.tokenizer))
+                self.model.config.vocab_size = len(self.tokenizer)
+                self.model.config.bos_token_id = self.tokenizer.bos_token_id
+                self.model.config.eos_token_id = self.tokenizer.eos_token_id
+                self.model.config.pad_token_id = self.tokenizer.pad_token_id
         else:
             # CPU inference without quantization
             self.model = AutoModelForCausalLM.from_pretrained(
@@ -83,6 +99,16 @@ class ARCTransductionInference:
                 torch_dtype=torch.float32,
                 trust_remote_code=True
             )
+            
+            # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)
+            if len(self.tokenizer) != self.model.config.vocab_size:
+                print(f"[info] Resizing model embeddings from {self.model.config.vocab_size} to {len(self.tokenizer)} tokens")
+                self.model.resize_token_embeddings(len(self.tokenizer))
+                self.model.config.vocab_size = len(self.tokenizer)
+                self.model.config.bos_token_id = self.tokenizer.bos_token_id
+                self.model.config.eos_token_id = self.tokenizer.eos_token_id
+                self.model.config.pad_token_id = self.tokenizer.pad_token_id
+            
             self.model = self.model.to(self.device)
         
         # Set up generation config
