@@ -16,6 +16,7 @@ from transformers import (
     TrainerCallback,
     TrainerControl,
     TrainerState,
+    BitsAndBytesConfig,
 )
 from trl import SFTConfig, SFTTrainer
 
@@ -168,10 +169,17 @@ def main():
     attn_impl = pick_attn_impl(force_flash=FORCE_FLASH)
     print(f"[info] attn_implementation={attn_impl}")
 
+    quantization_config = BitsAndBytesConfig(
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
+    )
+
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
         trust_remote_code=True,
+        quantization_config=quantization_config,
         attn_implementation=attn_impl,
         device_map="auto",
     )
