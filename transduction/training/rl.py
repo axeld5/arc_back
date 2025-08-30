@@ -220,6 +220,12 @@ if __name__ == "__main__":
     # ---------------------------------------------------------------------
     # 5. GSPO config with transduction-specific parameters
     # ---------------------------------------------------------------------
+    # Detect vocab mismatch (custom tokenizer) which vLLM can't handle with PEFT resizing
+    vocab_mismatch = (len(tokenizer) != base_model.config.vocab_size)
+    if vocab_mismatch:
+        print("[warn] Tokenizer/model vocab mismatch detected.")
+        print("[warn] Disabling vLLM for GRPO to avoid embedding size assertion errors.")
+
     gspo_cfg = GRPOConfig(
         importance_sampling_level="sequence",
         loss_type="grpo",
@@ -236,7 +242,7 @@ if __name__ == "__main__":
         optim="paged_adamw_8bit",
         logging_dir="transduction/rl_tb_logs",
         report_to="tensorboard",
-        use_vllm=True,
+        use_vllm=False if vocab_mismatch else True,
         vllm_mode="colocate",
         vllm_tensor_parallel_size=1,
         vllm_gpu_memory_utilization=0.30,
