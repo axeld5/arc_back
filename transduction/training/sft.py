@@ -221,7 +221,7 @@ def main():
         gradient_accumulation_steps=8,
         num_train_epochs=5,
         learning_rate=2e-4,
-        warmup_ratio=25,
+        warmup_ratio=0.25,
         lr_scheduler_type="cosine",
         fp16=not use_bf16,
         bf16=use_bf16,
