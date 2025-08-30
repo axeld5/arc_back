@@ -95,6 +95,9 @@ if __name__ == "__main__":
     # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
     model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
+    # Enable input gradients for LoRA model (required for RL training)
+    model.enable_input_require_grads()
+    
     # Ensure only LoRA parameters require gradients for RL training
     model.train()
     trainable_params = 0
@@ -275,6 +278,8 @@ if __name__ == "__main__":
         remove_unused_columns=False,  # Keep expected_output
         push_to_hub=True,
         hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-rl",
+        # Fix for gradient checkpointing issue
+        gradient_checkpointing=False,
         # Uncomment if using DeepSpeed
         #deepspeed="transduction/training/ds_config_zero2.json",
         #ddp_find_unused_parameters=False,
