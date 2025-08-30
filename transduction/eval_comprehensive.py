@@ -863,7 +863,7 @@ def main():
     evaluator.setup_default_models(base_model=args.base_model)
     
     # Override default paths if provided
-    if args.sft_path != "qwen2.5_0.5b_arc_transduction_sft/final" or Path(args.sft_path).exists():
+    if args.sft_path != "qwen3_30b_a3b_arc_transduction_sft/final" or Path(args.sft_path).exists():
         evaluator.register_model(ModelConfig(
             name="sft",
             model_type="sft", 
@@ -872,7 +872,7 @@ def main():
             description=f"Custom SFT model: {args.sft_path}"
         ))
     
-    if args.rl_path != "qwen2.5_0.5b_arc_transduction_rl/final" or Path(args.rl_path).exists():
+    if args.rl_path != "qwen3_30b_a3b_arc_transduction_rl/final" or Path(args.rl_path).exists():
         evaluator.register_model(ModelConfig(
             name="rl",
             model_type="rl",
