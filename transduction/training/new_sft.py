@@ -329,7 +329,7 @@ def main():
     trainer.train()
 
     print("Saving final model...")
-    out_dir = "qwen3_30b_a3b_arc_transduction_sft_64tok/final"
+    out_dir = "qwen3_30b_a3b_arc_transduction_sft/final"
     trainer.save_model(out_dir)
     tokenizer.save_pretrained(out_dir)
 
