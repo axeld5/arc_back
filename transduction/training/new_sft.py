@@ -323,7 +323,6 @@ def main():
         train_dataset=tokenised_ds,
         data_collator=collator,
         callbacks=callbacks,
-        tokenizer=tokenizer,  # ensure correct padding/decoding
     )
 
     print("Starting training...")
