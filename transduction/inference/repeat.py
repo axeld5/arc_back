@@ -57,13 +57,13 @@ class RepeatPlaceholderInference:
         return prompt
 
     def _grid_to_placeholder_str(self, grid: Optional[List[List[int]]], reference_input: List[List[int]]) -> str:
-        # If no grid, return zeros with input dimensions
+        # If no grid, return zeros with input dimensions (space-separated)
         if grid is None:
             rows = len(reference_input)
             cols = len(reference_input[0]) if rows > 0 else 0
-            return '\n'.join(['0' * cols for _ in range(rows)])
-        # Convert grid to semicolon-separated placeholder
-        return '\n'.join([''.join(str(c) for c in row) for row in grid])
+            return '\n'.join([' '.join(['0'] * cols) for _ in range(rows)])
+        # Convert grid to space-separated placeholder
+        return '\n'.join([' '.join(str(c) for c in row) for row in grid])
 
     def infer_single_problem(self, problem_data: Dict[str, Any], train_sample_count: int = 3, test_example_idx: int = 0, verbose: bool = False) -> Dict[str, Any]:
         # First pass: standard prompt (zeros placeholder as per ARCTransductionInference)

@@ -247,7 +247,7 @@ class TTFTInference(InferenceTechnique):
         
         # Set up generation config
         self.generation_config = GenerationConfig(
-            max_new_tokens=1024,
+            max_new_tokens=2048,
             temperature=self.temperature,
             do_sample=self.temperature > 0.0,
             top_p=0.9,
@@ -473,10 +473,10 @@ class TTFTInference(InferenceTechnique):
         test_examples = problem_data.get('test', [])
         if test_examples:
             test_input_formatted = grid_to_row_strings(test_examples[0]['input'])
-            test_input_str = '\n	'.join(test_input_formatted)
+            test_input_str = '\n\t'.join(test_input_formatted)
             
-            # Create placeholder with same dimensions as test input
-            test_placeholder_rows = ['0' * len(row) for row in test_input_formatted]
+            # Create placeholder with same dimensions as test input (space-separated)
+            test_placeholder_rows = [' '.join(['0'] * (len(row.split()) if ' ' in row else len(row))) for row in test_input_formatted]
             test_placeholder_str = '\n'.join(test_placeholder_rows)
         else:
             test_input_str = ""

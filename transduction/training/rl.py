@@ -242,14 +242,14 @@ if __name__ == "__main__":
         optim="paged_adamw_8bit",
         logging_dir="transduction/rl_tb_logs",
         report_to="tensorboard",
-        use_vllm=False,
+        use_vllm=True,
         vllm_mode="colocate",
         vllm_tensor_parallel_size=1,
         vllm_gpu_memory_utilization=0.30,
         # GSPO-specific parameters
         num_generations=4,  # G in the paper
-        max_prompt_length=6000,  # Match SFT max length
-        max_completion_length=1024,  # Enough for transduction outputs
+        max_prompt_length=16384,
+        max_completion_length=2048,  # Enough for transduction outputs
         remove_unused_columns=False,  # Keep expected_output
         push_to_hub=True,
         hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-rl",

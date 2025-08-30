@@ -113,7 +113,7 @@ class ARCTransductionInference:
         
         # Set up generation config
         self.generation_config = GenerationConfig(
-            max_new_tokens=1024,
+            max_new_tokens=2048,
             temperature=0.1,
             do_sample=True,
             top_p=0.9,
@@ -167,8 +167,8 @@ class ARCTransductionInference:
         test_input_formatted = grid_to_row_strings(test_example['input'])
         test_input_str = '\n'.join(test_input_formatted)
         
-        # Create a placeholder with same dimensions as test input
-        test_placeholder_rows = ['0' * len(row) for row in test_input_formatted]
+        # Create a placeholder with same dimensions as test input (space-separated)
+        test_placeholder_rows = [' '.join(['0'] * (len(row.split()) if ' ' in row else len(row))) for row in test_input_formatted]
         test_placeholder_str = '\n'.join(test_placeholder_rows)
         
         prompt = PROMPT_V1.format(
@@ -222,7 +222,8 @@ class ARCTransductionInference:
         if '\n' in response:
             # Extract the part that looks like a grid (digits and semicolons)
             import re
-            grid_match = re.search(r'[0-9\n]+', response)
+            # Accept digits possibly separated by spaces
+            grid_match = re.search(r'[0-9\n\s]+', response)
             if grid_match:
                 grid_str = grid_match.group()
                 try:
@@ -230,7 +231,12 @@ class ARCTransductionInference:
                     grid = []
                     for row in rows:
                         if row.strip():  # Skip empty rows
-                            grid_row = [int(char) for char in row if char.isdigit()]
+                            # Parse either space-separated tokens or contiguous digits
+                            parts = row.strip().split()
+                            if len(parts) > 1:
+                                grid_row = [int(p) for p in parts if p.isdigit()]
+                            else:
+                                grid_row = [int(char) for char in row if char.isdigit()]
                             if grid_row:  # Only add non-empty rows
                                 grid.append(grid_row)
                     

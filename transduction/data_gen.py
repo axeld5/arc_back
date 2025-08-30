@@ -41,7 +41,7 @@ def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
     Returns:
         List of strings, where each string represents a row
     """
-    return [''.join(map(str, row)) for row in grid]
+    return [' '.join(map(str, row)) for row in grid]
 
 
 def format_train_examples(train_examples: List[Dict[str, List[List[int]]]]) -> str:
@@ -156,8 +156,8 @@ def create_test_placeholder(problem_data: Dict[str, Any],
             # Fallback to zeros if dimensions mismatch
             placeholder_matrix = [['0'] * target_width for _ in range(target_height)]
     
-    # Convert to semicolon-separated format
-    placeholder_rows = [''.join(row) for row in placeholder_matrix]
+    # Convert to space-separated format
+    placeholder_rows = [' '.join(row) for row in placeholder_matrix]
     return '\n'.join(placeholder_rows)
 
 

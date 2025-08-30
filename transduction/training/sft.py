@@ -135,7 +135,7 @@ def main():
     #MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
     MODEL_NAME = "Qwen/Qwen2.5-1.5B-Instruct"
     DATA_FILE = "transduction/train_dataset.json"
-    MAX_LEN = 6000
+    MAX_LEN = 16384
 
     # Safety: keep compile OFF unless you purposely re-enable.
     USE_COMPILE = False           # <-- turn to True only if you want to try compile
@@ -217,7 +217,7 @@ def main():
         output_dir="qwen3_30b_a3b_arc_transduction_sft",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
-        num_train_epochs=1,
+        num_train_epochs=10,
         learning_rate=2e-4,
         warmup_steps=100,
         lr_scheduler_type="cosine",
