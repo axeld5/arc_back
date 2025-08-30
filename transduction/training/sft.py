@@ -169,17 +169,11 @@ def main():
     attn_impl = pick_attn_impl(force_flash=FORCE_FLASH)
     print(f"[info] attn_implementation={attn_impl}")
 
-    quantization_config = BitsAndBytesConfig(
-        load_in_4bit=True,
-        bnb_4bit_compute_dtype=torch.bfloat16,
-        bnb_4bit_use_double_quant=True,
-    )
-
     model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
         MODEL_NAME,
         torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
         trust_remote_code=True,
-        quantization_config=quantization_config,
+        #quantization_config=quantization_config,
         attn_implementation=attn_impl,
         device_map="auto",
     )
@@ -225,9 +219,9 @@ def main():
         output_dir="qwen3_30b_a3b_arc_transduction_sft",
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
-        num_train_epochs=10,
+        num_train_epochs=5,
         learning_rate=2e-4,
-        warmup_steps=100,
+        warmup_ratio=0.25,
         lr_scheduler_type="cosine",
         fp16=not use_bf16,
         bf16=use_bf16,
