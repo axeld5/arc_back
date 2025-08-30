@@ -398,7 +398,7 @@ class ComprehensiveARCEvaluator:
         ))
         
         # SFT model (assumes standard path structure)
-        sft_path = "qwen2.5_0.5b_arc_transduction_sft/final"
+        sft_path = "qwen3_30b_a3b_arc_transduction_sft/final"
         if Path(sft_path).exists():
             self.register_model(ModelConfig(
                 name="sft",
@@ -409,7 +409,7 @@ class ComprehensiveARCEvaluator:
             ))
         
         # RL model (assumes standard path structure)
-        rl_path = "qwen2.5_0.5b_arc_transduction_rl/final"
+        rl_path = "qwen3_30b_a3b_arc_transduction_rl/final"
         if Path(rl_path).exists():
             self.register_model(ModelConfig(
                 name="rl",
@@ -809,9 +809,9 @@ def main():
                        help='Evaluate all available models')
     parser.add_argument('--model_name', type=str, default=None,
                        help='Specific model to evaluate (required if --all_models is not set)')
-    parser.add_argument('--sft_path', type=str, default="qwen2.5_0.5b_arc_transduction_sft/final",
+    parser.add_argument('--sft_path', type=str, default="qwen3_30b_a3b_arc_transduction_sft/final",
                        help='Path to SFT model')
-    parser.add_argument('--rl_path', type=str, default="qwen2.5_0.5b_arc_transduction_rl/final",
+    parser.add_argument('--rl_path', type=str, default="qwen3_30b_a3b_arc_transduction_rl/final",
                        help='Path to RL model')
     
     # Inference technique categories
