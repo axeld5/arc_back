@@ -125,11 +125,11 @@ if __name__ == "__main__":
         )
         
         # Parse the expected output string into a grid
-        # The output is in semicolon-separated format like "12;34"
+        # The output is in newline-separated format like "707000707\n707000707\n770000770"
         expected_grid = []
         if example["output"]:
             try:
-                rows = example["output"].split(';')
+                rows = example["output"].strip().split('\n')
                 for row in rows:
                     if row.strip():  # Skip empty rows
                         grid_row = [int(char) for char in row.strip()]
@@ -157,6 +157,18 @@ if __name__ == "__main__":
         prompt_to_expected[example["prompt"]] = example["expected_output"]
     
     print(f"Created prompt-to-expected mapping with {len(prompt_to_expected)} entries")
+    
+    # Debug: Check if we have valid expected outputs
+    valid_outputs = sum(1 for expected in prompt_to_expected.values() if expected)
+    empty_outputs = sum(1 for expected in prompt_to_expected.values() if not expected)
+    print(f"Debug: {valid_outputs} entries with valid expected outputs, {empty_outputs} entries with empty expected outputs")
+    
+    # Debug: Show first few expected output shapes
+    for i, (prompt, expected) in enumerate(list(prompt_to_expected.items())[:3]):
+        if expected:
+            print(f"Debug: Expected output {i+1} shape: {len(expected)}x{len(expected[0]) if expected else 0}")
+        else:
+            print(f"Debug: Expected output {i+1}: empty")
     
     def contextual_reward_function(
         completions: List[str], 
