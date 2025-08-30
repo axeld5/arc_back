@@ -166,7 +166,7 @@ class MultiSampleInference(InferenceTechnique):
             if sample['predicted_grid'] is not None:
                 parseable_samples.append(sample)
                 # Convert grid to string for counting
-                grid_str = ';'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
+                grid_str = '\n'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
                 grid_counts[grid_str] = grid_counts.get(grid_str, 0) + 1
         
         best_sample = None
@@ -175,7 +175,7 @@ class MultiSampleInference(InferenceTechnique):
             most_common_grid = max(grid_counts, key=grid_counts.get)
             # Find the first sample with this grid
             for sample in parseable_samples:
-                grid_str = ';'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
+                grid_str = '\n'.join([''.join(map(str, row)) for row in sample['predicted_grid']])
                 if grid_str == most_common_grid:
                     best_sample = sample
                     break
@@ -204,13 +204,13 @@ class MultiSampleInference(InferenceTechnique):
             print(f"Generated {self.num_samples} samples, selected sample {best_sample['sample_idx']}")
             print(f"GROUND TRUTH:")
             for row in ground_truth:
-                print(';'.join(map(str, row)))
+                print('\n'.join(map(str, row)))
             print()
             
             print(f"PREDICTED:")
             if best_sample['predicted_grid']:
                 for row in best_sample['predicted_grid']:
-                    print(';'.join(map(str, row)))
+                    print('\n'.join(map(str, row)))
             else:
                 print("Failed to parse prediction")
             print()

@@ -47,7 +47,7 @@ class RepeatPlaceholderInference:
 
         train_pairs_formatted = format_train_examples(sampled_train)
         test_input_formatted = grid_to_row_strings(test_example['input'])
-        test_input_str = ';'.join(test_input_formatted)
+        test_input_str = '\n'.join(test_input_formatted)
 
         prompt = PROMPT_V1.format(
             train_pairs=train_pairs_formatted,
@@ -61,9 +61,9 @@ class RepeatPlaceholderInference:
         if grid is None:
             rows = len(reference_input)
             cols = len(reference_input[0]) if rows > 0 else 0
-            return ';'.join(['0' * cols for _ in range(rows)])
+            return '\n'.join(['0' * cols for _ in range(rows)])
         # Convert grid to semicolon-separated placeholder
-        return ';'.join([''.join(str(c) for c in row) for row in grid])
+        return '\n'.join([''.join(str(c) for c in row) for row in grid])
 
     def infer_single_problem(self, problem_data: Dict[str, Any], train_sample_count: int = 3, test_example_idx: int = 0, verbose: bool = False) -> Dict[str, Any]:
         # First pass: standard prompt (zeros placeholder as per ARCTransductionInference)

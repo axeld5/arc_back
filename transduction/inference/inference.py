@@ -57,6 +57,11 @@ class ARCTransductionInference:
         # Load tokenizer and model with 8-bit quantization
         self.tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
         
+        # Configure tokenizer padding (consistent with SFT training)
+        self.tokenizer.padding_side = "right"
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+        
         if self.device != "cpu":
             # Configure 8-bit quantization for GPU inference
             quantization_config = BitsAndBytesConfig(
@@ -134,11 +139,11 @@ class ARCTransductionInference:
         # Format the prompt
         train_pairs_formatted = format_train_examples(sampled_train)
         test_input_formatted = grid_to_row_strings(test_example['input'])
-        test_input_str = ';'.join(test_input_formatted)
+        test_input_str = '\n'.join(test_input_formatted)
         
         # Create a placeholder with same dimensions as test input
         test_placeholder_rows = ['0' * len(row) for row in test_input_formatted]
-        test_placeholder_str = ';'.join(test_placeholder_rows)
+        test_placeholder_str = '\n'.join(test_placeholder_rows)
         
         prompt = PROMPT_V1.format(
             train_pairs=train_pairs_formatted,
@@ -188,14 +193,14 @@ class ARCTransductionInference:
         response = response.strip()
         
         # Look for semicolon-separated format first
-        if ';' in response:
+        if '\n' in response:
             # Extract the part that looks like a grid (digits and semicolons)
             import re
-            grid_match = re.search(r'[0-9;]+', response)
+            grid_match = re.search(r'[0-9\n]+', response)
             if grid_match:
                 grid_str = grid_match.group()
                 try:
-                    rows = grid_str.split(';')
+                    rows = grid_str.split('\n')
                     grid = []
                     for row in rows:
                         if row.strip():  # Skip empty rows
@@ -294,13 +299,13 @@ class ARCTransductionInference:
         if verbose:
             print(f"GROUND TRUTH:")
             for row in ground_truth:
-                print(';'.join(map(str, row)))
+                print('\n'.join(map(str, row)))
             print()
             
             print(f"PREDICTED:")
             if predicted_grid:
                 for row in predicted_grid:
-                    print(';'.join(map(str, row)))
+                    print('\n'.join(map(str, row)))
             else:
                 print("Failed to parse prediction")
             print()

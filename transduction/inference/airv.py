@@ -397,13 +397,13 @@ class AIRVInference(InferenceTechnique):
             
             print(f"\nGROUND TRUTH:")
             for row in ground_truth:
-                print(';'.join(map(str, row)))
+                print('\n'.join(map(str, row)))
             print()
             
             print(f"PREDICTED (AIRV):")
             if winning_grid:
                 for row in winning_grid:
-                    print(';'.join(map(str, row)))
+                    print('\n'.join(map(str, row)))
             else:
                 print("No valid prediction")
             print()

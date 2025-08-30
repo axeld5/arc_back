@@ -25,7 +25,7 @@ def check_array(output_string: str) -> bool:
     Examples:
         >>> check_array("12\n34\n56")
         True
-        >>> check_array("1a;23")
+        >>> check_array("1a\n23")
         False
         >>> check_array("12\n34\n")
         False
@@ -114,7 +114,7 @@ def check_value(output_string: str, expected_value: List[List[int]]) -> bool:
     Examples:
         >>> check_value("12\n34", [[1, 2], [3, 4]])
         True
-        >>> check_value("12;35", [[1, 2], [3, 4]])
+        >>> check_value("12\n35", [[1, 2], [3, 4]])
         False
         >>> check_value("invalid", [[1, 2]])
         False

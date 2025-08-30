@@ -39,7 +39,7 @@ def build_char_tokenizer(save_dir: str = "tiny64_tokenizer") -> PreTrainedTokeni
     t = Tokenizer(models.WordLevel(vocab=vocab, unk_token="<unk>"))
     # Split every character (DOTALL so '.' matches newlines), but keep the characters as tokens.
     t.normalizer = normalizers.Sequence([])
-    t.pre_tokenizer = pre_tokenizers.Split(Regex("(?s)."), behavior="isolated")
+    t.pre_tokenizer = pre_tokenizers.Split(Regex(r"[\s\S]"), behavior="isolated")
 
     hf_tok = PreTrainedTokenizerFast(
         tokenizer_object=t,

@@ -123,6 +123,9 @@ class TTFTInference(InferenceTechnique):
     def _init_tokenizer(self):
         """Initialize the tokenizer."""
         self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, trust_remote_code=True)
+        
+        # Configure tokenizer padding (consistent with SFT training)
+        self.tokenizer.padding_side = "right"
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
     
@@ -443,11 +446,11 @@ class TTFTInference(InferenceTechnique):
         test_examples = problem_data.get('test', [])
         if test_examples:
             test_input_formatted = grid_to_row_strings(test_examples[0]['input'])
-            test_input_str = ';'.join(test_input_formatted)
+            test_input_str = '\n	'.join(test_input_formatted)
             
             # Create placeholder with same dimensions as test input
             test_placeholder_rows = ['0' * len(row) for row in test_input_formatted]
-            test_placeholder_str = ';'.join(test_placeholder_rows)
+            test_placeholder_str = '\n'.join(test_placeholder_rows)
         else:
             test_input_str = ""
             test_placeholder_str = ""
@@ -464,7 +467,7 @@ class TTFTInference(InferenceTechnique):
     def _format_output(self, output_grid: List[List[int]]) -> str:
         """Format output grid as a string."""
         output_rows = grid_to_row_strings(output_grid)
-        return ';'.join(output_rows)
+        return '\n'.join(output_rows)
     
     def fine_tune_on_problem(self, problem_data: Dict[str, Any]) -> AutoModelForCausalLM:
         """
