@@ -85,7 +85,7 @@ if __name__ == "__main__":
     
     # First load the base model with 8-bit quantization
     base_model: AutoModelForCausalLM = AutoModelForCausalLM.from_pretrained(
-        BASE_MODEL,
+        LORA_PATH,
         #quantization_config=quantization_config,
         trust_remote_code=True,
         attn_implementation=attn_impl,
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     )
     
     # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
-    model = PeftModel.from_pretrained(base_model, LORA_PATH)
+    #model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
     # Enable input gradients for LoRA model (required for RL training)
     model.enable_input_require_grads()
