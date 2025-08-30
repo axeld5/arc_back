@@ -294,10 +294,10 @@ def main():
 
     # --- Training args ---
     args = SFTConfig(
-        output_dir="qwen3_30b_a3b_arc_transduction_sft_64tok",
+        output_dir="qwen3_30b_a3b_arc_transduction_sft",
         per_device_train_batch_size=4,
         gradient_accumulation_steps=2,
-        num_train_epochs=3,
+        num_train_epochs=1,
         learning_rate=2e-4,
         warmup_ratio=0.25,
         lr_scheduler_type="cosine",
@@ -311,7 +311,7 @@ def main():
         remove_unused_columns=False,
         optim="paged_adamw_8bit",
         push_to_hub=True,
-        hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-sft-64tok",
+        hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-sft",
         **dataloader_kwargs(workers=NUM_WORKERS, pin=True, persistent=True, prefetch=PREFETCH_FACTOR),
     )
 
