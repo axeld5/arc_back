@@ -131,14 +131,15 @@ if __name__ == "__main__":
         )
         
         # Parse the expected output string into a grid
-        # The output is in newline-separated format like "707000707\n707000707\n770000770"
+        # The output is in newline-separated format like "7 0 7 0 0 0 7 0 7\n7 0 7 0 0 0 7 0 7\n7 7 0 0 0 0 7 7 0"
         expected_grid = []
         if example["output"]:
             try:
                 rows = example["output"].strip().split('\n')
                 for row in rows:
                     if row.strip():  # Skip empty rows
-                        grid_row = [int(char) for char in row.strip()]
+                        # Split by spaces and convert each digit to int
+                        grid_row = [int(digit) for digit in row.strip().split()]
                         expected_grid.append(grid_row)
             except (ValueError, IndexError):
                 # If parsing fails, create empty grid
@@ -161,8 +162,8 @@ if __name__ == "__main__":
     prompt_to_expected = {}
     for example in ds:
         prompt_to_expected[example["prompt"]] = example["expected_output"]
-        
-            
+
+
     def contextual_reward_function(
         completions: List[str], 
         prompts: List[str],
