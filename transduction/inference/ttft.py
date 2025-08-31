@@ -159,7 +159,7 @@ class TTFTInference(InferenceTechnique):
                 # Try loading as LoRA adapter first
                 # We need to determine the base model
                 # For now, assume Qwen2.5-0.5B-Instruct as base
-                base_model_name = "Qwen/Qwen3-30B-A3B-Instruct-2507"
+                base_model_name = "Qwen/Qwen3-4B-Instruct"
                 print(f"Loading base model: {base_model_name}")
                 
                 if self.device != "cpu":
@@ -284,7 +284,7 @@ class TTFTInference(InferenceTechnique):
                 # Local model path
                 try:
                     # Try loading as LoRA adapter first
-                    base_model_name = "Qwen/Qwen2.5-0.5B-Instruct"
+                    base_model_name = "Qwen/Qwen3-4B-Instruct"
                     base_model = AutoModelForCausalLM.from_pretrained(
                         base_model_name,
                         torch_dtype=torch.float32 if self.device == "cpu" else torch.bfloat16,
