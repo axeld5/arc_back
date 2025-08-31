@@ -64,11 +64,19 @@ def check_array(output_string: str) -> bool:
                 if not row.strip():  # Skip empty rows
                     return False
                 
-                # Check if row contains only digits
-                if not row.isdigit():
-                    return False
-                
-                grid_row = [int(char) for char in row]
+                # Parse either space-separated tokens or contiguous digits
+                parts = row.strip().split()
+                if len(parts) > 1:
+                    # Space-separated format like "7 0 7 0 0 0 7 0 7"
+                    try:
+                        grid_row = [int(p) for p in parts if p.strip()]
+                    except ValueError:
+                        return False
+                else:
+                    # Contiguous digits format like "707000707"
+                    if not row.strip().isdigit():
+                        return False
+                    grid_row = [int(char) for char in row.strip()]
                 
                 # Check that all digits are valid (0-9)
                 if any(digit < 0 or digit > 9 for digit in grid_row):
@@ -181,10 +189,19 @@ def parse_grid_from_string(output_string: str) -> Optional[List[List[int]]]:
                 if not row.strip():  # Skip empty rows
                     continue
                 
-                if not row.isdigit():
-                    return None
-                
-                grid_row = [int(char) for char in row]
+                # Parse either space-separated tokens or contiguous digits
+                parts = row.strip().split()
+                if len(parts) > 1:
+                    # Space-separated format like "7 0 7 0 0 0 7 0 7"
+                    try:
+                        grid_row = [int(p) for p in parts if p.strip()]
+                    except ValueError:
+                        return None
+                else:
+                    # Contiguous digits format like "707000707"
+                    if not row.strip().isdigit():
+                        return None
+                    grid_row = [int(char) for char in row.strip()]
                 
                 # Check that all digits are valid (0-9)
                 if any(digit < 0 or digit > 9 for digit in grid_row):

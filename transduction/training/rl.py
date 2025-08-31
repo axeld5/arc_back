@@ -224,7 +224,7 @@ if __name__ == "__main__":
         use_vllm=True,
         vllm_mode="colocate",
         vllm_tensor_parallel_size=1,
-        vllm_gpu_memory_utilization=0.30,
+        vllm_gpu_memory_utilization=0.20,
         # GSPO-specific parameters
         num_generations=4,  # G in the paper
         max_prompt_length=16384,
