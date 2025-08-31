@@ -100,24 +100,6 @@ def preprocess_transduction_data(example: Dict[str, Any], tokenizer: AutoTokeniz
 
     return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
-# Optional: early stop (kept from previous version; off by default)
-class PlateauEarlyStop(TrainerCallback):
-    def __init__(self, monitor="eval_loss", min_delta=0.0, patience=3):
-        self.monitor = monitor; self.min_delta = min_delta; self.patience = patience
-        self.best = None; self.bad = 0
-    def on_evaluate(self, args, state: TrainerState, control: TrainerControl, **kwargs):
-        m = kwargs.get("metrics", {})
-        if self.monitor not in m: return
-        v = m[self.monitor]
-        if self.best is None or (self.best - v) > self.min_delta:
-            self.best = v; self.bad = 0
-        else:
-            self.bad += 1
-            if self.bad >= self.patience:
-                control.should_training_stop = True
-                print(f"[info] Early stopping: {self.monitor} plateaued.")
-        return control
-
 def dataloader_kwargs(workers=8, pin=True, persistent=True, prefetch=6):
     return dict(
         dataloader_num_workers=workers,
@@ -146,7 +128,10 @@ def main():
     FORCE_FLASH = True
     NUM_WORKERS = 8
     PREFETCH_FACTOR = 6
-    USE_EARLY_STOP = False
+
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    if torch.cuda.is_available():
+        torch.cuda.set_device(local_rank)
 
     # Precision & TF32
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
@@ -178,7 +163,9 @@ def main():
     )
 
     # Gradient checkpointing (forces use_cache=False internally)
-    model.gradient_checkpointing_enable()
+    model.gradient_checkpointing_enable(
+        gradient_checkpointing_kwargs={"use_reentrant": False}
+    )
     if hasattr(model, "config"):
         model.config.use_cache = False  # avoid warning; ensures consistency with GC
 
@@ -216,7 +203,7 @@ def main():
     # --- Training args ---
     args = SFTConfig(
         output_dir="qwen3_30b_a3b_arc_transduction_sft",
-        packing=True,
+        packing=False,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         num_train_epochs=5,
@@ -238,14 +225,11 @@ def main():
         ddp_find_unused_parameters=False,
     )
 
-    callbacks = [PlateauEarlyStop(monitor="eval_loss", min_delta=1e-3, patience=3)] if USE_EARLY_STOP else []
-
     trainer = SFTTrainer(
         model=model,
         args=args,
         train_dataset=tokenised_ds,
         data_collator=collator,
-        callbacks=callbacks,
     )
 
     print("Starting training...")
