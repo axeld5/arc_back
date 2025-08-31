@@ -45,8 +45,8 @@ def check_array(output_string: str) -> bool:
     
     # Look for semicolon-separated format first
     if '\n' in response:
-        # Extract the part that looks like a grid (digits and semicolons)
-        grid_match = re.search(r'[0-9\n]+', response)
+        # Extract the part that looks like a grid (digits, spaces, and newlines)
+        grid_match = re.search(r'[0-9\n\s]+', response)
         if not grid_match:
             return False
         
@@ -174,8 +174,8 @@ def parse_grid_from_string(output_string: str) -> Optional[List[List[int]]]:
     
     # Look for semicolon-separated format first
     if '\n' in response:
-        # Extract the part that looks like a grid (digits and semicolons)
-        grid_match = re.search(r'[0-9\n]+', response)
+        # Extract the part that looks like a grid (digits, spaces, and newlines)
+        grid_match = re.search(r'[0-9\n\s]+', response)
         if not grid_match:
             return None
         
