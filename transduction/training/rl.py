@@ -95,7 +95,7 @@ if __name__ == "__main__":
         #quantization_config=quantization_config,
         trust_remote_code=True,
         attn_implementation=attn_impl,
-        device_map="auto",
+        device_map="cuda",
     )
     
     # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)

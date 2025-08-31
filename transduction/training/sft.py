@@ -175,7 +175,7 @@ def main():
         trust_remote_code=True,
         #quantization_config=quantization_config,
         attn_implementation=attn_impl,
-        device_map="auto",
+        device_map="cuda",
     )
 
     # Gradient checkpointing (forces use_cache=False internally)

@@ -173,7 +173,7 @@ class TTFTInference(InferenceTechnique):
                     base_model = AutoModelForCausalLM.from_pretrained(
                         base_model_name,
                         quantization_config=quantization_config,
-                        device_map="auto",
+                        device_map="cuda",
                         trust_remote_code=True
                     )
                     base_model = self._maybe_resize_embeddings(base_model)
