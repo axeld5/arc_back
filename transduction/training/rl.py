@@ -84,9 +84,9 @@ if __name__ == "__main__":
     
     # Configure quantization: 8-bit model loading
     quantization_config = BitsAndBytesConfig(
-        load_in_8bit=True,
-        bnb_8bit_compute_dtype=torch.bfloat16,
-        bnb_8bit_use_double_quant=True,
+        load_in_4bit=True,
+        bnb_4bit_compute_dtype=torch.bfloat16,
+        bnb_4bit_use_double_quant=True,
     )
     
     # First load the base model with 8-bit quantization
