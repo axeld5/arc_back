@@ -95,7 +95,6 @@ if __name__ == "__main__":
         #quantization_config=quantization_config,
         trust_remote_code=True,
         attn_implementation=attn_impl,
-        device_map="cuda",
     )
     
     # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)
@@ -257,7 +256,7 @@ if __name__ == "__main__":
         gradient_checkpointing=False,
         # Uncomment if using DeepSpeed
         #deepspeed="transduction/training/ds_config_zero2.json",
-        #ddp_find_unused_parameters=False,
+        ddp_find_unused_parameters=False,
     )
     
     # ---------------------------------------------------------------------

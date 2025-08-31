@@ -55,7 +55,7 @@ class TTFTInference(InferenceTechnique):
     """
     
     def __init__(self, 
-                 model_name: str = "Qwen/Qwen2.5-0.5B-Instruct",
+                 model_name: str = "Qwen/Qwen3-4B-Instruct-2507",
                  device: str = "auto",
                  num_augmentations: int = 4,
                  augmentation_seed: Optional[int] = None,
@@ -173,7 +173,6 @@ class TTFTInference(InferenceTechnique):
                     base_model = AutoModelForCausalLM.from_pretrained(
                         base_model_name,
                         quantization_config=quantization_config,
-                        device_map="cuda",
                         trust_remote_code=True
                     )
                     base_model = self._maybe_resize_embeddings(base_model)
@@ -205,7 +204,6 @@ class TTFTInference(InferenceTechnique):
                     self.base_model = AutoModelForCausalLM.from_pretrained(
                         self.model_name,
                         quantization_config=quantization_config,
-                        device_map="auto",
                         trust_remote_code=True
                     )
                     self.base_model = self._maybe_resize_embeddings(self.base_model)

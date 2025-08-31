@@ -175,7 +175,6 @@ def main():
         trust_remote_code=True,
         #quantization_config=quantization_config,
         attn_implementation=attn_impl,
-        device_map="cuda",
     )
 
     # Gradient checkpointing (forces use_cache=False internally)
@@ -187,7 +186,7 @@ def main():
     lora_cfg = LoraConfig(
         r=32,
         lora_alpha=64,
-        target_modules=["q_proj", "v_proj"],  # or ["q_proj","k_proj","v_proj","o_proj"]
+        target_modules=["q_proj","k_proj","v_proj","o_proj"],
         bias="none",
         lora_dropout=0.05,
         task_type="CAUSAL_LM",
@@ -217,6 +216,7 @@ def main():
     # --- Training args ---
     args = SFTConfig(
         output_dir="qwen3_30b_a3b_arc_transduction_sft",
+        packing=True,
         per_device_train_batch_size=1,
         gradient_accumulation_steps=8,
         num_train_epochs=5,
@@ -235,6 +235,7 @@ def main():
         push_to_hub=True,
         hub_model_id="axel-darmouni/qwen3-30b-a3b-arc-transduction-sft",
         **dataloader_kwargs(workers=NUM_WORKERS, pin=True, persistent=True, prefetch=PREFETCH_FACTOR),
+        ddp_find_unused_parameters=False,
     )
 
     callbacks = [PlateauEarlyStop(monitor="eval_loss", min_delta=1e-3, patience=3)] if USE_EARLY_STOP else []
@@ -252,15 +253,16 @@ def main():
 
     print("Saving final model...")
     trainer.save_model("qwen3_30b_a3b_arc_transduction_sft/final")
-    tokenizer.save_pretrained("qwen3_30b_a3b_arc_transduction_sft/final")
 
     if os.getenv("HF_TOKEN"):
         print("Pushing adapter to Hugging Face Hub...")
-        try:
-            trainer.push_to_hub()  # push adapter/config (not base weights)
-            print("Adapter pushed successfully!")
-        except Exception as e:
-            print(f"[warn] Push to hub failed: {e}")
+        if trainer.accelerator.is_main_process:
+            tokenizer.save_pretrained("qwen3_30b_a3b_arc_transduction_sft/final")
+            # Optional: manual push (Trainer already pushes on save if configured)
+            try:
+                trainer.push_to_hub()
+            except Exception as e:
+                print(f"[warn] Push to hub failed: {e}")
     else:
         print("No HF_TOKEN found, skipping hub push")
 
