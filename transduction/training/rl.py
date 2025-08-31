@@ -59,7 +59,7 @@ if __name__ == "__main__":
     
     # Model and data paths
     #BASE_MODEL = "Qwen/Qwen3-30B-A3B-Instruct-2507"
-    BASE_MODEL = "Qwen/Qwen3-4B-Instruct"
+    BASE_MODEL = "Qwen/Qwen3-4B-Instruct-2507"
     LORA_PATH = "qwen3_30b_a3b_arc_transduction_sft/final"  # SFT LoRA adapter
     DATA_PATH = "transduction/train_dataset.json"  # transduction dataset
     

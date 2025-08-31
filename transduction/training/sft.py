@@ -134,7 +134,7 @@ def main():
     """Main training function."""
     # --- Config ---
     #MODEL_NAME = "Qwen/Qwen3-30B-A3B-Instruct-2507"
-    MODEL_NAME = "Qwen/Qwen3-4B-Instruct"
+    MODEL_NAME = "Qwen/Qwen3-4B-Instruct-2507"
     DATA_FILE = "transduction/train_dataset.json"
     MAX_LEN = 16384
 

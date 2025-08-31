@@ -37,7 +37,7 @@ class ARCTransductionInference:
     Class for performing ARC transduction inference using language models.
     """
     
-    def __init__(self, model_name: str = "Qwen/Qwen3-4B-Instruct", device: str = "auto"):
+    def __init__(self, model_name: str = "Qwen/Qwen3-4B-Instruct-2507", device: str = "auto"):
         """
         Initialize the inference class with a language model.
         
@@ -425,8 +425,8 @@ class ARCTransductionInference:
 def main():
     """Main function for running ARC transduction inference."""
     parser = argparse.ArgumentParser(description='ARC Transduction Inference')
-    parser.add_argument('--model', type=str, default="Qwen/Qwen3-4B-Instruct",
-                       help='HuggingFace model name (default: Qwen/Qwen3-4B-Instruct)')
+    parser.add_argument('--model', type=str, default="Qwen/Qwen3-4B-Instruct-2507",
+                       help='HuggingFace model name (default: Qwen/Qwen3-4B-Instruct-2507)')
     parser.add_argument('--device', type=str, default="auto",
                        help='Device to use (auto, cpu, cuda)')
     parser.add_argument('--data_dir', type=str, default=".",
