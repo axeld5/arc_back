@@ -98,15 +98,6 @@ if __name__ == "__main__":
         torch_dtype=torch.bfloat16,
     )
     
-    # Check if we need to resize embeddings for custom tokenizer (e.g., from new_sft)
-    if len(tokenizer) != base_model.config.vocab_size:
-        print(f"[info] Resizing model embeddings from {base_model.config.vocab_size} to {len(tokenizer)} tokens")
-        base_model.resize_token_embeddings(len(tokenizer))
-        base_model.config.vocab_size = len(tokenizer)
-        base_model.config.bos_token_id = tokenizer.bos_token_id
-        base_model.config.eos_token_id = tokenizer.eos_token_id
-        base_model.config.pad_token_id = tokenizer.pad_token_id
-    
     # Then load the LoRA adapter (will be loaded in 4-bit by default with quantized base model)
     model = PeftModel.from_pretrained(base_model, LORA_PATH)
     
@@ -170,21 +161,8 @@ if __name__ == "__main__":
     prompt_to_expected = {}
     for example in ds:
         prompt_to_expected[example["prompt"]] = example["expected_output"]
-    
-    print(f"Created prompt-to-expected mapping with {len(prompt_to_expected)} entries")
-    
-    # Debug: Check if we have valid expected outputs
-    valid_outputs = sum(1 for expected in prompt_to_expected.values() if expected)
-    empty_outputs = sum(1 for expected in prompt_to_expected.values() if not expected)
-    print(f"Debug: {valid_outputs} entries with valid expected outputs, {empty_outputs} entries with empty expected outputs")
-    
-    # Debug: Show first few expected output shapes
-    for i, (prompt, expected) in enumerate(list(prompt_to_expected.items())[:3]):
-        if expected:
-            print(f"Debug: Expected output {i+1} shape: {len(expected)}x{len(expected[0]) if expected else 0}")
-        else:
-            print(f"Debug: Expected output {i+1}: empty")
-    
+        
+            
     def contextual_reward_function(
         completions: List[str], 
         prompts: List[str],
