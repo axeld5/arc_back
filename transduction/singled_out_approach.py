@@ -322,7 +322,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
     learning_rate: float = 2e-4,
-    num_train_epochs: int = 10,
+    num_train_epochs: int = 100,
     grad_accum: int = 8,
     batch_size: int = 1,
     use_compile: bool = False,
