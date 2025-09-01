@@ -199,7 +199,7 @@ def generate_singled_out_dataset(
     data_dir: str = ".",
     output_file: str = "transduction/train_dataset_singled_out.json",
     problem_id: Optional[str] = None,
-    num_augmentations: int = 300,
+    num_augmentations: int = 5,
     seed: int = 42,
     apply_augmentations: bool = True,
 ) -> Tuple[List[Dict[str, str]], str]:
@@ -322,7 +322,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
     learning_rate: float = 2e-4,
-    num_train_epochs: int = 3,
+    num_train_epochs: int = 10,
     grad_accum: int = 8,
     batch_size: int = 1,
     use_compile: bool = False,
@@ -522,8 +522,9 @@ def run_rl(
     raw_ds = load_dataset("json", data_files=dataset_path, split="train")
 
     def to_rl(ex: Dict[str, Any]) -> Dict[str, Any]:
-        messages = [{"role": "user", "content": ex["input"]}]
-        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        # Use the raw input directly, not wrapped in chat template
+        # This maintains consistency with SFT training format
+        prompt = ex["input"]
         # Parse expected output into grid
         expected_grid: List[List[int]] = []
         if ex.get("output"):
@@ -904,7 +905,7 @@ def main():
     parser.add_argument("--data_dir", type=str, default=".")
     parser.add_argument("--dataset_out", type=str, default="transduction/train_dataset_singled_out.json")
     parser.add_argument("--problem_id", type=str, default=None, help="Specific problem ID to use for training. If None, uses first available.")
-    parser.add_argument("--num_augmentations", type=int, default=300, help="Number of augmented versions to generate from the single problem")
+    parser.add_argument("--num_augmentations", type=int, default=5, help="Number of augmented versions to generate from the single problem")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no_augment", action="store_true")
     parser.add_argument("--skip_gen", action="store_true")
