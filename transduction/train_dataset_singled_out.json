@@ -1,0 +1,42 @@
+[
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n0 7 7\n7 7 7\n0 7 7\nOUTPUT PLACEHOLDER:\n0 0 0\n0 0 0\n0 0 0\nOUTPUT:",
+    "output": "0 0 0 0 7 7 0 7 7\n0 0 0 7 7 7 7 7 7\n0 0 0 0 7 7 0 7 7\n0 7 7 0 7 7 0 7 7\n7 7 7 7 7 7 7 7 7\n0 7 7 0 7 7 0 7 7\n0 0 0 0 7 7 0 7 7\n0 0 0 7 7 7 7 7 7\n0 0 0 0 7 7 0 7 7"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n4 0 4\n0 0 0\n0 4 0\nOUTPUT PLACEHOLDER:\n0 0 0\n2 0 2\n2 0 2\nOUTPUT:",
+    "output": "4 0 4 0 0 0 4 0 4\n0 0 0 0 0 0 0 0 0\n0 4 0 0 0 0 0 4 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 4 0 4 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 4 0 0 0 0"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n0 0 0\n0 0 2\n2 0 2\nOUTPUT PLACEHOLDER:\n0 7 7\n7 7 7\n0 7 7\nOUTPUT:",
+    "output": "0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 2\n0 0 0 0 0 0 2 0 2\n0 0 0 0 0 0 0 0 0\n0 0 2 0 0 0 0 0 2\n2 0 2 0 0 0 2 0 2"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n6 6 0\n6 0 0\n0 6 6\nOUTPUT PLACEHOLDER:\n0 0 0\n0 0 0\n0 0 0\nOUTPUT:",
+    "output": "6 6 0 6 6 0 0 0 0\n6 0 0 6 0 0 0 0 0\n0 6 6 0 6 6 0 0 0\n6 6 0 0 0 0 0 0 0\n6 0 0 0 0 0 0 0 0\n0 6 6 0 0 0 0 0 0\n0 0 0 6 6 0 6 6 0\n0 0 0 6 0 0 6 0 0\n0 0 0 0 6 6 0 6 6"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n2 2 2\n0 0 0\n0 2 2\nOUTPUT PLACEHOLDER:\n0 0 0\n0 0 0\n0 0 0\nOUTPUT:",
+    "output": "2 2 2 2 2 2 2 2 2\n0 0 0 0 0 0 0 0 0\n0 2 2 0 2 2 0 2 2\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 2 2 2 2 2 2\n0 0 0 0 0 0 0 0 0\n0 0 0 0 2 2 0 2 2"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n7 7 0\n7 7 7\n7 7 0\nOUTPUT PLACEHOLDER:\n2 2 0\n0 0 0\n2 2 3\nOUTPUT:",
+    "output": "7 7 0 7 7 0 0 0 0\n7 7 7 7 7 7 0 0 0\n7 7 0 7 7 0 0 0 0\n7 7 0 7 7 0 7 7 0\n7 7 7 7 7 7 7 7 7\n7 7 0 7 7 0 7 7 0\n7 7 0 7 7 0 0 0 0\n7 7 7 7 7 7 0 0 0\n7 7 0 7 7 0 0 0 0"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n0 4 0\n0 0 0\n4 0 4\nOUTPUT PLACEHOLDER:\n0 7 7\n9 0 7\n7 4 7\nOUTPUT:",
+    "output": "0 0 0 0 4 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 4 0 4 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 4 0 0 0 0 0 4 0\n0 0 0 0 0 0 0 0 0\n4 0 4 0 0 0 4 0 4"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n2 0 2\n2 0 0\n0 0 0\nOUTPUT PLACEHOLDER:\n0 0 0\n0 0 0\n0 0 0\nOUTPUT:",
+    "output": "2 0 2 0 0 0 2 0 2\n2 0 0 0 0 0 2 0 0\n0 0 0 0 0 0 0 0 0\n2 0 2 0 0 0 0 0 0\n2 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n6 6 0\n0 0 6\n0 6 6\nOUTPUT PLACEHOLDER:\n0 0 0\n0 0 0\n0 0 0\nOUTPUT:",
+    "output": "6 6 0 6 6 0 0 0 0\n0 0 6 0 0 6 0 0 0\n0 6 6 0 6 6 0 0 0\n0 0 0 0 0 0 6 6 0\n0 0 0 0 0 0 0 0 6\n0 0 0 0 0 0 0 6 6\n0 0 0 6 6 0 6 6 0\n0 0 0 0 0 6 0 0 6\n0 0 0 0 6 6 0 6 6"
+  },
+  {
+    "input": "Solve task 007bbfb7\n\nINPUT:\n2 2 0\n0 0 0\n2 2 2\nOUTPUT PLACEHOLDER:\n6 6 5\n0 3 6\n0 6 6\nOUTPUT:",
+    "output": "2 2 0 2 2 0 0 0 0\n0 0 0 0 0 0 0 0 0\n2 2 2 2 2 2 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n0 0 0 0 0 0 0 0 0\n2 2 0 2 2 0 2 2 0\n0 0 0 0 0 0 0 0 0\n2 2 2 2 2 2 2 2 2"
+  }
+]

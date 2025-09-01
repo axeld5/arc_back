@@ -441,6 +441,43 @@ def run_sft(
         tokenizer.save_pretrained(os.path.join(output_dir, "final"))
     except Exception:
         pass
+    
+    # Simple inference evaluation after SFT
+    print("[sft] Running simple inference evaluation...")
+    try:
+        # Load a sample from the dataset for quick evaluation
+        sample_data = raw[0]  # Get first sample
+        messages = [{"role": "user", "content": sample_data["input"]}]
+        eval_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        
+        # Generate response
+        eval_inputs = tokenizer(eval_prompt, return_tensors="pt", truncation=True, max_length=2048)
+        eval_inputs = {k: v.to(model.device) for k, v in eval_inputs.items()}
+        
+        with torch.no_grad():
+            eval_outputs = model.generate(
+                **eval_inputs,
+                max_new_tokens=512,
+                temperature=0.1,
+                do_sample=True,
+                top_p=0.9,
+                pad_token_id=tokenizer.eos_token_id,
+                eos_token_id=tokenizer.eos_token_id,
+            )
+        
+        generated_text = tokenizer.decode(
+            eval_outputs[0][eval_inputs["input_ids"].shape[1]:], 
+            skip_special_tokens=True
+        ).strip()
+        
+        print("[sft] Sample evaluation:")
+        print(f"[sft] Input: {sample_data['input']}...")
+        print(f"[sft] Expected: {sample_data['output']}...")
+        print(f"[sft] Generated: {generated_text}...")
+        print("[sft] SFT evaluation complete.")
+    except Exception as e:
+        print(f"[sft] Evaluation failed: {e}")
+    
     return os.path.join(output_dir, "final")
 
 
@@ -504,9 +541,23 @@ def run_rl(
     # Build mapping for reward lookup
     p2y = {rec["prompt"]: rec["expected_output"] for rec in ds}
 
+    # Global counter for logging
+    generation_counter = [0]  # Use list to allow modification in nested function
+    
     def contextual_reward(completions: List[str], prompts: List[str], **kwargs: Any) -> List[float]:
         expected = [p2y.get(p, []) for p in prompts]
-        return [float(r) for r in reward_function(completions, expected)]
+        rewards = [float(r) for r in reward_function(completions, expected)]
+        
+        # Print outputs every 5 logging steps (logging_steps=10, so every 50 generations)
+        generation_counter[0] += 1
+        if generation_counter[0] % 50 == 0:
+            print(f"\n[rl] Generation batch #{generation_counter[0]}:")
+            for i, (completion, reward) in enumerate(zip(completions[:3], rewards[:3])):  # Show first 3
+                print(f"[rl] Sample {i+1} (reward={reward:.3f}):")
+                print(f"[rl] Completion: {completion[:150]}...")
+            print("[rl] ---")
+        
+        return rewards
 
     cfg = GRPOConfig(
         importance_sampling_level="sequence",
