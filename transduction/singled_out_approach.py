@@ -1,0 +1,905 @@
+"""
+Singled-out training + inference pipeline for ARC Transduction.
+
+Specs:
+- Data Generation: build samples using ONE input grid, a RANDOM placeholder, and ITS output.
+  • Use ONLY training problems; do NOT use arc-gen.
+  • Optionally apply random augmentations, EXCLUDING upscaling.
+- Train Qwen3-4B-Instruct in two stages: first SFT, then RL.
+- Inference: run three attempts — AIRV, Repeat, and AIRV+Repeat — using the RL adapter.
+
+Notes:
+- This file is self-contained and does not modify existing training/inference modules.
+- It re-implements minimal SFT/RL loops to allow pointing at a custom dataset path.
+- It implements a LoRA-aware inference helper to load base model + adapter.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import random
+import sys
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
+
+# Local imports
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from loader import (
+    list_training_problems,
+    load_training_problem,
+    list_evaluation_problems,
+    load_evaluation_problem,
+)
+from transduction.data_gen import grid_to_row_strings
+from augment import (
+    rotate_90,
+    rotate_180,
+    rotate_270,
+    flip_vertical,
+    flip_horizontal,
+)
+from deaugment import apply_full_deaugmentation
+
+
+# =========================
+# Utility: placeholders
+# =========================
+
+# New prompt format (PROMPT_V2)
+PROMPT_V2 = (
+    "Solve task {task_id}\n\n"
+    "INPUT:\n{input}\n"
+    "OUTPUT PLACEHOLDER:\n{placeholder}\n"
+    "OUTPUT:"
+)
+
+def _random_placeholder_for_grid(
+    reference_grid: List[List[int]],
+    all_matrices: Optional[List[List[List[int]]]] = None,
+    rng: Optional[random.Random] = None,
+) -> str:
+    """
+    Create a random placeholder with same shape as reference_grid.
+    Strategies (no ground-truth leak): zeros, copy compatible matrix, or modified copy.
+    Returns placeholder rows joined by newlines (space-separated cells).
+    """
+    r = rng or random
+    h = len(reference_grid)
+    w = len(reference_grid[0]) if h > 0 else 0
+
+    # Collect compatible matrices (same HxW) from provided pool
+    compatible: List[List[List[int]]] = []
+    if all_matrices:
+        for m in all_matrices:
+            if m and len(m) == h and len(m[0]) == w:
+                compatible.append(m)
+
+    # Sample strategy
+    strategy = r.choice(["zeros", "copy", "modified_copy"]) if compatible else "zeros"
+
+    if strategy == "zeros":
+        matrix = [[0 for _ in range(w)] for _ in range(h)]
+    elif strategy == "copy":
+        chosen = r.choice(compatible)
+        matrix = [row[:] for row in chosen]
+    else:  # modified_copy
+        chosen = r.choice(compatible)
+        matrix = [row[:] for row in chosen]
+        num_mods = min(r.randint(1, max(1, h * w // 4)), h * w)
+        positions = [(i, j) for i in range(h) for j in range(w)]
+        for i, j in r.sample(positions, num_mods):
+            matrix[i][j] = r.randint(0, 9)
+
+    return "\n".join([" ".join(str(c) for c in row) for row in matrix])
+
+
+# =========================
+# Data generation (singled-out)
+# =========================
+
+def _format_single_prompt(input_grid: List[List[int]], placeholder_rows: str, task_id: str) -> str:
+    """Format a single-input prompt with PROMPT_V2."""
+    input_str = "\n".join(grid_to_row_strings(input_grid))
+    return PROMPT_V2.format(task_id=task_id, input=input_str, placeholder=placeholder_rows)
+
+
+def _apply_selected_augmentations_no_upscale(
+    problem: Dict[str, Any],
+    selected: List[str],
+    rng: Optional[random.Random] = None,
+) -> Tuple[Dict[str, Any], List[str], Dict[str, Any]]:
+    """
+    Apply a sequence of augmentations to the entire problem, excluding upscaling.
+    Supported ops: rotate_90/180/270, flip_vertical/horizontal, color_permutation (no upscaling).
+    Returns (augmented_problem, applied_augmentations, augmentation_params) where augmentation_params
+    mirrors the legacy structure expected by deaugment.apply_full_deaugmentation for color_permutation.
+    """
+    r = rng or random
+
+    # Shallow copy and then mutate grids
+    from copy import deepcopy
+
+    augmented = deepcopy(problem)
+    applied: List[str] = []
+    aug_params: Dict[str, Any] = {}
+
+    def _map_grids(fn):
+        # Apply to all input/output grids in train/test (and ignore arc-gen by spec)
+        if "train" in augmented:
+            for ex in augmented["train"]:
+                if "input" in ex:
+                    ex["input"] = fn(ex["input"])  # type: ignore
+                if "output" in ex:
+                    ex["output"] = fn(ex["output"])  # type: ignore
+        if "test" in augmented:
+            for ex in augmented["test"]:
+                if "input" in ex:
+                    ex["input"] = fn(ex["input"])  # type: ignore
+                if "output" in ex:
+                    ex["output"] = fn(ex["output"])  # type: ignore
+
+    for name in selected:
+        if name == "color_permutation":
+            colors = list(range(10))
+            shuffled = colors[:]
+            r.shuffle(shuffled)
+            cmap = {c: shuffled[i] for i, c in enumerate(colors)}
+
+            def _apply_cperm(grid: List[List[int]]):
+                return [[cmap.get(v, v) for v in row] for row in grid]
+
+            _map_grids(_apply_cperm)
+            aug_params.setdefault("color_permutation", {})["color_map"] = cmap
+            applied.append("color_permutation")
+        elif name == "rotate_90":
+            _map_grids(rotate_90)
+            applied.append("rotate_90")
+        elif name == "rotate_180":
+            _map_grids(rotate_180)
+            applied.append("rotate_180")
+        elif name == "rotate_270":
+            _map_grids(rotate_270)
+            applied.append("rotate_270")
+        elif name == "flip_vertical":
+            _map_grids(flip_vertical)
+            applied.append("flip_vertical")
+        elif name == "flip_horizontal":
+            _map_grids(flip_horizontal)
+            applied.append("flip_horizontal")
+        else:
+            # Skip unsupported ops here (e.g., upscale)
+            continue
+
+    return augmented, applied, {"augmentation_params": aug_params}
+
+
+def _random_augmentation_sequence_no_upscale(rng: Optional[random.Random] = None) -> List[str]:
+    r = rng or random
+    allowed = [
+        "rotate_90",
+        "rotate_180",
+        "rotate_270",
+        "flip_vertical",
+        "flip_horizontal",
+        "color_permutation",
+        # sample_permutation is ignored here because it doesn't affect test output geometry
+    ]
+    k = r.randint(0, 3)  # 0-3 ops
+    if k == 0:
+        return []
+    return r.sample(allowed, k)
+
+
+def generate_singled_out_dataset(
+    data_dir: str = ".",
+    output_file: str = "transduction/train_dataset_singled_out.json",
+    max_problems: Optional[int] = None,
+    seed: int = 42,
+    apply_augmentations: bool = True,
+) -> List[Dict[str, str]]:
+    """
+    Build dataset samples where each sample contains a single input grid as TEST INPUT,
+    a random placeholder of the same shape, and the corresponding output as target.
+
+    - Uses only training problems.
+    - Excludes arc-gen.
+    - Optionally applies random augmentations to the whole problem, excluding upscaling.
+    """
+    r = random.Random(seed)
+    problem_ids = list_training_problems(data_dir)
+    if max_problems is not None:
+        problem_ids = problem_ids[:max_problems]
+
+    samples: List[Dict[str, str]] = []
+
+    for idx, pid in enumerate(problem_ids):
+        try:
+            problem = load_training_problem(pid, data_dir)
+        except Exception as e:
+            print(f"[warn] Skipping problem {pid}: {e}")
+            continue
+
+        if not problem or not problem.get("train"):
+            continue
+
+        # Optional augmentations (exclude upscaling)
+        if apply_augmentations:
+            selected = _random_augmentation_sequence_no_upscale(r)
+            if selected:
+                problem, _, _ = _apply_selected_augmentations_no_upscale(problem, selected, r)
+
+        # Build matrix pool for placeholders (inputs/outputs from train + test inputs only)
+        matrix_pool: List[List[List[int]]] = []
+        for ex in problem.get("train", []):
+            if "input" in ex:
+                matrix_pool.append(ex["input"])  # type: ignore
+            if "output" in ex:
+                matrix_pool.append(ex["output"])  # type: ignore
+        for ex in problem.get("test", []):
+            if "input" in ex:
+                matrix_pool.append(ex["input"])  # type: ignore
+
+        # Create one sample per available train pair
+        for ex in problem.get("train", []):
+            input_grid = ex.get("input")
+            output_grid = ex.get("output")
+            if not isinstance(input_grid, list) or not isinstance(output_grid, list):
+                continue
+
+            placeholder = _random_placeholder_for_grid(input_grid, matrix_pool, r)
+            prompt = _format_single_prompt(input_grid, placeholder, task_id=pid)
+            target_output_str = "\n".join(grid_to_row_strings(output_grid))
+            samples.append({"input": prompt, "output": target_output_str})
+
+        if (idx + 1) % 50 == 0:
+            print(f"[info] Processed {idx+1}/{len(problem_ids)} training problems")
+
+    # Save
+    out_path = Path(output_file)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with open(out_path, "w", encoding="utf-8") as f:
+        json.dump(samples, f, indent=2, ensure_ascii=False)
+    print(f"[info] Saved {len(samples)} samples to {output_file}")
+    return samples
+
+
+# =========================
+# Training: SFT and RL
+# =========================
+
+def run_sft(
+    dataset_path: str,
+    output_dir: str = "qwen3_4b_singled_out_sft",
+    base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
+    learning_rate: float = 2e-4,
+    num_train_epochs: int = 3,
+    grad_accum: int = 8,
+    batch_size: int = 1,
+    use_compile: bool = False,
+):
+    """Run minimal SFT on the singled-out dataset with LoRA."""
+    import platform
+    import torch
+    from datasets import load_dataset
+    from dotenv import load_dotenv
+    from huggingface_hub import login
+    from peft import LoraConfig, get_peft_model
+    from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
+    from trl import SFTConfig, SFTTrainer
+
+    def pick_attn_impl() -> str:
+        if platform.system() == "Linux":
+            try:
+                import importlib
+                importlib.import_module("flash_attn")
+                return "flash_attention_2"
+            except Exception:
+                return "sdpa"
+        return "sdpa"
+
+    def preprocess(example: Dict[str, Any], tokenizer, max_len: int) -> Dict[str, Any]:
+        messages = [
+            {"role": "user", "content": example["input"]},
+            {"role": "assistant", "content": example["output"]},
+        ]
+        full_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
+        prefix_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+        full_tokens = tokenizer(full_text, truncation=True, max_length=max_len, padding=False)
+        prefix_tokens = tokenizer(prefix_text, truncation=True, max_length=max_len, padding=False)
+        input_ids = full_tokens["input_ids"]
+        attention_mask = full_tokens["attention_mask"]
+        labels = list(input_ids)
+        prefix_len = len(prefix_tokens["input_ids"])
+        for i in range(min(prefix_len, len(labels))):
+            labels[i] = -100
+        return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
+
+    # Auth
+    load_dotenv()
+    if os.getenv("HF_TOKEN"):
+        try:
+            login(os.getenv("HF_TOKEN"))
+        except Exception:
+            pass
+
+    use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True, use_fast=True)
+    tokenizer.padding_side = "right"
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    attn_impl = pick_attn_impl()
+    quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
+        trust_remote_code=True,
+        quantization_config=quant,
+        attn_implementation=attn_impl,
+    )
+
+    # LoRA
+    lora_cfg = LoraConfig(
+        r=32,
+        lora_alpha=64,
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        bias="none",
+        lora_dropout=0.05,
+        task_type="CAUSAL_LM",
+    )
+    model = get_peft_model(model, lora_cfg)  # type: ignore
+    try:
+        model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
+        if hasattr(model, "config"):
+            model.config.use_cache = False
+    except Exception:
+        pass
+
+    # Dataset
+    raw = load_dataset("json", data_files=dataset_path, split="train")
+    tokenised = raw.map(lambda ex: preprocess(ex, tokenizer, 4096), remove_columns=raw.column_names, num_proc=max(1, (os.cpu_count() or 4) // 2))
+
+    # Trainer
+    args = SFTConfig(
+        output_dir=output_dir,
+        packing=False,
+        per_device_train_batch_size=batch_size,
+        gradient_accumulation_steps=grad_accum,
+        num_train_epochs=num_train_epochs,
+        learning_rate=learning_rate,
+        warmup_ratio=0.1,
+        lr_scheduler_type="cosine",
+        fp16=not use_bf16,
+        bf16=use_bf16,
+        logging_steps=25,
+        save_steps=200,
+        save_total_limit=2,
+        report_to="none",
+        remove_unused_columns=False,
+        optim="paged_adamw_8bit",
+        ddp_find_unused_parameters=False,
+    )
+
+    from trl import SFTTrainer
+
+    trainer = SFTTrainer(model=model, args=args, train_dataset=tokenised)
+    print("[sft] Starting training...")
+    trainer.train()
+    print("[sft] Saving final adapter...")
+    trainer.save_model(os.path.join(output_dir, "final"))
+    try:
+        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+    except Exception:
+        pass
+    return os.path.join(output_dir, "final")
+
+
+def run_rl(
+    base_model: str,
+    lora_path: str,
+    dataset_path: str,
+    output_dir: str = "qwen3_4b_singled_out_rl",
+    learning_rate: float = 1e-5,
+    num_train_epochs: int = 1,
+    grad_accum: int = 4,
+    num_generations: int = 4,
+):
+    """Run minimal GRPO on top of SFT LoRA using the same dataset."""
+    import platform
+    import torch
+    from datasets import load_dataset
+    from peft import PeftModel
+    from transformers import AutoTokenizer, AutoModelForCausalLM
+    from trl import GRPOConfig, GRPOTrainer
+    from transduction.training.reward_fn import reward_function
+
+    # Tokenizer (prefer LoRA path)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(lora_path, trust_remote_code=True)
+    except Exception:
+        tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token
+
+    attn_impl = "flash_attention_2" if platform.system() == "Linux" else "sdpa"
+    base = AutoModelForCausalLM.from_pretrained(
+        base_model,
+        trust_remote_code=True,
+        attn_implementation=attn_impl,
+        torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+    )
+    model = PeftModel.from_pretrained(base, lora_path)
+    model.enable_input_require_grads()
+
+    # Build RL dataset format
+    raw_ds = load_dataset("json", data_files=dataset_path, split="train")
+
+    def to_rl(ex: Dict[str, Any]) -> Dict[str, Any]:
+        messages = [{"role": "user", "content": ex["input"]}]
+        prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        # Parse expected output into grid
+        expected_grid: List[List[int]] = []
+        if ex.get("output"):
+            try:
+                rows = ex["output"].strip().split("\n")
+                for row in rows:
+                    if row.strip():
+                        expected_grid.append([int(x) for x in row.strip().split()])
+            except Exception:
+                expected_grid = []
+        return {"prompt": prompt, "expected_output": expected_grid, "original_input": ex["input"], "original_output": ex["output"]}
+
+    ds = raw_ds.map(to_rl, remove_columns=raw_ds.column_names, num_proc=4)
+
+    # Build mapping for reward lookup
+    p2y = {rec["prompt"]: rec["expected_output"] for rec in ds}
+
+    def contextual_reward(completions: List[str], prompts: List[str], **kwargs: Any) -> List[float]:
+        expected = [p2y.get(p, []) for p in prompts]
+        return [float(r) for r in reward_function(completions, expected)]
+
+    cfg = GRPOConfig(
+        importance_sampling_level="sequence",
+        loss_type="grpo",
+        output_dir=output_dir,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=grad_accum,
+        beta=0.04,
+        epsilon=3e-4,
+        num_train_epochs=num_train_epochs,
+        learning_rate=learning_rate,
+        lr_scheduler_type="cosine",
+        logging_steps=10,
+        save_steps=200,
+        optim="paged_adamw_8bit",
+        report_to="none",
+        use_vllm=False,
+        num_generations=num_generations,
+        max_prompt_length=4096,
+        max_completion_length=2048,
+        remove_unused_columns=False,
+        ddp_find_unused_parameters=False,
+    )
+
+    trainer = GRPOTrainer(model=model, processing_class=tokenizer, reward_funcs=[contextual_reward], args=cfg, train_dataset=ds)
+    print("[rl] Starting training...")
+    trainer.train()
+    print("[rl] Saving final adapter...")
+    trainer.save_model(os.path.join(output_dir, "final"))
+    try:
+        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+    except Exception:
+        pass
+    return os.path.join(output_dir, "final")
+
+
+# =========================
+# LoRA-aware inference helper
+# =========================
+
+class LoRAARCTransductionInference:
+    def __init__(self, base_model: str, lora_path: Optional[str] = None, device: str = "auto"):
+        import torch
+        from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
+        from peft import PeftModel
+
+        self.device = self._get_device(device)
+        # Tokenizer: try LoRA path first for added tokens
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(lora_path or base_model, trust_remote_code=True)
+        except Exception:
+            self.tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token
+
+        self.model = AutoModelForCausalLM.from_pretrained(
+            base_model,
+            device_map="auto" if self.device != "cpu" else None,
+            torch_dtype=torch.bfloat16 if torch.cuda.is_available() else torch.float32,
+            trust_remote_code=True,
+        )
+        if lora_path:
+            self.model = PeftModel.from_pretrained(self.model, lora_path)
+
+        # Resize embeddings if tokenizer changed
+        if len(self.tokenizer) != self.model.config.vocab_size:
+            self.model.resize_token_embeddings(len(self.tokenizer))
+            self.model.config.vocab_size = len(self.tokenizer)
+            self.model.config.bos_token_id = self.tokenizer.bos_token_id
+            self.model.config.eos_token_id = self.tokenizer.eos_token_id
+            self.model.config.pad_token_id = self.tokenizer.pad_token_id
+
+        if self.device == "cpu":
+            self.model = self.model.to(self.device)
+
+        self.generation_config = GenerationConfig(
+            max_new_tokens=2048,
+            temperature=0.1,
+            do_sample=True,
+            top_p=0.9,
+            pad_token_id=self.tokenizer.eos_token_id,
+            eos_token_id=self.tokenizer.eos_token_id,
+        )
+
+    def _get_device(self, device: str) -> str:
+        import torch
+        if device == "auto":
+            return "cuda" if torch.cuda.is_available() else "cpu"
+        return device
+
+    def _format_prompt(self, problem_data: Dict[str, Any], train_sample_count: int = 3, test_example_idx: int = 0, task_id: str = "task") -> str:
+        test_examples = problem_data.get("test", [])
+        if not test_examples:
+            raise ValueError("No test examples available")
+        test_example = test_examples[test_example_idx % len(test_examples)]
+        input_str = "\n".join(grid_to_row_strings(test_example["input"]))
+        rows = len(test_example["input"]) if isinstance(test_example.get("input"), list) else 0
+        cols = len(test_example["input"][0]) if rows > 0 else 0
+        placeholder = "\n".join([" ".join(["0"] * cols) for _ in range(rows)])
+        return PROMPT_V2.format(task_id=task_id, input=input_str, placeholder=placeholder)
+
+    def generate(self, prompt: str) -> str:
+        import torch
+        inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        with torch.no_grad():
+            outputs = self.model.generate(**inputs, generation_config=self.generation_config, pad_token_id=self.tokenizer.eos_token_id)
+        return self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+
+    @staticmethod
+    def parse_grid(response: str) -> Optional[List[List[int]]]:
+        import re
+        s = response.strip()
+        if "\n" in s:
+            m = re.search(r"[0-9\n\s]+", s)
+            if m:
+                grid_str = m.group()
+                try:
+                    rows = grid_str.split("\n")
+                    grid: List[List[int]] = []
+                    for row in rows:
+                        if row.strip():
+                            parts = row.strip().split()
+                            if len(parts) > 1:
+                                grid_row = [int(p) for p in parts if p.isdigit() or (p and p[0] == '-' and p[1:].isdigit())]
+                            else:
+                                grid_row = [int(ch) for ch in row if ch.isdigit()]
+                            if grid_row:
+                                grid.append(grid_row)
+                    if grid:
+                        return grid
+                except Exception:
+                    pass
+        return None
+
+    @staticmethod
+    def evaluate(pred: Optional[List[List[int]]], gt: List[List[int]]) -> bool:
+        return pred == gt if pred is not None else False
+
+    def infer_single_problem(self, problem_data: Dict[str, Any], train_sample_count: int = 3, test_example_idx: int = 0, verbose: bool = False, task_id: Optional[str] = None) -> Dict[str, Any]:
+        prompt = self._format_prompt(problem_data, train_sample_count, test_example_idx, task_id or "task")
+        resp = self.generate(prompt)
+        pred = self.parse_grid(resp)
+        gt = problem_data["test"][test_example_idx % len(problem_data["test"])]["output"]
+        res = {
+            "prompt": prompt,
+            "response": resp,
+            "predicted_grid": pred,
+            "ground_truth": gt,
+            "is_correct": self.evaluate(pred, gt),
+            "train_sample_count": train_sample_count,
+            "test_example_idx": test_example_idx,
+        }
+        if verbose:
+            print(f"[infer] correct={res['is_correct']}")
+        return res
+
+
+# =========================
+# Inference strategies (no-upscale AIRV, Repeat, AIRV+Repeat)
+# =========================
+
+def _create_augmented_versions_no_upscale(
+    problem_data: Dict[str, Any],
+    num_versions: int = 8,
+    include_original: bool = True,
+    rng: Optional[random.Random] = None,
+) -> List[Tuple[Dict[str, Any], List[str], Dict[str, Any]]]:
+    r = rng or random
+    versions: List[Tuple[Dict[str, Any], List[str], Dict[str, Any]]] = []
+    if include_original:
+        versions.append((json.loads(json.dumps(problem_data)), [], {}))
+    for _ in range(num_versions):
+        seq = _random_augmentation_sequence_no_upscale(r)
+        aug_prob, applied, meta = _apply_selected_augmentations_no_upscale(problem_data, seq, r)
+        versions.append((aug_prob, applied, meta))
+    return versions
+
+
+def _revert_predicted_grid(
+    predicted_grid: Optional[List[List[int]]],
+    augmentation_list: List[str],
+    metadata: Dict[str, Any],
+) -> Optional[List[List[int]]]:
+    if predicted_grid is None or not augmentation_list:
+        return predicted_grid
+    try:
+        dummy_problem = {"test": [{"output": predicted_grid}]}
+        reverted = apply_full_deaugmentation(dummy_problem, augmentation_list, metadata)
+        return reverted["test"][0]["output"]
+    except Exception:
+        return None
+
+
+def _vote_on_grids(valid: List[List[List[int]]]) -> Tuple[Optional[List[List[int]]], Dict[str, int]]:
+    if not valid:
+        return None, {}
+    import json as _json
+    counts: Dict[str, int] = {}
+    for g in valid:
+        s = _json.dumps(g)
+        counts[s] = counts.get(s, 0) + 1
+    winner = max(counts, key=counts.get)
+    return _json.loads(winner), counts
+
+
+def run_airv_no_upscale(
+    inference: LoRAARCTransductionInference,
+    problem_data: Dict[str, Any],
+    train_sample_count: int = 3,
+    test_example_idx: int = 0,
+    num_versions: int = 8,
+    include_original: bool = True,
+    task_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    versions = _create_augmented_versions_no_upscale(problem_data, num_versions, include_original)
+    results = []
+    for i, (prob_v, augs, meta) in enumerate(versions):
+        try:
+            r = inference.infer_single_problem(prob_v, train_sample_count, test_example_idx, verbose=False, task_id=task_id)
+            results.append({"version_idx": i, "augmentations": augs, "metadata": meta, "raw_prediction": r["predicted_grid"]})
+        except Exception as e:
+            print(f"[warn] AIRV inference failed on version {i}: {e}")
+
+    reverted: List[List[List[int]]] = []
+    reversion_info: List[Dict[str, Any]] = []
+    for rec in results:
+        if not rec["augmentations"]:
+            if rec["raw_prediction"] is not None:
+                reverted.append(rec["raw_prediction"])
+                reversion_info.append({"version_idx": rec["version_idx"], "reversion_success": True})
+            continue
+        rev = _revert_predicted_grid(rec["raw_prediction"], rec["augmentations"], rec["metadata"])
+        if rev is not None:
+            reverted.append(rev)
+            reversion_info.append({"version_idx": rec["version_idx"], "reversion_success": True})
+        else:
+            reversion_info.append({"version_idx": rec["version_idx"], "reversion_success": False})
+
+    pred, vote_counts = _vote_on_grids(reverted)
+    gt = problem_data["test"][test_example_idx % len(problem_data["test"])]["output"]
+    is_correct = LoRAARCTransductionInference.evaluate(pred, gt)
+    return {
+        "predicted_grid": pred,
+        "ground_truth": gt,
+        "is_correct": is_correct,
+        "num_versions": len(versions),
+        "valid_outputs": len(reverted),
+        "vote_counts": vote_counts,
+        "reversion_info": reversion_info,
+    }
+
+
+def run_repeat(
+    inference: LoRAARCTransductionInference,
+    problem_data: Dict[str, Any],
+    train_sample_count: int = 3,
+    test_example_idx: int = 0,
+    num_passes: int = 2,
+    task_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    # First pass
+    first = inference.infer_single_problem(problem_data, train_sample_count, test_example_idx, verbose=False, task_id=task_id)
+    test_ex = problem_data["test"][test_example_idx % len(problem_data["test"])].copy()
+
+    # Build placeholder from first prediction (or zeros if None)
+    def _grid_to_placeholder(g: Optional[List[List[int]]], ref: List[List[int]]) -> str:
+        if g is None:
+            rows, cols = len(ref), (len(ref[0]) if ref else 0)
+            return "\n".join([" ".join(["0"] * cols) for _ in range(rows)])
+        return "\n".join([" ".join(str(c) for c in row) for row in g])
+
+    placeholder = _grid_to_placeholder(first["predicted_grid"], test_ex["input"])
+
+    # Build PROMPT_V2
+    test_input_str = "\n".join(grid_to_row_strings(test_ex["input"]))
+    prompt = PROMPT_V2.format(task_id=(task_id or "task"), input=test_input_str, placeholder=placeholder)
+
+    resp = inference.generate(prompt)
+    pred = LoRAARCTransductionInference.parse_grid(resp)
+    gt = test_ex["output"]
+    results = [first]
+    results.append({
+        "prompt": prompt,
+        "response": resp,
+        "predicted_grid": pred,
+        "ground_truth": gt,
+        "is_correct": LoRAARCTransductionInference.evaluate(pred, gt),
+    })
+    final = results[-1]
+    final["all_pass_results"] = [
+        {"pass_idx": 1, "predicted_grid": results[0].get("predicted_grid"), "is_correct": results[0].get("is_correct")},
+        {"pass_idx": 2, "predicted_grid": final.get("predicted_grid"), "is_correct": final.get("is_correct")},
+    ]
+    final["pass_count"] = min(num_passes, 2)
+    final["inference_method"] = "repeat_placeholder"
+    return final
+
+
+def run_airv_plus_repeat(
+    inference: LoRAARCTransductionInference,
+    problem_data: Dict[str, Any],
+    train_sample_count: int = 3,
+    test_example_idx: int = 0,
+    num_versions: int = 8,
+    include_original: bool = True,
+    task_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    # AIRV first
+    airv_res = run_airv_no_upscale(inference, problem_data, train_sample_count, test_example_idx, num_versions, include_original, task_id=task_id)
+    test_ex = problem_data["test"][test_example_idx % len(problem_data["test"])].copy()
+
+    # Repeat pass using AIRV-voted prediction as placeholder
+    def _grid_to_placeholder(g: Optional[List[List[int]]], ref: List[List[int]]) -> str:
+        if g is None:
+            rows, cols = len(ref), (len(ref[0]) if ref else 0)
+            return "\n".join([" ".join(["0"] * cols) for _ in range(rows)])
+        return "\n".join([" ".join(str(c) for c in row) for row in g])
+
+    placeholder = _grid_to_placeholder(airv_res["predicted_grid"], test_ex["input"])
+    test_input_str = "\n".join(grid_to_row_strings(test_ex["input"]))
+    prompt = PROMPT_V2.format(task_id=(task_id or "task"), input=test_input_str, placeholder=placeholder)
+    resp = inference.generate(prompt)
+    pred = LoRAARCTransductionInference.parse_grid(resp)
+    gt = test_ex["output"]
+    return {
+        "airv_pred": airv_res["predicted_grid"],
+        "final_pred": pred,
+        "ground_truth": gt,
+        "is_correct": LoRAARCTransductionInference.evaluate(pred, gt),
+        "airv_meta": {k: airv_res[k] for k in ("num_versions", "valid_outputs", "vote_counts")},
+    }
+
+
+# =========================
+# CLI Orchestrator
+# =========================
+
+def main():
+    parser = argparse.ArgumentParser(description="Singled-out ARC Transduction pipeline")
+    parser.add_argument("--data_dir", type=str, default=".")
+    parser.add_argument("--dataset_out", type=str, default="transduction/train_dataset_singled_out.json")
+    parser.add_argument("--max_problems", type=int, default=None)
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--no_augment", action="store_true")
+    parser.add_argument("--skip_gen", action="store_true")
+    parser.add_argument("--skip_sft", action="store_true")
+    parser.add_argument("--skip_rl", action="store_true")
+    parser.add_argument("--skip_infer", action="store_true")
+    parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-4B-Instruct-2507")
+    parser.add_argument("--sft_out", type=str, default="qwen3_4b_singled_out_sft")
+    parser.add_argument("--rl_out", type=str, default="qwen3_4b_singled_out_rl")
+    parser.add_argument("--infer_problem_id", type=str, default=None, help="Evaluation problem ID to test. If None, picks first.")
+    parser.add_argument("--infer_dataset", choices=["evaluation", "training"], default="evaluation")
+    parser.add_argument("--airv_versions", type=int, default=8)
+    parser.add_argument("--device", type=str, default="auto")
+    parser.add_argument("--task_id", type=str, default=None, help="Optional task id; defaults to problem id for evaluation/training problems.")
+
+    args = parser.parse_args()
+
+    dataset_path = args.dataset_out
+    if not args.skip_gen:
+        generate_singled_out_dataset(
+            data_dir=args.data_dir,
+            output_file=dataset_path,
+            max_problems=args.max_problems,
+            seed=args.seed,
+            apply_augmentations=not args.no_augment,
+        )
+    else:
+        if not Path(dataset_path).exists():
+            raise FileNotFoundError(f"Dataset not found at {dataset_path}. Remove --skip_gen or fix path.")
+
+    sft_final = os.path.join(args.sft_out, "final")
+    if not args.skip_sft:
+        sft_final = run_sft(dataset_path=dataset_path, output_dir=args.sft_out, base_model=args.base_model)
+    else:
+        if not Path(sft_final).exists():
+            raise FileNotFoundError(f"SFT adapter not found at {sft_final}. Remove --skip_sft or fix path.")
+
+    rl_final = os.path.join(args.rl_out, "final")
+    if not args.skip_rl:
+        rl_final = run_rl(base_model=args.base_model, lora_path=sft_final, dataset_path=dataset_path, output_dir=args.rl_out)
+    else:
+        if not Path(rl_final).exists():
+            print(f"[warn] RL adapter not found at {rl_final}. Falling back to SFT adapter for inference.")
+            rl_final = sft_final
+
+    if args.skip_infer:
+        return
+
+    # Prepare a problem for inference
+    if args.infer_problem_id:
+        pid = args.infer_problem_id
+    else:
+        if args.infer_dataset == "evaluation":
+            pids = list_evaluation_problems(args.data_dir)
+        else:
+            pids = list_training_problems(args.data_dir)
+        if not pids:
+            raise RuntimeError("No problems available for inference.")
+        pid = pids[0]
+
+    print(f"[infer] Using problem {pid} from {args.infer_dataset} set")
+    if args.infer_dataset == "evaluation":
+        problem = load_evaluation_problem(pid, args.data_dir)
+    else:
+        problem = load_training_problem(pid, args.data_dir)
+
+    # Choose task_id: user-provided or problem id
+    task_id = args.task_id or pid
+
+    # LoRA-aware inference using RL (or SFT) adapter
+    inf = LoRAARCTransductionInference(base_model=args.base_model, lora_path=rl_final, device=args.device)
+
+    # Attempt 1: AIRV (no upscaling)
+    airv = run_airv_no_upscale(inf, problem, train_sample_count=3, test_example_idx=0, num_versions=args.airv_versions, include_original=True, task_id=task_id)
+    print(f"[AIRV] correct={airv['is_correct']} votes={airv['vote_counts']}")
+
+    # Attempt 2: Repeat
+    repeat = run_repeat(inf, problem, train_sample_count=3, test_example_idx=0, num_passes=2, task_id=task_id)
+    print(f"[Repeat] correct={repeat['is_correct']}")
+
+    # Attempt 3: AIRV + Repeat
+    combo = run_airv_plus_repeat(inf, problem, train_sample_count=3, test_example_idx=0, num_versions=args.airv_versions, include_original=True, task_id=task_id)
+    print(f"[AIRV+Repeat] correct={combo['is_correct']}")
+
+    # Save a small summary next to dataset
+    summary = {
+        "problem_id": pid,
+        "airv": {k: airv[k] for k in ("is_correct", "vote_counts")},
+        "repeat": {"is_correct": repeat.get("is_correct")},
+        "airv_plus_repeat": {"is_correct": combo.get("is_correct")},
+    }
+    with open("transduction/singled_out_results.json", "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    print("[infer] Results saved to transduction/singled_out_results.json")
+
+
+if __name__ == "__main__":
+    main()
+
+

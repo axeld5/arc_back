@@ -59,7 +59,7 @@ echo "✓ RL training completed successfully"
 
 # Step 6: Run evaluation
 echo "Step 6: Starting evaluation with $N_GPUS GPUs..."
-uv run python transduction/eval_comprehensive.py --categories standard airv ttft repeat --model_name sft --max_problems 5 --print_model_outputs
+uv run python transduction/eval_comprehensive.py --categories ttft --model_name sft --max_problems 25 --print_model_outputs
 echo "✓ Evaluation completed successfully"
 
 echo "=================================================="
