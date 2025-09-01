@@ -310,6 +310,37 @@ def generate_singled_out_dataset(
         json.dump(samples, f, indent=2, ensure_ascii=False)
     print(f"[info] Saved {len(samples)} samples to {output_file}")
     print(f"[info] Total samples: {len(samples)} (from {num_augmentations} augmentations × {len(base_problem['train'])} train examples)")
+    
+    # Calculate token statistics using tiktoken
+    try:
+        import tiktoken
+        
+        # Use cl100k_base encoding (GPT-4 tokenizer) as a standard reference
+        encoding = tiktoken.get_encoding("cl100k_base")
+        
+        token_counts = []
+        for sample in samples:
+            # Count tokens for the full sample (input + output)
+            full_text = sample["input"] + "\n" + sample["output"]
+            token_count = len(encoding.encode(full_text))
+            token_counts.append(token_count)
+        
+        if token_counts:
+            avg_tokens = sum(token_counts) / len(token_counts)
+            min_tokens = min(token_counts)
+            max_tokens = max(token_counts)
+            
+            print(f"[info] Token statistics (using tiktoken cl100k_base):")
+            print(f"[info]   Average tokens per sample: {avg_tokens:.1f}")
+            print(f"[info]   Min tokens: {min_tokens}")
+            print(f"[info]   Max tokens: {max_tokens}")
+        else:
+            print("[info] No samples to analyze for token statistics")
+            
+    except ImportError:
+        print("[warning] tiktoken not available, skipping token statistics")
+    except Exception as e:
+        print(f"[warning] Error calculating token statistics: {e}")
     return samples, selected_pid
 
 
