@@ -449,7 +449,7 @@ def run_sft(
     lora_cfg = LoraConfig(
         r=256, lora_alpha=64, lora_dropout=0.1,
         bias="none", task_type="CAUSAL_LM",
-        target_modules="all_linear",
+        target_modules="all-linear",
         modules_to_save=["lm_head"],  # helps tiny-data overfit
     )
     model = get_peft_model(model, lora_cfg)
