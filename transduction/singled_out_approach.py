@@ -199,7 +199,7 @@ def generate_singled_out_dataset(
     data_dir: str = ".",
     output_file: str = "transduction/train_dataset_singled_out.json",
     problem_id: Optional[str] = None,
-    num_augmentations: int = 5,
+    num_augmentations: int = 30,
     seed: int = 42,
     apply_augmentations: bool = True,
 ) -> Tuple[List[Dict[str, str]], str]:
@@ -905,7 +905,7 @@ def main():
     parser.add_argument("--data_dir", type=str, default=".")
     parser.add_argument("--dataset_out", type=str, default="transduction/train_dataset_singled_out.json")
     parser.add_argument("--problem_id", type=str, default=None, help="Specific problem ID to use for training. If None, uses first available.")
-    parser.add_argument("--num_augmentations", type=int, default=5, help="Number of augmented versions to generate from the single problem")
+    parser.add_argument("--num_augmentations", type=int, default=30, help="Number of augmented versions to generate from the single problem")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no_augment", action="store_true")
     parser.add_argument("--skip_gen", action="store_true")
