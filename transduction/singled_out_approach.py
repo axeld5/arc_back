@@ -348,6 +348,33 @@ def generate_singled_out_dataset(
 # Training: SFT and RL
 # =========================
 
+# drop-in, works with pre-tokenized examples that already have input_ids/attention_mask/labels
+from dataclasses import dataclass
+from typing import List, Dict
+import torch
+
+@dataclass
+class DataCollatorKeepLabels:
+    pad_token_id: int
+    label_pad_token_id: int = -100
+
+    def __call__(self, features: List[Dict]):
+        max_len = max(len(f["input_ids"]) for f in features)
+        input_ids, attn, labels = [], [], []
+        for f in features:
+            L = len(f["input_ids"])
+            pad = max_len - L
+            input_ids.append(f["input_ids"] + [self.pad_token_id]*pad)
+            attn.append(f["attention_mask"] + [0]*pad)
+            labels.append(f["labels"] + [self.label_pad_token_id]*pad)
+        batch = {
+            "input_ids": torch.tensor(input_ids, dtype=torch.long),
+            "attention_mask": torch.tensor(attn, dtype=torch.long),
+            "labels": torch.tensor(labels, dtype=torch.long),
+        }
+        return batch
+
+
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
@@ -476,7 +503,13 @@ def run_sft(
 
     from trl import SFTTrainer
 
-    trainer = SFTTrainer(model=model, args=args, train_dataset=tokenised)
+    collator = DataCollatorKeepLabels(pad_token_id=tokenizer.pad_token_id)
+    trainer = SFTTrainer(
+        model=model,
+        args=args,
+        train_dataset=tokenised,
+        data_collator=collator,  
+    )
     print("[sft] Starting training...")
     trainer.train()
     print("[sft] Saving final adapter...")
