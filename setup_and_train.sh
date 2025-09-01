@@ -30,6 +30,9 @@ echo "Step 1: Installing astral-uv..."
 curl -LsSf https://astral.sh/uv/install.sh | sh
 echo "✓ astral-uv installed successfully"
 
+uv venv myenv
+source myenv/bin/activate
+
 # Step 2: Sync dependencies
 echo "Step 2: Syncing dependencies..."
 uv sync

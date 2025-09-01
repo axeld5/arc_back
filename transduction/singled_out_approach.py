@@ -2,16 +2,18 @@
 Singled-out training + inference pipeline for ARC Transduction.
 
 Specs:
-- Data Generation: build samples using ONE input grid, a RANDOM placeholder, and ITS output.
-  • Use ONLY training problems; do NOT use arc-gen.
-  • Optionally apply random augmentations, EXCLUDING upscaling.
-- Train Qwen3-4B-Instruct in two stages: first SFT, then RL.
-- Inference: run three attempts — AIRV, Repeat, and AIRV+Repeat — using the RL adapter.
+- Data Generation: Focus on ONE training problem, create 300 augmented versions.
+  • Use ONLY one training problem (specified or first available).
+  • Apply random augmentations to create multiple variants, EXCLUDING upscaling.
+  • Build samples using input grids, random placeholders, and corresponding outputs.
+- Train Qwen3-4B-Instruct in two stages: first SFT, then RL on the augmented single problem.
+- Inference: run three attempts — AIRV, Repeat, and AIRV+Repeat — on the SAME problem used for training.
 
 Notes:
 - This file is self-contained and does not modify existing training/inference modules.
 - It re-implements minimal SFT/RL loops to allow pointing at a custom dataset path.
 - It implements a LoRA-aware inference helper to load base model + adapter.
+- The script prints the train+test data of the chosen problem for inspection.
 """
 
 from __future__ import annotations
@@ -196,36 +198,80 @@ def _random_augmentation_sequence_no_upscale(rng: Optional[random.Random] = None
 def generate_singled_out_dataset(
     data_dir: str = ".",
     output_file: str = "transduction/train_dataset_singled_out.json",
-    max_problems: Optional[int] = None,
+    problem_id: Optional[str] = None,
+    num_augmentations: int = 300,
     seed: int = 42,
     apply_augmentations: bool = True,
-) -> List[Dict[str, str]]:
+) -> Tuple[List[Dict[str, str]], str]:
     """
-    Build dataset samples where each sample contains a single input grid as TEST INPUT,
-    a random placeholder of the same shape, and the corresponding output as target.
+    Build dataset samples focusing on ONE problem with multiple augmentations.
+    Each sample contains a single input grid as TEST INPUT, a random placeholder 
+    of the same shape, and the corresponding output as target.
 
-    - Uses only training problems.
+    - Uses only one training problem (specified or first available).
     - Excludes arc-gen.
-    - Optionally applies random augmentations to the whole problem, excluding upscaling.
+    - Creates num_augmentations versions of the problem through augmentations.
     """
     r = random.Random(seed)
     problem_ids = list_training_problems(data_dir)
-    if max_problems is not None:
-        problem_ids = problem_ids[:max_problems]
+    
+    if not problem_ids:
+        raise ValueError("No training problems found")
+    
+    # Select the problem to use
+    if problem_id is None:
+        selected_pid = problem_ids[0]
+        print(f"[info] No problem_id specified, using first available: {selected_pid}")
+    else:
+        if problem_id not in problem_ids:
+            raise ValueError(f"Problem {problem_id} not found in training set")
+        selected_pid = problem_id
+    
+    print(f"[info] Using problem: {selected_pid}")
+    
+    try:
+        base_problem = load_training_problem(selected_pid, data_dir)
+    except Exception as e:
+        raise RuntimeError(f"Failed to load problem {selected_pid}: {e}")
+
+    if not base_problem or not base_problem.get("train"):
+        raise ValueError(f"Problem {selected_pid} has no training examples")
+
+    # Print the problem data
+    print(f"\n[info] Problem {selected_pid} details:")
+    print(f"Train examples: {len(base_problem.get('train', []))}")
+    print(f"Test examples: {len(base_problem.get('test', []))}")
+    
+    print("\nTRAIN DATA:")
+    for i, ex in enumerate(base_problem.get("train", [])):
+        print(f"  Example {i+1}:")
+        print(f"    Input ({len(ex['input'])}x{len(ex['input'][0])}):")
+        for row in ex["input"]:
+            print(f"      {' '.join(str(c) for c in row)}")
+        print(f"    Output ({len(ex['output'])}x{len(ex['output'][0])}):")
+        for row in ex["output"]:
+            print(f"      {' '.join(str(c) for c in row)}")
+        print()
+    
+    print("TEST DATA:")
+    for i, ex in enumerate(base_problem.get("test", [])):
+        print(f"  Example {i+1}:")
+        print(f"    Input ({len(ex['input'])}x{len(ex['input'][0])}):")
+        for row in ex["input"]:
+            print(f"      {' '.join(str(c) for c in row)}")
+        if "output" in ex:
+            print(f"    Output ({len(ex['output'])}x{len(ex['output'][0])}):")
+            for row in ex["output"]:
+                print(f"      {' '.join(str(c) for c in row)}")
+        print()
 
     samples: List[Dict[str, str]] = []
 
-    for idx, pid in enumerate(problem_ids):
-        try:
-            problem = load_training_problem(pid, data_dir)
-        except Exception as e:
-            print(f"[warn] Skipping problem {pid}: {e}")
-            continue
-
-        if not problem or not problem.get("train"):
-            continue
-
-        # Optional augmentations (exclude upscaling)
+    # Generate augmented versions
+    for aug_idx in range(num_augmentations):
+        problem = json.loads(json.dumps(base_problem))  # Deep copy
+        
+        # Apply augmentations (exclude upscaling)
         if apply_augmentations:
             selected = _random_augmentation_sequence_no_upscale(r)
             if selected:
@@ -242,7 +288,7 @@ def generate_singled_out_dataset(
             if "input" in ex:
                 matrix_pool.append(ex["input"])  # type: ignore
 
-        # Create one sample per available train pair
+        # Create one sample per available train pair for this augmentation
         for ex in problem.get("train", []):
             input_grid = ex.get("input")
             output_grid = ex.get("output")
@@ -250,12 +296,12 @@ def generate_singled_out_dataset(
                 continue
 
             placeholder = _random_placeholder_for_grid(input_grid, matrix_pool, r)
-            prompt = _format_single_prompt(input_grid, placeholder, task_id=pid)
+            prompt = _format_single_prompt(input_grid, placeholder, task_id=selected_pid)
             target_output_str = "\n".join(grid_to_row_strings(output_grid))
             samples.append({"input": prompt, "output": target_output_str})
 
-        if (idx + 1) % 50 == 0:
-            print(f"[info] Processed {idx+1}/{len(problem_ids)} training problems")
+        if (aug_idx + 1) % 50 == 0:
+            print(f"[info] Generated {aug_idx+1}/{num_augmentations} augmented versions")
 
     # Save
     out_path = Path(output_file)
@@ -263,7 +309,8 @@ def generate_singled_out_dataset(
     with open(out_path, "w", encoding="utf-8") as f:
         json.dump(samples, f, indent=2, ensure_ascii=False)
     print(f"[info] Saved {len(samples)} samples to {output_file}")
-    return samples
+    print(f"[info] Total samples: {len(samples)} (from {num_augmentations} augmentations × {len(base_problem['train'])} train examples)")
+    return samples, selected_pid
 
 
 # =========================
@@ -802,7 +849,8 @@ def main():
     parser = argparse.ArgumentParser(description="Singled-out ARC Transduction pipeline")
     parser.add_argument("--data_dir", type=str, default=".")
     parser.add_argument("--dataset_out", type=str, default="transduction/train_dataset_singled_out.json")
-    parser.add_argument("--max_problems", type=int, default=None)
+    parser.add_argument("--problem_id", type=str, default=None, help="Specific problem ID to use for training. If None, uses first available.")
+    parser.add_argument("--num_augmentations", type=int, default=300, help="Number of augmented versions to generate from the single problem")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--no_augment", action="store_true")
     parser.add_argument("--skip_gen", action="store_true")
@@ -812,26 +860,37 @@ def main():
     parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-4B-Instruct-2507")
     parser.add_argument("--sft_out", type=str, default="qwen3_4b_singled_out_sft")
     parser.add_argument("--rl_out", type=str, default="qwen3_4b_singled_out_rl")
-    parser.add_argument("--infer_problem_id", type=str, default=None, help="Evaluation problem ID to test. If None, picks first.")
-    parser.add_argument("--infer_dataset", choices=["evaluation", "training"], default="evaluation")
     parser.add_argument("--airv_versions", type=int, default=8)
     parser.add_argument("--device", type=str, default="auto")
-    parser.add_argument("--task_id", type=str, default=None, help="Optional task id; defaults to problem id for evaluation/training problems.")
 
     args = parser.parse_args()
 
     dataset_path = args.dataset_out
+    training_problem_id = None
+    
     if not args.skip_gen:
-        generate_singled_out_dataset(
+        _, training_problem_id = generate_singled_out_dataset(
             data_dir=args.data_dir,
             output_file=dataset_path,
-            max_problems=args.max_problems,
+            problem_id=args.problem_id,
+            num_augmentations=args.num_augmentations,
             seed=args.seed,
             apply_augmentations=not args.no_augment,
         )
     else:
         if not Path(dataset_path).exists():
             raise FileNotFoundError(f"Dataset not found at {dataset_path}. Remove --skip_gen or fix path.")
+        # If we're skipping generation, we need to determine which problem to use for inference
+        if args.problem_id:
+            training_problem_id = args.problem_id
+        else:
+            # Use first available training problem
+            import random
+            problem_ids = list_training_problems(args.data_dir)
+            if not problem_ids:
+                raise RuntimeError("No training problems available")
+            training_problem_id = random.choice(problem_ids)
+            print(f"[info] Using first available problem for inference: {training_problem_id}")
 
     sft_final = os.path.join(args.sft_out, "final")
     if not args.skip_sft:
@@ -851,26 +910,13 @@ def main():
     if args.skip_infer:
         return
 
-    # Prepare a problem for inference
-    if args.infer_problem_id:
-        pid = args.infer_problem_id
-    else:
-        if args.infer_dataset == "evaluation":
-            pids = list_evaluation_problems(args.data_dir)
-        else:
-            pids = list_training_problems(args.data_dir)
-        if not pids:
-            raise RuntimeError("No problems available for inference.")
-        pid = pids[0]
-
-    print(f"[infer] Using problem {pid} from {args.infer_dataset} set")
-    if args.infer_dataset == "evaluation":
-        problem = load_evaluation_problem(pid, args.data_dir)
-    else:
-        problem = load_training_problem(pid, args.data_dir)
-
-    # Choose task_id: user-provided or problem id
-    task_id = args.task_id or pid
+    # Use the same problem that was used for training
+    pid = training_problem_id
+    print(f"[infer] Evaluating on the same problem used for training: {pid}")
+    problem = load_training_problem(pid, args.data_dir)
+    
+    # Use problem id as task_id
+    task_id = pid
 
     # LoRA-aware inference using RL (or SFT) adapter
     inf = LoRAARCTransductionInference(base_model=args.base_model, lora_path=rl_final, device=args.device)
@@ -889,7 +935,9 @@ def main():
 
     # Save a small summary next to dataset
     summary = {
-        "problem_id": pid,
+        "training_problem_id": pid,
+        "note": "Evaluated on the same problem used for training (with augmentations)",
+        "num_augmentations_used": args.num_augmentations,
         "airv": {k: airv[k] for k in ("is_correct", "vote_counts")},
         "repeat": {"is_correct": repeat.get("is_correct")},
         "airv_plus_repeat": {"is_correct": combo.get("is_correct")},
@@ -897,6 +945,7 @@ def main():
     with open("transduction/singled_out_results.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2)
     print("[infer] Results saved to transduction/singled_out_results.json")
+    print(f"[infer] Training and evaluation completed on problem: {pid}")
 
 
 if __name__ == "__main__":
