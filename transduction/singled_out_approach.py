@@ -444,26 +444,19 @@ def run_sft(
         attn_implementation=attn_impl,
     )
 
-    # LoRA
-    lora_cfg = LoraConfig(
-        r=256,
-        lora_alpha=64,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",   # attention
-        "gate_proj","up_proj","down_proj",      # MLP
-        ],
-        bias="none",
-        lora_dropout=0.1,
-        task_type="CAUSAL_LM",
-    )
     from peft import prepare_model_for_kbit_training
     model = prepare_model_for_kbit_training(model)
-    def count_trainable(m):
-        t = sum(p.numel() for p in m.parameters() if p.requires_grad)
-        a = sum(p.numel() for p in m.parameters())
-        print(f"[sft] Trainable params: {t:,}/{a:,} ({100*t/a:.4f}%)")
+    lora_cfg = LoraConfig(
+        r=256, lora_alpha=64, lora_dropout=0.1,
+        bias="none", task_type="CAUSAL_LM",
+        target_modules="all_linear",
+        modules_to_save=["lm_head"],  # helps tiny-data overfit
+    )
     model = get_peft_model(model, lora_cfg)
-    model.print_trainable_parameters()
-    count_trainable(model)
+
+    # 4) Verify we actually have trainables
+    trainables = [(n,p) for n,p in model.named_parameters() if p.requires_grad]
+    print(f"[lora] trainable tensors: {len(trainables)}")
     try:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         if hasattr(model, "config"):
