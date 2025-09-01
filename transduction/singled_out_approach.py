@@ -362,6 +362,9 @@ def run_sft(
         prefix_len = len(prefix_tokens["input_ids"])
         for i in range(min(prefix_len, len(labels))):
             labels[i] = -100
+        masked = sum(1 for v in labels if v == -100)
+        total  = len(labels)
+        assert masked < total, f"All labels masked! masked={masked}, total={total}"
         return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
     # Auth
@@ -392,12 +395,22 @@ def run_sft(
     lora_cfg = LoraConfig(
         r=256,
         lora_alpha=64,
-        target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
+        target_modules=["q_proj", "k_proj", "v_proj", "o_proj",   # attention
+        "gate_proj","up_proj","down_proj",      # MLP
+        ],
         bias="none",
-        lora_dropout=0.05,
+        lora_dropout=0.1,
         task_type="CAUSAL_LM",
     )
-    model = get_peft_model(model, lora_cfg)  # type: ignore
+    from peft import prepare_model_for_kbit_training
+    model = prepare_model_for_kbit_training(model)
+    def count_trainable(m):
+        t = sum(p.numel() for p in m.parameters() if p.requires_grad)
+        a = sum(p.numel() for p in m.parameters())
+        print(f"[sft] Trainable params: {t:,}/{a:,} ({100*t/a:.4f}%)")
+    model = get_peft_model(model, lora_cfg)
+    model.print_trainable_parameters()
+    count_trainable(model)
     try:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
         if hasattr(model, "config"):
@@ -521,21 +534,16 @@ def run_rl(
     # Build RL dataset format
     raw_ds = load_dataset("json", data_files=dataset_path, split="train")
 
-    def to_rl(ex: Dict[str, Any]) -> Dict[str, Any]:
-        # Use the raw input directly, not wrapped in chat template
-        # This maintains consistency with SFT training format
-        prompt = ex["input"]
-        # Parse expected output into grid
-        expected_grid: List[List[int]] = []
+    def to_rl(ex):
+        messages = [{"role":"user","content": ex["input"]}]
+        prompt_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        expected_grid = []
         if ex.get("output"):
-            try:
-                rows = ex["output"].strip().split("\n")
-                for row in rows:
-                    if row.strip():
-                        expected_grid.append([int(x) for x in row.strip().split()])
-            except Exception:
-                expected_grid = []
-        return {"prompt": prompt, "expected_output": expected_grid, "original_input": ex["input"], "original_output": ex["output"]}
+            rows = ex["output"].strip().split("\n")
+            for row in rows:
+                if row.strip():
+                    expected_grid.append([int(x) for x in row.strip().split()])
+        return {"prompt": prompt_text, "expected_output": expected_grid}
 
     ds = raw_ds.map(to_rl, remove_columns=raw_ds.column_names, num_proc=4)
 
