@@ -457,7 +457,7 @@ def run_sft(
         with torch.no_grad():
             eval_outputs = model.generate(
                 **eval_inputs,
-                max_new_tokens=512,
+                max_new_tokens=2048,
                 temperature=0.1,
                 do_sample=True,
                 top_p=0.9,
