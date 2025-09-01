@@ -360,19 +360,14 @@ class DataCollatorKeepLabels:
 
     def __call__(self, features: List[Dict]):
         max_len = max(len(f["input_ids"]) for f in features)
-        input_ids, attn, labels = [], [], []
-        for f in features:
-            L = len(f["input_ids"])
-            pad = max_len - L
-            input_ids.append(f["input_ids"] + [self.pad_token_id]*pad)
-            attn.append(f["attention_mask"] + [0]*pad)
-            labels.append(f["labels"] + [self.label_pad_token_id]*pad)
+        def pad(seq, val): return seq + [val] * (max_len - len(seq))
         batch = {
-            "input_ids": torch.tensor(input_ids, dtype=torch.long),
-            "attention_mask": torch.tensor(attn, dtype=torch.long),
-            "labels": torch.tensor(labels, dtype=torch.long),
+            "input_ids": torch.tensor([pad(f["input_ids"], self.pad_token_id) for f in features]),
+            "attention_mask": torch.tensor([pad(f["attention_mask"], 0) for f in features]),
+            "labels": torch.tensor([pad(f["labels"], self.label_pad_token_id) for f in features]),
         }
         return batch
+
 
 
 def run_sft(
@@ -508,8 +503,32 @@ def run_sft(
         model=model,
         args=args,
         train_dataset=tokenised,
-        data_collator=collator,  
+        data_collator=collator,  # <- critical
     )
+    b = next(iter(trainer.get_train_dataloader()))
+    lab = b["labels"]
+    num_unmasked = int((lab != -100).sum().item())
+    print("[collate] labels shape:", tuple(lab.shape), "unmasked tokens:", num_unmasked)
+    assert num_unmasked > 0, "All labels masked after collation!"
+    import torch
+    ex = tokenised[0]
+    toT = lambda x: torch.tensor(x)[None].to(model.device)
+    batch = {k: toT(ex[k]) for k in ("input_ids","attention_mask","labels")}
+
+    mon = [p for n,p in model.named_parameters() if ("lora_A" in n or "lora_B" in n)][0]
+    print("[probe] L2 before:", float(torch.norm(mon).detach().cpu()))
+
+    opt = torch.optim.AdamW([p for p in model.parameters() if p.requires_grad], lr=5e-5)
+    model.train()
+    for step in range(50):
+        opt.zero_grad()
+        out = model(**batch)
+        out.loss.backward()
+        torch.nn.utils.clip_grad_norm_([p for p in model.parameters() if p.requires_grad], 1.0)
+        opt.step()
+        if step % 10 == 0:
+            print(f"[probe] step {step} loss {out.loss.item():.4f}")
+    print("[probe] L2 after:", float(torch.norm(mon).detach().cpu()))
     print("[sft] Starting training...")
     trainer.train()
     print("[sft] Saving final adapter...")
