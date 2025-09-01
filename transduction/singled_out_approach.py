@@ -390,7 +390,7 @@ def run_sft(
 
     # LoRA
     lora_cfg = LoraConfig(
-        r=32,
+        r=256,
         lora_alpha=64,
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
         bias="none",
