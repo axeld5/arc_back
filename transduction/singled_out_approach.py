@@ -374,8 +374,8 @@ def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
-    learning_rate: float = 2e-4,
-    num_train_epochs: int = 5,
+    learning_rate: float = 5e-4,
+    num_train_epochs: int = 20,
     grad_accum: int = 8,
     batch_size: int = 1,
     use_compile: bool = False,
@@ -447,9 +447,10 @@ def run_sft(
     from peft import prepare_model_for_kbit_training
     model = prepare_model_for_kbit_training(model)
     lora_cfg = LoraConfig(
-        r=256, lora_alpha=64, lora_dropout=0.1,
-        bias="none", task_type="CAUSAL_LM",
-        target_modules="all-linear",
+        r=64,  # Reduced from 256
+        lora_alpha=16,  # Reduced from 64
+        lora_dropout=0.05,  # Reduced from 0.1
+        target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],  # More specific
         modules_to_save=["lm_head"],  # helps tiny-data overfit
     )
     model = get_peft_model(model, lora_cfg)
@@ -577,6 +578,7 @@ def run_rl(
         tokenizer = AutoTokenizer.from_pretrained(lora_path, trust_remote_code=True)
     except Exception:
         tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+    tokenizer.padding_side = "right"
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
@@ -681,6 +683,7 @@ class LoRAARCTransductionInference:
             self.tokenizer = AutoTokenizer.from_pretrained(lora_path or base_model, trust_remote_code=True)
         except Exception:
             self.tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
+        self.tokenizer.padding_side = "right"
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
