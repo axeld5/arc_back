@@ -453,6 +453,7 @@ def run_sft(
         modules_to_save=["lm_head"],  # helps tiny-data overfit
     )
     model = get_peft_model(model, lora_cfg)
+    model.enable_input_require_grads() 
 
     # 4) Verify we actually have trainables
     trainables = [(n,p) for n,p in model.named_parameters() if p.requires_grad]
