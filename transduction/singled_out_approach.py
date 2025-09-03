@@ -429,9 +429,9 @@ def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
-    learning_rate: float = 5e-4,
-    num_train_epochs: int = 20,
-    grad_accum: int = 8,
+    learning_rate: float = 5e-3,
+    num_train_epochs: int = 50,
+    grad_accum: int = 1,
     batch_size: int = 1,
     use_compile: bool = False,
 ):
@@ -498,7 +498,7 @@ def run_sft(
         tokenizer.pad_token = tokenizer.eos_token
 
     attn_impl = pick_attn_impl()
-    quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
+    quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=compute_dtype, bnb_4bit_use_double_quant=True)
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
         dtype=compute_dtype,
@@ -584,7 +584,7 @@ def run_sft(
 
     # autocast context for manual forward (Trainer handles this automatically during .train())
     if torch.cuda.is_available():
-        from torch.cuda.amp import autocast
+        from torch.amp import autocast
         amp_ctx = autocast(dtype=compute_dtype)
     else:
         amp_ctx = contextlib.nullcontext()
@@ -616,32 +616,31 @@ def run_sft(
     try:
         sample_data = raw[0]
         messages = [
+            {"role": "system", "content": "Reply with ONLY the grid: digits separated by spaces, rows separated by newlines."},
             {"role": "user", "content": sample_data["input"]},
         ]
         eval_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
         eval_inputs = tokenizer(eval_prompt, return_tensors="pt", truncation=True, max_length=2048)
         eval_inputs = {k: v.to(model.device) for k, v in eval_inputs.items()}
 
-        processors = LogitsProcessorList([DigitsOnly(tokenizer)])
-        with torch.no_grad():
+        amp_ctx = torch.amp.autocast("cuda", dtype=compute_dtype) if torch.cuda.is_available() else contextlib.nullcontext()
+        with torch.no_grad(), amp_ctx:
             eval_outputs = model.generate(
                 **eval_inputs,
-                max_new_tokens=2048,
-                do_sample=False,  # greedy for structure
-                logits_processor=processors,
+                max_new_tokens=1024,
+                do_sample=False,  # greedy for structured output
                 pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
-        decoded = tokenizer.decode(eval_outputs[0][eval_inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-        cleaned = extract_grid(decoded)
 
-        print("[sft] Sample evaluation:")
-        print(f"[sft] Input:\n{sample_data['input'][:300]}...")
-        print(f"[sft] Expected:\n{sample_data['output'][:300]}...")
-        print(f"[sft] Generated (cleaned):\n{cleaned[:300]}...")
-        print("[sft] SFT evaluation complete.")
+        decoded = tokenizer.decode(
+            eval_outputs[0][eval_inputs["input_ids"].shape[1]:],
+            skip_special_tokens=True
+        ).strip()
+        print("[sft] Generated:\n", decoded[:400])
     except Exception as e:
         print(f"[sft] Evaluation failed: {e}")
+
     
     return os.path.join(output_dir, "final")
 
