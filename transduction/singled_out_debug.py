@@ -89,17 +89,17 @@ def lora_grad_norm(model) -> float:
     return math.sqrt(s) if s > 0 else 0.0
 
 def masked_token_accuracy(logits: torch.Tensor, labels: torch.Tensor) -> float:
-    """
-    logits: [B, T, V], labels: [B, T] with -100 for masked.
-    """
-    with torch.no_grad():
-        pred = logits.argmax(-1)
-        mask = labels != -100
-        denom = mask.sum().item()
-        if denom == 0:
-            return float("nan")
-        num = (pred[mask] == labels[mask]).float().sum().item()
-        return num / denom
+    # shift for causal LM
+    shift_logits = logits[:, :-1, :]
+    shift_labels = labels[:, 1:]
+
+    mask = shift_labels != -100
+    if not mask.any():
+        return float("nan")
+
+    pred = shift_logits.argmax(-1)
+    return (pred[mask] == shift_labels[mask]).float().mean().item()
+
 
 # -----------------------------
 # Data
@@ -367,16 +367,31 @@ def main():
             with open(args.dataset, "r", encoding="utf-8") as f:
                 raw = json.load(f)
             sample = raw[0]
-            prompt_msgs = [{"role": "user", "content": sample["input"]}]
+            model.eval()
+            prompt_msgs = [
+                {"role": "user", "content": sample["input"]},
+            ]
             prompt = tok.apply_chat_template(prompt_msgs, tokenize=False, add_generation_prompt=True)
-            inputs = tok(prompt, return_tensors="pt").to(device_of(model))
+            inputs = tok(prompt, return_tensors="pt").to(next(model.parameters()).device)
+
+            # Ban thinking tags if present in the tokenizer vocab
+            bad_words = []
+            for s in ["<think>", "</think>"]:
+                ids = tok(s, add_special_tokens=False).input_ids
+                if ids: bad_words.append(ids)           # bad_words_ids expects List[List[int]]
+
             with torch.no_grad():
-                out = model.generate(**inputs, max_new_tokens=512, do_sample=False,
-                                     pad_token_id=tok.eos_token_id, eos_token_id=tok.eos_token_id)
-            generated = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
-            print("[input]\n", sample["input"][:500], "...\n")
-            print("[expected]\n", sample["output"][:500], "...\n")
-            print("[generated]\n", generated[:1000], "...\n")
+                out = model.generate(
+                    **inputs,
+                    max_new_tokens=1024,
+                    do_sample=False,                     # greedy
+                    pad_token_id=tok.eos_token_id,
+                    eos_token_id=tok.eos_token_id,
+                    bad_words_ids=bad_words or None,     # only if non-empty
+                )
+
+            decoded = tok.decode(out[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+            print(decoded)
         except Exception as e:
             print("[gen] generation failed:", e)
 
