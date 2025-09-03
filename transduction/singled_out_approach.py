@@ -19,6 +19,7 @@ Notes:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import os
 import random
@@ -490,6 +491,7 @@ def run_sft(
             pass
 
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
     tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True, use_fast=True)
     tokenizer.padding_side = "right"
     if tokenizer.pad_token is None:
@@ -499,7 +501,7 @@ def run_sft(
     quant = BitsAndBytesConfig(load_in_4bit=True, bnb_4bit_compute_dtype=torch.bfloat16, bnb_4bit_use_double_quant=True)
     model = AutoModelForCausalLM.from_pretrained(
         base_model,
-        torch_dtype=torch.bfloat16 if use_bf16 else torch.float16,
+        dtype=compute_dtype,
         trust_remote_code=True,
         quantization_config=quant,
         attn_implementation=attn_impl,
@@ -531,6 +533,11 @@ def run_sft(
     )
     model = get_peft_model(model, lora_cfg)
     model.enable_input_require_grads()
+
+    try:
+        model.lm_head.to(dtype=compute_dtype, device=next(model.parameters()).device)
+    except Exception:
+        pass
 
     # Verify trainables
     trainables = [(n,p) for n,p in model.named_parameters() if p.requires_grad]
@@ -572,16 +579,29 @@ def run_sft(
         data_collator=collator,  # <- critical
     )
     b = next(iter(trainer.get_train_dataloader()))
-    with torch.no_grad():
-        out = model(input_ids=b["input_ids"].to(model.device),
-                    attention_mask=b["attention_mask"].to(model.device),
-                    labels=b["labels"].to(model.device))
-    acc = masked_token_accuracy(out.logits, b["labels"].to(model.device))
     lab = b["labels"]
     num_unmasked = int((lab != -100).sum().item())
-    print("[collate] labels shape:", tuple(lab.shape), "unmasked:", num_unmasked, "token_acc(masked):", f"{acc:.4f}")
+
+    # autocast context for manual forward (Trainer handles this automatically during .train())
+    if torch.cuda.is_available():
+        from torch.cuda.amp import autocast
+        amp_ctx = autocast(dtype=compute_dtype)
+    else:
+        amp_ctx = contextlib.nullcontext()
+
+    with torch.no_grad(), amp_ctx:
+        out = model(
+            input_ids=b["input_ids"].to(model.device),
+            attention_mask=b["attention_mask"].to(model.device),
+            labels=b["labels"].to(model.device),
+        )
+
+    from_here_labels = b["labels"].to(model.device)  # for metric dtype alignment
+    acc = masked_token_accuracy(out.logits, from_here_labels)
+    print("[collate] labels shape:", tuple(lab.shape), "unmasked tokens:", num_unmasked,
+        "token_acc(masked):", f"{acc:.4f}")
     assert num_unmasked > 0, "All labels masked after collation!"
-    
+        
     print("[sft] Starting training...")
     trainer.train()
     print("[sft] Saving final adapter...")
