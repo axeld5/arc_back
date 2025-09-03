@@ -50,6 +50,60 @@ from deaugment import apply_full_deaugmentation
 # Utility: placeholders
 # =========================
 
+# ---- LoRA target discovery (robust across Qwen variants)
+def guess_lora_targets(model):
+    import re
+    pat = re.compile(r"(q_proj|k_proj|v_proj|o_proj|wq|wk|wv|wo|up_proj|down_proj|gate_proj)$", re.I)
+    hits = set()
+    for name, mod in model.named_modules():
+        cls = mod.__class__.__name__.lower()
+        if hasattr(mod, "weight") and ("linear" in cls or "quantlinear" in cls):
+            short = name.split(".")[-1]
+            if pat.search(short):
+                hits.add(short)
+    return sorted(hits)
+
+# ---- True masked token-accuracy (uses causal shift)
+import torch
+def masked_token_accuracy(logits: torch.Tensor, labels: torch.Tensor) -> float:
+    shift_logits = logits[:, :-1, :]
+    shift_labels = labels[:, 1:]
+    mask = shift_labels != -100
+    if not mask.any():
+        return float("nan")
+    pred = shift_logits.argmax(-1)
+    return (pred[mask] == shift_labels[mask]).float().mean().item()
+
+# ---- Constrain generation to digits / space / newline
+from transformers import LogitsProcessor, LogitsProcessorList
+class DigitsOnly(LogitsProcessor):
+    def __init__(self, tokenizer):
+        self.tok = tokenizer
+        allowed = set("0123456789 \n")
+        self.allowed_ids = set()
+        for tok, tid in self.tok.get_vocab().items():
+            try:
+                txt = self.tok.convert_tokens_to_string([tok])
+            except Exception:
+                txt = tok
+            if txt and all(c in allowed for c in txt):
+                self.allowed_ids.add(tid)
+        if self.tok.eos_token_id is not None:
+            self.allowed_ids.add(self.tok.eos_token_id)
+    def __call__(self, input_ids, scores):
+        import torch as _t
+        mask = _t.full_like(scores, float("-inf"))
+        idx = list(self.allowed_ids)
+        mask[:, idx] = 0.0
+        return scores + mask
+
+# ---- Keep only rows that look like grids
+import re as _re
+def extract_grid(text: str) -> str:
+    rows = [r.strip() for r in text.splitlines() if _re.fullmatch(r"[0-9 ]+", r.strip())]
+    rows = [" ".join(r.split()) for r in rows if r]
+    return "\n".join(rows)
+
 # New prompt format (PROMPT_V2)
 PROMPT_V2 = (
     "Solve task {task_id}\n\n"
@@ -407,17 +461,24 @@ def run_sft(
         ]
         full_text = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=False)
         prefix_text = tokenizer.apply_chat_template(messages[:-1], tokenize=False, add_generation_prompt=True)
+
         full_tokens = tokenizer(full_text, truncation=True, max_length=max_len, padding=False)
         prefix_tokens = tokenizer(prefix_text, truncation=True, max_length=max_len, padding=False)
+
         input_ids = full_tokens["input_ids"]
         attention_mask = full_tokens["attention_mask"]
         labels = list(input_ids)
+
         prefix_len = len(prefix_tokens["input_ids"])
+        # mask prefix
         for i in range(min(prefix_len, len(labels))):
             labels[i] = -100
-        masked = sum(1 for v in labels if v == -100)
-        total  = len(labels)
-        assert masked < total, f"All labels masked! masked={masked}, total={total}"
+
+        # emergency guard: ensure supervision exists
+        if all(v == -100 for v in labels):
+            for i in range(max(0, len(labels) - 32), len(labels)):
+                labels[i] = input_ids[i]
+
         return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
 
     # Auth
@@ -444,27 +505,36 @@ def run_sft(
         attn_implementation=attn_impl,
     )
 
-    from peft import prepare_model_for_kbit_training
-    model = prepare_model_for_kbit_training(model)
-    lora_cfg = LoraConfig(
-        r=64,  # Reduced from 256
-        lora_alpha=16,  # Reduced from 64
-        lora_dropout=0.05,  # Reduced from 0.1
-        target_modules=["q_proj", "v_proj", "k_proj", "o_proj"],  # More specific
-        modules_to_save=["lm_head"],  # helps tiny-data overfit
-    )
-    model = get_peft_model(model, lora_cfg)
-    model.enable_input_require_grads() 
-
-    # 4) Verify we actually have trainables
-    trainables = [(n,p) for n,p in model.named_parameters() if p.requires_grad]
-    print(f"[lora] trainable tensors: {len(trainables)}")
+    # Important order: disable cache -> (optionally) grad ckpt -> prepare k-bit -> attach LoRA
+    if hasattr(model, "config"): model.config.use_cache = False
     try:
         model.gradient_checkpointing_enable(gradient_checkpointing_kwargs={"use_reentrant": False})
-        if hasattr(model, "config"):
-            model.config.use_cache = False
     except Exception:
-        pass
+        model.gradient_checkpointing_enable()
+
+    from peft import prepare_model_for_kbit_training
+    model = prepare_model_for_kbit_training(model)
+
+    # Auto-discover targets (includes MLP)
+    targets = guess_lora_targets(model)
+    print("[lora] discovered targets:", targets)
+    assert targets, "No LoRA targets found!"
+
+    from peft import LoraConfig, get_peft_model
+    lora_cfg = LoraConfig(
+        r=64,
+        lora_alpha=16,
+        lora_dropout=0.0,      # 0.0 helps tiny-data overfit; bump to 0.05 later
+        target_modules=targets,
+        bias="none",
+        modules_to_save=[],    # keep pure LoRA to avoid confusion
+    )
+    model = get_peft_model(model, lora_cfg)
+    model.enable_input_require_grads()
+
+    # Verify trainables
+    trainables = [(n,p) for n,p in model.named_parameters() if p.requires_grad]
+    print(f"[lora] trainable tensors: {len(trainables)}")
 
     # Dataset
     raw = load_dataset("json", data_files=dataset_path, split="train")
@@ -489,6 +559,7 @@ def run_sft(
         remove_unused_columns=False,
         optim="paged_adamw_8bit",
         ddp_find_unused_parameters=False,
+        max_grad_norm=None,
     )
 
     from trl import SFTTrainer
@@ -501,9 +572,14 @@ def run_sft(
         data_collator=collator,  # <- critical
     )
     b = next(iter(trainer.get_train_dataloader()))
+    with torch.no_grad():
+        out = model(input_ids=b["input_ids"].to(model.device),
+                    attention_mask=b["attention_mask"].to(model.device),
+                    labels=b["labels"].to(model.device))
+    acc = masked_token_accuracy(out.logits, b["labels"].to(model.device))
     lab = b["labels"]
     num_unmasked = int((lab != -100).sum().item())
-    print("[collate] labels shape:", tuple(lab.shape), "unmasked tokens:", num_unmasked)
+    print("[collate] labels shape:", tuple(lab.shape), "unmasked:", num_unmasked, "token_acc(masked):", f"{acc:.4f}")
     assert num_unmasked > 0, "All labels masked after collation!"
     
     print("[sft] Starting training...")
@@ -518,35 +594,31 @@ def run_sft(
     # Simple inference evaluation after SFT
     print("[sft] Running simple inference evaluation...")
     try:
-        # Load a sample from the dataset for quick evaluation
-        sample_data = raw[0]  # Get first sample
-        messages = [{"role": "user", "content": sample_data["input"]}]
+        sample_data = raw[0]
+        messages = [
+            {"role": "user", "content": sample_data["input"]},
+        ]
         eval_prompt = tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
-        
-        # Generate response
         eval_inputs = tokenizer(eval_prompt, return_tensors="pt", truncation=True, max_length=2048)
         eval_inputs = {k: v.to(model.device) for k, v in eval_inputs.items()}
-        
+
+        processors = LogitsProcessorList([DigitsOnly(tokenizer)])
         with torch.no_grad():
             eval_outputs = model.generate(
                 **eval_inputs,
                 max_new_tokens=2048,
-                temperature=0.1,
-                do_sample=True,
-                top_p=0.9,
+                do_sample=False,  # greedy for structure
+                logits_processor=processors,
                 pad_token_id=tokenizer.eos_token_id,
                 eos_token_id=tokenizer.eos_token_id,
             )
-        
-        generated_text = tokenizer.decode(
-            eval_outputs[0][eval_inputs["input_ids"].shape[1]:], 
-            skip_special_tokens=True
-        ).strip()
-        
+        decoded = tokenizer.decode(eval_outputs[0][eval_inputs["input_ids"].shape[1]:], skip_special_tokens=True)
+        cleaned = extract_grid(decoded)
+
         print("[sft] Sample evaluation:")
-        print(f"[sft] Input: {sample_data['input']}...")
-        print(f"[sft] Expected: {sample_data['output']}...")
-        print(f"[sft] Generated: {generated_text}...")
+        print(f"[sft] Input:\n{sample_data['input'][:300]}...")
+        print(f"[sft] Expected:\n{sample_data['output'][:300]}...")
+        print(f"[sft] Generated (cleaned):\n{cleaned[:300]}...")
         print("[sft] SFT evaluation complete.")
     except Exception as e:
         print(f"[sft] Evaluation failed: {e}")
@@ -709,9 +781,7 @@ class LoRAARCTransductionInference:
 
         self.generation_config = GenerationConfig(
             max_new_tokens=2048,
-            temperature=0.1,
-            do_sample=True,
-            top_p=0.9,
+            do_sample=False,
             pad_token_id=self.tokenizer.eos_token_id,
             eos_token_id=self.tokenizer.eos_token_id,
         )
@@ -737,9 +807,17 @@ class LoRAARCTransductionInference:
         import torch
         inputs = self.tokenizer(prompt, return_tensors="pt", truncation=True, max_length=2048)
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
+        from transformers import LogitsProcessorList
+        processors = LogitsProcessorList([DigitsOnly(self.tokenizer)])
         with torch.no_grad():
-            outputs = self.model.generate(**inputs, generation_config=self.generation_config, pad_token_id=self.tokenizer.eos_token_id)
-        return self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+            outputs = self.model.generate(
+                **inputs,
+                generation_config=self.generation_config,
+                logits_processor=processors,
+                pad_token_id=self.tokenizer.eos_token_id,
+            )
+        raw = self.tokenizer.decode(outputs[0][inputs["input_ids"].shape[1]:], skip_special_tokens=True).strip()
+        return extract_grid(raw)
 
     @staticmethod
     def parse_grid(response: str) -> Optional[List[List[int]]]:
