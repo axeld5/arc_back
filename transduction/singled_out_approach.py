@@ -585,7 +585,7 @@ def run_sft(
     # autocast context for manual forward (Trainer handles this automatically during .train())
     if torch.cuda.is_available():
         from torch.amp import autocast
-        amp_ctx = autocast(dtype=compute_dtype)
+        amp_ctx = autocast(dtype=compute_dtype, device_type="cuda")
     else:
         amp_ctx = contextlib.nullcontext()
 
