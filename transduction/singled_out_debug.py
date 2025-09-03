@@ -376,7 +376,7 @@ def main():
 
             # Ban thinking tags if present in the tokenizer vocab
             bad_words = []
-            for s in ["<think>", "</think>"]:
+            for s in ["<think>", "</think>", "<tool_call>", "</tool_call>"]:
                 ids = tok(s, add_special_tokens=False).input_ids
                 if ids: bad_words.append(ids)           # bad_words_ids expects List[List[int]]
 
