@@ -428,7 +428,7 @@ class DataCollatorKeepLabels:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "Qwen/Qwen3-4B",
+    base_model: str = "Qwen/Qwen2.5-1.5B-Instruct",
     learning_rate: float = 5e-3,
     num_train_epochs: int = 50,
     grad_accum: int = 1,
@@ -1079,7 +1079,7 @@ def main():
     parser.add_argument("--skip_sft", action="store_true")
     parser.add_argument("--skip_rl", action="store_true")
     parser.add_argument("--skip_infer", action="store_true")
-    parser.add_argument("--base_model", type=str, default="Qwen/Qwen3-4B")
+    parser.add_argument("--base_model", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--sft_out", type=str, default="qwen3_4b_singled_out_sft")
     parser.add_argument("--rl_out", type=str, default="qwen3_4b_singled_out_rl")
     parser.add_argument("--airv_versions", type=int, default=8)
