@@ -132,31 +132,6 @@ PROMPT_V2 = (
     "OUTPUT:"
 )
 
-data = list_training_problems()
-problem_id = data[0]
-example = load_training_problem(problem_id)
-
-print(example)
-
-model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "qwen3_4b_singled_out_rl/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
-        max_seq_length = 8192,
-        dtype = torch.bfloat16,
-        load_in_4bit = True,
-        fast_inference = True,
-    )
-
-model = FastLanguageModel.get_peft_model(
-        model,
-        r=128,
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is 
-        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-)
-
 import numpy as np
 
 problem = load_training_problem("6f8cd79b")
@@ -165,7 +140,17 @@ content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros((3, 3)
 messages = [
             {"role": "user", "content": content},
 ]
+print(messages)
 from unsloth.chat_templates import get_chat_template
+
+model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = "qwen3_4b_singled_out_rl/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
+        max_seq_length = 8192,
+        dtype = torch.bfloat16,
+        load_in_4bit = True,
+        fast_inference = True,
+    )
+model = FastLanguageModel.get_peft_model(model)
 FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
