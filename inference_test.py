@@ -2,6 +2,7 @@ import unsloth
 import torch
 import json
 from unsloth import FastLanguageModel
+from transduction_test import _format_single_prompt
 from loader import load_training_problem, list_training_problems
 from typing import *
 import re
@@ -118,6 +119,19 @@ def reward_function(
             rewards.append(-0.5)
     return rewards
 
+def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
+    return [' '.join(map(str, row)) for row in grid]
+
+def _format_single_prompt(input_grid: List[List[int]], placeholder_rows: str, task_id: str) -> str:
+    input_str = "\n".join(grid_to_row_strings(input_grid))
+    return PROMPT_V2.format(task_id=task_id, input=input_str, placeholder=placeholder_rows)
+
+PROMPT_V2 = (
+    "Solve task {task_id}\n\n"
+    "INPUT:\n{input}\n"
+    "OUTPUT PLACEHOLDER:\n{placeholder}\n"
+    "OUTPUT:"
+)
 
 data = list_training_problems()
 problem_id = data[0]
@@ -144,12 +158,13 @@ model = FastLanguageModel.get_peft_model(
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
 )
 
-with open("test_problems.json") as f:
-        raw = json.load(f)
-print(raw)
-sample_data = raw["conversations"][0][0]["content"]
+import numpy as np
+
+problem = load_training_problem("6f8cd79b")
+sample_data = problem["test"][0]["input"]
+content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros(3, 3)), problem_id)
 messages = [
-            {"role": "user", "content": sample_data},
+            {"role": "user", "content": content},
 ]
 from unsloth.chat_templates import get_chat_template
 FastLanguageModel.for_inference(model)
@@ -163,4 +178,22 @@ outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = 
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
-print(check_value(decoded[0], parse_grid_from_string(test_problems["conversations"][0][1]["content"])))
+print(check_value(decoded[0], problem["test"][0]["output"]))
+for _ in range(16):
+    content = _format_single_prompt(sample_data, grid_to_row_strings(decoded[0]), problem_id)
+    messages = [
+                {"role": "user", "content": content},
+    ]
+    from unsloth.chat_templates import get_chat_template
+    FastLanguageModel.for_inference(model)
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize = True,
+        add_generation_prompt = True, # Must add for generation
+        return_tensors = "pt",
+    ).to("cuda")
+    outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
+    generated_tokens = outputs[:, inputs.shape[-1]:]
+    decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+    print(decoded[0])
+    print(check_value(decoded[0], problem["test"][0]["output"]))
