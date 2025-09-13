@@ -649,6 +649,8 @@ def run_rl(
         pass
     return os.path.join(output_dir, "final")
 
+run_rl()
+
 model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "qwen3_4b_singled_out_rl/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
         max_seq_length = 8192,
