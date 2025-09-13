@@ -32,7 +32,7 @@ model = FastLanguageModel.get_peft_model(
 
 with open("test_problems.json") as f:
         raw = json.load(f)
-
+print(raw)
 sample_data = raw["conversations"][0][0]["content"]
 messages = [
             {"role": "user", "content": sample_data},
