@@ -619,7 +619,7 @@ def run_rl(
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
-        max_steps=50,
+        max_steps=500,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         logging_steps=10,
