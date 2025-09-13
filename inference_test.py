@@ -137,7 +137,7 @@ import numpy as np
 problem_id = "6f8cd79b"
 problem = load_training_problem(problem_id)
 sample_data = problem["test"][0]["input"]
-content = _format_single_prompt(sample_data, "\n".join(grid_to_row_strings(np.zeros((3, 3)))), problem_id)
+content = _format_single_prompt(sample_data, "\n".join(grid_to_row_strings(np.zeros((3, 3)).astype(int))), problem_id)
 messages = [
             {"role": "user", "content": content},
 ]
@@ -160,6 +160,17 @@ model = FastLanguageModel.get_peft_model(model,
         bias = "none",    # Supports any, but = "none" is 
         use_gradient_checkpointing = "unsloth", )
 FastLanguageModel.for_inference(model)
+# Workaround: some checkpoints may save unsupported fields into generation_config
+# which newer transformers forward into model_kwargs and error out.
+gen_cfg = getattr(model, "generation_config", None)
+if gen_cfg is not None and hasattr(gen_cfg, "num_logits_to_keep"):
+    try:
+        delattr(gen_cfg, "num_logits_to_keep")
+    except Exception:
+        try:
+            gen_cfg.__dict__.pop("num_logits_to_keep", None)
+        except Exception:
+            pass
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize = True,
