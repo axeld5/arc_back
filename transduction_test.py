@@ -31,19 +31,9 @@ PROMPT_V2 = (
 )
 
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
-    """
-    Convert a grid (list of lists) to row-string format.
-    
-    Args:
-        grid: Grid as list of lists of integers
-        
-    Returns:
-        List of strings, where each string represents a row
-    """
     return [' '.join(map(str, row)) for row in grid]
 
 def _format_single_prompt(input_grid: List[List[int]], placeholder_rows: str, task_id: str) -> str:
-    """Format a single-input prompt with PROMPT_V2."""
     input_str = "\n".join(grid_to_row_strings(input_grid))
     return PROMPT_V2.format(task_id=task_id, input=input_str, placeholder=placeholder_rows)
 
@@ -310,6 +300,8 @@ def run_sft(
     except Exception:
         pass    
     return os.path.join(output_dir, "final")
+
+run_sft("data.json")
 
 import re
 from typing import List, Optional
