@@ -149,7 +149,6 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
-        fast_inference = True,
     )
 model = FastLanguageModel.get_peft_model(model,
         r=128,
@@ -160,17 +159,6 @@ model = FastLanguageModel.get_peft_model(model,
         bias = "none",    # Supports any, but = "none" is 
         use_gradient_checkpointing = "unsloth", )
 FastLanguageModel.for_inference(model)
-# Workaround: some checkpoints may save unsupported fields into generation_config
-# which newer transformers forward into model_kwargs and error out.
-gen_cfg = getattr(model, "generation_config", None)
-if gen_cfg is not None and hasattr(gen_cfg, "num_logits_to_keep"):
-    try:
-        delattr(gen_cfg, "num_logits_to_keep")
-    except Exception:
-        try:
-            gen_cfg.__dict__.pop("num_logits_to_keep", None)
-        except Exception:
-            pass
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize = True,
