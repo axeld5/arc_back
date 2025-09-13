@@ -137,7 +137,7 @@ import numpy as np
 problem_id = "6f8cd79b"
 problem = load_training_problem(problem_id)
 sample_data = problem["test"][0]["input"]
-content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros((3, 3))), problem_id)
+content = _format_single_prompt(sample_data, "\n".join(grid_to_row_strings(np.zeros((3, 3)))), problem_id)
 messages = [
             {"role": "user", "content": content},
 ]
@@ -165,7 +165,7 @@ decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_value(decoded[0], problem["test"][0]["output"]))
 for _ in range(16):
-    content = _format_single_prompt(sample_data, grid_to_row_strings(decoded[0]), problem_id)
+    content = _format_single_prompt(sample_data, decoded[0], problem_id)
     messages = [
                 {"role": "user", "content": content},
     ]
