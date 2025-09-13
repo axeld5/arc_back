@@ -222,7 +222,7 @@ def pick_attn_impl() -> str:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
+    base_model: str = "Qwen/Qwen2.5-3B-Instruct",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 300,
     use_compile: bool = False,
