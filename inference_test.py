@@ -161,7 +161,7 @@ import numpy as np
 
 problem = load_training_problem("6f8cd79b")
 sample_data = problem["test"][0]["input"]
-content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros(3, 3)), problem_id)
+content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros((3, 3))), problem_id)
 messages = [
             {"role": "user", "content": content},
 ]
