@@ -2,7 +2,7 @@ import unsloth
 import torch
 import json
 from unsloth import FastLanguageModel
-from transudction_test import check_value, parse_grid_from_string
+from transduction_test import check_value, parse_grid_from_string
 from loader import load_training_problem, list_training_problems
 
 data = list_training_problems()
