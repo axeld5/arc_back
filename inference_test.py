@@ -30,7 +30,7 @@ model = FastLanguageModel.get_peft_model(
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
 )
 
-with open("data.json") as f:
+with open("test_problems.json") as f:
         raw = json.load(f)
 
 sample_data = raw["conversations"][0][0]["content"]
