@@ -2,7 +2,6 @@ import unsloth
 import torch
 import json
 from unsloth import FastLanguageModel
-from transduction_test import _format_single_prompt
 from loader import load_training_problem, list_training_problems
 from typing import *
 import re
