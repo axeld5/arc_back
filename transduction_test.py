@@ -224,7 +224,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 100,
+    num_train_epochs: int = 300,
     use_compile: bool = False,
 ):
     """Run minimal SFT on the singled-out dataset with LoRA."""        
@@ -611,7 +611,7 @@ def run_rl(
     
     from trl import GRPOConfig, GRPOTrainer
     training_args = GRPOConfig(
-        vllm_sampling_params = vllm_sampling_params,
+        #vllm_sampling_params = vllm_sampling_params,
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
@@ -619,7 +619,7 @@ def run_rl(
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
-        max_steps=200,
+        max_steps=50,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         logging_steps=10,
