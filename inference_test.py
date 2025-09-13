@@ -134,7 +134,8 @@ PROMPT_V2 = (
 
 import numpy as np
 
-problem = load_training_problem("6f8cd79b")
+problem_id = "6f8cd79b"
+problem = load_training_problem(problem_id)
 sample_data = problem["test"][0]["input"]
 content = _format_single_prompt(sample_data, grid_to_row_strings(np.zeros((3, 3))), problem_id)
 messages = [
@@ -168,8 +169,6 @@ for _ in range(16):
     messages = [
                 {"role": "user", "content": content},
     ]
-    from unsloth.chat_templates import get_chat_template
-    FastLanguageModel.for_inference(model)
     inputs = tokenizer.apply_chat_template(
         messages,
         tokenize = True,
