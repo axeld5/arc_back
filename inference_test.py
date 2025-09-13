@@ -142,30 +142,31 @@ messages = [
             {"role": "user", "content": content},
 ]
 print(messages)
-from transformers import AutoTokenizer
-from vllm import LLM, SamplingParams
+from transformers import AutoModelForCausalLM, AutoTokenizer
+from peft import PeftModel
+
 base_id = "Qwen/Qwen2.5-3B-Instruct"
 adapter_path = "qwen3_4b_singled_out_rl/final"   # or ..._sft/final
 
 tok = AutoTokenizer.from_pretrained(base_id, use_fast=True)
+base = AutoModelForCausalLM.from_pretrained(
+    base_id,
+    torch_dtype=torch.bfloat16,
+    device_map="auto",
+)
+model = PeftModel.from_pretrained(base, adapter_path)
+model.eval()
 
-prompt = tok.apply_chat_template(
-    [{"role":"user","content":content}],
+inputs = tok.apply_chat_template(
+    [{"role":"user","content":sample_data}],
     add_generation_prompt=True,
-    tokenize=False,   # vLLM wants raw text
-)
-
-llm = LLM(
-    model="qwen3_4b_singled_out_rl/final",
-    dtype="bfloat16",
-    quantization="bitsandbytes",
-    enable_lora=True,
-    max_lora_rank=128,
-    gpu_memory_utilization=0.5,
-)
-sp = SamplingParams(max_tokens=4096, stop=[tok.eos_token])
-outputs = llm.generate([prompt], sp)
-print(outputs[0].outputs[0].text)
+    return_tensors="pt",
+).to(model.device)
+outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
+generated_tokens = outputs[:, inputs.shape[-1]:]
+decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+print(decoded[0])
+print(check_value(decoded[0], problem["test"][0]["output"]))
 """FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
