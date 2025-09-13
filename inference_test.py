@@ -164,7 +164,7 @@ inputs = tok.apply_chat_template(
 ).to(model.device)
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
-decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+decoded = tok.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_value(decoded[0], problem["test"][0]["output"]))
 """FastLanguageModel.for_inference(model)
