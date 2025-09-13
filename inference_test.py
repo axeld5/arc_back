@@ -142,24 +142,31 @@ messages = [
             {"role": "user", "content": content},
 ]
 print(messages)
-from unsloth.chat_templates import get_chat_template
+from transformers import AutoTokenizer
+from vllm import LLM, SamplingParams
+base_id = "Qwen/Qwen2.5-3B-Instruct"
+adapter_path = "qwen3_4b_singled_out_rl/final"   # or ..._sft/final
 
-model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
-        max_seq_length = 8192,
-        dtype = torch.bfloat16,
-        load_in_4bit = True,
-        fast_inference = True,
-    )
-model = FastLanguageModel.get_peft_model(model,
-        r=128,
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is 
-        use_gradient_checkpointing = "unsloth", )
-FastLanguageModel.for_inference(model)
+tok = AutoTokenizer.from_pretrained(base_id, use_fast=True)
+
+prompt = tok.apply_chat_template(
+    [{"role":"user","content":content}],
+    add_generation_prompt=True,
+    tokenize=False,   # vLLM wants raw text
+)
+
+llm = LLM(
+    model="qwen3_4b_singled_out_rl/final",
+    dtype="bfloat16",
+    quantization="bitsandbytes",
+    enable_lora=True,
+    max_lora_rank=128,
+    gpu_memory_utilization=0.5,
+)
+sp = SamplingParams(max_tokens=4096, stop=[tok.eos_token])
+outputs = llm.generate([prompt], sp)
+print(outputs[0].outputs[0].text)
+"""FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize = True,
@@ -186,4 +193,4 @@ for _ in range(16):
     generated_tokens = outputs[:, inputs.shape[-1]:]
     decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
     print(decoded[0])
-    print(check_value(decoded[0], problem["test"][0]["output"]))
+    print(check_value(decoded[0], problem["test"][0]["output"]))"""
