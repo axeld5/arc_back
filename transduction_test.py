@@ -689,7 +689,6 @@ decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_array(decoded[0]))
 print(check_value(decoded[0], parse_grid_from_string(raw["conversations"][0][1]["content"])))
-print(check_value(raw["conversations"][0][1]["content"], parse_grid_from_string(raw["conversations"][0][1]["content"])))
 
 sample_data = raw["conversations"][1][0]["content"]
 messages = [
@@ -709,7 +708,26 @@ decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_array(decoded[0]))
 print(check_value(decoded[0], parse_grid_from_string(raw["conversations"][1][1]["content"])))
-print(check_value(raw["conversations"][1][1]["content"], parse_grid_from_string(raw["conversations"][1][1]["content"])))
+
+
+sample_data = test_problems["conversations"][0][0]["content"]
+messages = [
+            {"role": "user", "content": sample_data},
+]
+from unsloth.chat_templates import get_chat_template
+FastLanguageModel.for_inference(model)
+inputs = tokenizer.apply_chat_template(
+            messages,
+            tokenize = True,
+            add_generation_prompt = True, # Must add for generation
+            return_tensors = "pt",
+        ).to("cuda")
+outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
+generated_tokens = outputs[:, inputs.shape[-1]:]
+decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+print(decoded[0])
+print(check_array(decoded[0]))
+print(check_value(decoded[0], parse_grid_from_string(test_problems["conversations"][0][1]["content"])))
 
 model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
