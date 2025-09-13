@@ -151,7 +151,14 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         load_in_4bit = True,
         fast_inference = True,
     )
-model = FastLanguageModel.get_peft_model(model)
+model = FastLanguageModel.get_peft_model(model,
+        r=128,
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                          "gate_proj", "up_proj", "down_proj",],
+        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is 
+        use_gradient_checkpointing = "unsloth", )
 FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
