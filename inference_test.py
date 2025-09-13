@@ -149,6 +149,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
+        fast_inference = True,
     )
 model = FastLanguageModel.get_peft_model(model,
         r=128,
@@ -158,7 +159,7 @@ model = FastLanguageModel.get_peft_model(model,
         lora_dropout = 0, # Supports any, but = 0 is optimized
         bias = "none",    # Supports any, but = "none" is 
         use_gradient_checkpointing = "unsloth", )
-FastLanguageModel.for_inference(model)
+#FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize = True,
