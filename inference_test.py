@@ -4,6 +4,7 @@ import json
 from unsloth import FastLanguageModel
 from loader import load_training_problem, list_training_problems
 from typing import *
+import re
 
 def check_array(output_string: str) -> bool:
     if not output_string or not isinstance(output_string, str):
