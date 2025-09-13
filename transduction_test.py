@@ -232,7 +232,7 @@ def run_sft(
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
     attn_impl = pick_attn_impl()
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen3-4B-Instruct-2507",
+        model_name = "unsloth/Qwen2.5-3B-Instruct",
         max_seq_length = 8192,
         dtype = compute_dtype,
         load_in_4bit = True,
