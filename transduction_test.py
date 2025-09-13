@@ -222,7 +222,7 @@ def pick_attn_impl() -> str:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "Qwen/Qwen2.5-0.5B-Instruct",
+    base_model: str = "Qwen/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 300,
     use_compile: bool = False,
@@ -232,7 +232,7 @@ def run_sft(
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
     attn_impl = pick_attn_impl()
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen2.5-0.5B-Instruct",
+        model_name = "unsloth/Qwen3-4B-Instruct-2507",
         max_seq_length = 8192,
         dtype = compute_dtype,
         load_in_4bit = True,
@@ -458,7 +458,7 @@ def reward_function_diff(
     return rewards
 
 model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
+        model_name = "qwen3_4b_singled_out_sft/final", 
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
