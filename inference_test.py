@@ -149,7 +149,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
-        fast_inference = True,
+        #fast_inference = True,
     )
 model = FastLanguageModel.get_peft_model(model,
         r=128,
