@@ -601,17 +601,13 @@ def run_rl(
     print("num examples:", len(dataset))  # should be > 0
     from vllm import SamplingParams
     vllm_sampling_params = SamplingParams(
-        min_p = 0.1,
-        top_p = 1.0,
-        top_k = -1,
-        seed = 3407,
         stop = [tokenizer.eos_token],
         include_stop_str_in_output = True,
     )
     
     from trl import GRPOConfig, GRPOTrainer
     training_args = GRPOConfig(
-        #vllm_sampling_params = vllm_sampling_params,
+        use_vllm=True,
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
@@ -656,6 +652,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
+        fast_inference = True,
     )
 
 model = FastLanguageModel.get_peft_model(
@@ -706,7 +703,6 @@ outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = 
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
-print(check_array(decoded[0]))
 print(check_value(decoded[0], parse_grid_from_string(raw["conversations"][1][1]["content"])))
 
 
@@ -734,6 +730,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
+        fast_inference = True,
     )
 
 model = FastLanguageModel.get_peft_model(
@@ -754,15 +751,13 @@ messages = [
 from unsloth.chat_templates import get_chat_template
 FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
-            messages,
-            tokenize = True,
-            add_generation_prompt = True, # Must add for generation
-            return_tensors = "pt",
-        ).to("cuda")
+    messages,
+    tokenize = True,
+    add_generation_prompt = True, # Must add for generation
+    return_tensors = "pt",
+).to("cuda")
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
-print(check_array(decoded[0]))
 print(check_value(decoded[0], parse_grid_from_string(test_problems["conversations"][0][1]["content"])))
-print(check_value(test_problems["conversations"][0][1]["content"], parse_grid_from_string(test_problems["conversations"][0][1]["content"])))
