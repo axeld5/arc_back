@@ -92,7 +92,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "Qwen/Qwen2.5-3B-Instruct",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 300,
+    num_train_epochs: int = 3,
     use_compile: bool = False,
 ):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
