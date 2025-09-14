@@ -157,10 +157,21 @@ messages = [
 ]
 print(messages)
 model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "qwen3_4b_singled_out_sft/final", # YOUR MODEL YOU USED FOR TRAINING
-    max_seq_length = 8192,
-    dtype = torch.bfloat16,
-    load_in_4bit = True,
+        model_name = "qwen3_4b_singled_out_sft/final", 
+        max_seq_length = 8192,
+        dtype = torch.bfloat16,
+        load_in_4bit = True,
+    )
+
+model = FastLanguageModel.get_peft_model(
+        model,
+        r=128,
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                          "gate_proj", "up_proj", "down_proj",],
+        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is 
+        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
 )
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 inputs = tokenizer.apply_chat_template(messages, tokenize = True, add_generation_prompt = True, return_tensors = "pt").to("cuda")
