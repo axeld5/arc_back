@@ -1,10 +1,24 @@
-import unsloth
-import torch
 import json
-from unsloth import FastLanguageModel
-from loader import load_training_problem, list_training_problems
 from typing import *
+from loader import load_training_problem, list_training_problems
+
 import re
+import unsloth
+import os
+import platform
+import torch
+from dotenv import load_dotenv
+from huggingface_hub import login
+from trl import SFTConfig, SFTTrainer
+from unsloth import FastLanguageModel
+
+load_dotenv()
+if os.getenv("HF_TOKEN"):
+    try:
+        login(os.getenv("HF_TOKEN"))
+    except Exception:
+        pass
+
 
 def check_array(output_string: str) -> bool:
     if not output_string or not isinstance(output_string, str):
@@ -142,8 +156,6 @@ messages = [
             {"role": "user", "content": content},
 ]
 print(messages)
-from unsloth import FastLanguageModel
-from transformers import TextStreamer
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name = "qwen3_4b_singled_out_sft/final", # YOUR MODEL YOU USED FOR TRAINING
     max_seq_length = 8192,
@@ -152,9 +164,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
 )
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 inputs = tokenizer.apply_chat_template(messages, tokenize = True, add_generation_prompt = True, return_tensors = "pt").to("cuda")
-
-text_streamer = TextStreamer(tokenizer)
-outputs = model.generate(input_ids = inputs, streamer = text_streamer, max_new_tokens = 8192, use_cache = True)
+outputs = model.generate(input_ids = inputs, max_new_tokens = 8192, use_cache = True)
 print(outputs)
 """
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
