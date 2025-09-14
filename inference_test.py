@@ -186,4 +186,4 @@ for _ in range(16):
     generated_tokens = outputs[:, inputs.shape[-1]:]
     decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
     print(decoded[0])
-    print(check_value(decoded[0], problem["test"][0]["output"]))"""
+    print(check_value(decoded[0], problem["test"][0]["output"]))
