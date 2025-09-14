@@ -173,6 +173,7 @@ print(decoded[0])
 print(check_value(decoded[0], problem["test"][0]["output"]))
 for _ in range(16):
     content = _format_single_prompt(sample_data, decoded[0], problem_id)
+    print(content)
     messages = [
                 {"role": "user", "content": content},
     ]
