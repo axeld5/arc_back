@@ -1,0 +1,31 @@
+Here’s how I would solve it, given just the input/output examples:
+
+- First, look for the pattern in the outputs around every 1 in the inputs. In both examples, each original 1 stays at its position, and the four orthogonal neighbors get set to specific constants:
+  - Cell above the 1 becomes 2
+  - Cell below the 1 becomes 8
+  - Cell to the left becomes 7
+  - Cell to the right becomes 6
+  No diagonals are touched. Cells that are not adjacent to a 1 remain whatever they were (in the samples, zeros).
+
+- That suggests a straightforward transform: for every cell that is exactly 1, update its orthogonal neighbors with those fixed values.
+
+- Important detail: to avoid “cascading” or double-counting (e.g., you don’t want a newly written 2/6/7/8 to be mistaken as an original 1), first collect all coordinates of cells that are 1 from the original grid, then apply the updates based on that frozen list.
+
+- Handle edges so you don’t go out of bounds:
+  - Only write the “above” value if row > 0
+  - Only write the “below” value if row < 9 (since the grid is 10x10, indices 0..9)
+  - Only write the “left” value if col > 0
+  - Only write the “right” value if col < 9
+
+- Overwrites: If a neighbor cell already has some value, the examples imply we can just overwrite it with the new directional value. If two 1s would try to write to the same neighbor, the last one wins; the provided examples don’t include conflicts, so this is fine.
+
+- Algorithm outline:
+  1) Scan the grid and collect a list of (row, col) for all cells equal to 1.
+  2) Iterate that list and, for each (row, col), write:
+     - up: set (row-1, col) to 2 if within bounds
+     - down: set (row+1, col) to 8 if within bounds
+     - left: set (row, col-1) to 7 if within bounds
+     - right: set (row, col+1) to 6 if within bounds
+  3) Return the modified grid.
+
+- Complexity is linear in the number of cells.

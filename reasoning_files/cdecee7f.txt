@@ -1,0 +1,25 @@
+Here's how I would solve it:
+
+- From each input grid, I only need to output a 3x3 block. So I first need to figure out which nine numbers from the big grid end up in that 3x3.
+
+- Looking at the examples, each number in the 3x3 seems to come from scanning the input by columns, not rows. More specifically, for each column from left to right, take the first non-zero entry you see when scanning top to bottom. If a column is all zeros, it contributes nothing.
+
+- Collect these “first non-zero per column” values in order from the first column to the last. This gives me a 1D list of extracted values.
+
+- I always need exactly 9 values to fill a 3x3. If I collected fewer than 9, I append zeros until I have 9. If I collected more than 9, I only use the first 9.
+
+- Now lay these 9 values into a 3x3 in a snake pattern:
+  - Place the first three left-to-right in the first row.
+  - Place the next three right-to-left in the second row (so reverse that triplet).
+  - Place the last three left-to-right in the third row.
+  - In general, for row i, fill left-to-right if i is even, right-to-left if i is odd.
+
+- Return that 3x3 grid.
+
+Why this matches the examples:
+- Example 1: The first non-zero per column yields [3, 1, 8, 6, 7, 9]. Pad with three zeros to make 9, then snake-fill to get:
+  - Row 1: 3 1 8
+  - Row 2: 9 7 6
+  - Row 3: 0 0 0
+- Example 2: Extracted values [9, 3, 4, 6, 8, 5, 2], then pad with two zeros and snake-fill to match the output.
+- Example 3: Exactly nine extracted values [2, 4, 5, 3, 9, 1, 5, 1, 3], snake-fill to match the output.

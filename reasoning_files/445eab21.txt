@@ -1,0 +1,12 @@
+Here’s how I would solve it:
+
+- From the examples, the output is always a 2x2 block filled with the color of the largest shape in the grid. Practically, that’s the most frequent non-zero value in the grid (since 0 is background and dominates counts).
+- So I need to:
+  1) Flatten the 2D grid into a single list of values so I can count frequencies easily.
+  2) Find the most common value. If that value is non-zero, that’s the answer.
+  3) If the most common value is 0 (the background), then select instead the most common non-zero value. A simple way to do this is to reuse the same “most frequent” logic but score 0 as worse than any non-zero (e.g., give zero a negative score) so it can’t be selected.
+- With the selected color in hand, construct and return a 2x2 grid where all four entries are that color.
+
+Why this works on the given I/O:
+- In each example, the background zeros occupy the majority of cells, but the desired color is the most frequent non-zero (8, 7, and 4 respectively). Selecting the most common non-zero value reproduces the outputs.
+- The output’s size and structure are constant: always a 2x2 square filled with that chosen color.

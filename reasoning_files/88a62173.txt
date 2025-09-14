@@ -1,0 +1,18 @@
+Here’s how I would solve it:
+
+- From the examples, the input is always a 5x5 grid and the output is a 2x2 grid.
+- Visually inspecting the inputs shows that the informative parts are the four 2x2 corner blocks:
+  - top-left: rows 0–1, cols 0–1
+  - bottom-left: rows 3–4, cols 0–1
+  - top-right: rows 0–1, cols 3–4
+  - bottom-right: rows 3–4, cols 3–4
+- In each example, three of these 2x2 corner blocks are identical and one is different. The output is exactly that unique 2x2 block.
+- So the task reduces to:
+  1) Extract those four 2x2 corner submatrices from the 5x5 grid.
+  2) Count how many times each distinct 2x2 block appears.
+  3) Return the one that appears exactly once.
+- Implementation details:
+  - Put the four 2x2 blocks into a list in any order.
+  - Use a frequency map keyed by a serialized version of each 2x2 block (for example, convert the 2x2 list into a string) to count occurrences.
+  - Identify the key with count 1 and then convert that serialized form back into a 2x2 structure to return as the answer.
+- The solver function just delegates to this “find unique corner block” routine and returns the 2x2 result.

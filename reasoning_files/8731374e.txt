@@ -1,0 +1,37 @@
+Here’s how I would solve it, given only the input/output pairs and trying to reproduce the observed behavior:
+
+1) What the outputs look like
+- The returned grid is not the whole input; it’s a cropped sub-rectangle of the input.
+- Its height and width are always between 6 and 10.
+- Inside that rectangle, one value dominates in big horizontal and vertical stripes (sometimes forming a full cross): all cells in certain rows and/or certain columns are set to the same interior value.
+- The outer frame of the chosen rectangle appears to have been determined by a single uniform value (often overwritten in rows/columns that get filled later).
+
+2) Hypothesis about how the rectangle is chosen
+- Look for axis-aligned rectangles whose border (all four edges) is a single repeated value. This “border value” is the same along top, bottom, left, and right edges.
+- The interior must not be uniform with the border; i.e., at least one interior cell must be different from the border value. This prevents selecting a solid block of one value.
+- Only consider rectangles of size 6–10 in both dimensions (this explains the consistent output sizes).
+- If multiple rectangles match, choose the one with the largest area. If there’s a tie, keep the first one found in a top-left-to-bottom-right search.
+
+3) How to verify a candidate rectangle
+- Border check: every cell along the top and bottom rows, and the leftmost and rightmost columns of the rectangle, must equal the border value.
+- Interior check: scan inside (excluding the border). If you find at least one cell with a value different from the border, the rectangle qualifies.
+
+4) How the interior-to-output transformation works
+- Crop out the chosen rectangle as the working section.
+- Pick a “fill value”: the first interior cell (scanning row-wise) that differs from the border value.
+- Determine where that fill value appears inside the rectangle (excluding the border):
+  - Mark any interior row that contains at least one cell equal to the fill value.
+  - Mark any interior column that contains at least one cell equal to the fill value.
+- Now paint the entire rectangle using those marks:
+  - For every cell in the rectangle (including borders), if its row is marked or its column is marked, set it to the fill value.
+  - Otherwise, leave it as is.
+- This creates full-width horizontal stripes for marked rows and full-height vertical stripes for marked columns, producing the “cross-like” patterns seen in the outputs. Because the painting applies to all columns/rows in the rectangle, it can overwrite parts of the border where the stripes pass.
+
+5) What to return
+- Return only the transformed rectangle (the cropped and repainted section), not the full original grid.
+
+6) Why this matches the examples
+- The outputs’ sizes are between 6 and 10, consistent with the candidate rectangle size filter.
+- The borders correspond to a uniform edge value in the source, but can be overwritten where interior-marked rows/columns run through them—hence the stripes and crosses in the outputs.
+- The dominant interior value in the output stripes is always one that existed inside the chosen rectangle and was different from the border.
+- Picking the largest-area qualifying rectangle explains why we consistently get sizable, prominent regions from the inputs.

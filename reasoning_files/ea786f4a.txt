@@ -1,0 +1,11 @@
+Here’s how I would solve it:
+
+- Look at the examples: the output forms an “X” of zeros across the grid, regardless of the original values. Everything not on either diagonal stays exactly the same as the input.
+- That means the rule is: set both the main diagonal (top-left to bottom-right) and the anti-diagonal (top-right to bottom-left) to zero.
+- The grids are square, so let n be the number of rows. For each row index i from 0 to n-1:
+  - Zero the main diagonal cell at (i, i).
+  - Zero the anti-diagonal cell at (i, n - 1 - i).
+- If n is odd, the center cell is on both diagonals; assigning zero twice is harmless.
+- Do this in place and return the modified grid.
+
+This produces the shown outputs for 3×3, 5×5, and 7×7 inputs.

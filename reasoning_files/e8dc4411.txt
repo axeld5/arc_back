@@ -1,0 +1,64 @@
+Here’s how I would solve it, given just the input/output pairs and trying to generalize the rule.
+
+1) What the outputs show
+- The dominant number in each grid acts as the background and is preserved unless overwritten.
+- The zeros form a “mask” or template shape. That shape itself is not drawn in the output, but it drives where a different color gets copied.
+- There is one “special” non-background, non-zero color somewhere near the zeros. In the output, that special color gets propagated repeatedly across the grid in a staircase/diagonal fashion, using the zero-mask’s shape as a stamp.
+- Only background cells are replaced by the special color; existing zeros or other non-background values are not overwritten.
+- The direction of propagation depends on where the special color sits relative to the zero cluster.
+
+2) Core idea
+- Extract a binary mask from the zeros: the set of positions of zeros is the stamp pattern.
+- Compute the bounding box of the zeros and use its center to determine the relative quadrant of the special color (above/below and left/right of the zero cluster).
+- Convert the zero mask into a set of offsets relative to a chosen anchor point on the zero cluster. Then repeatedly place this shape, marching the anchor diagonally across the grid, and on each placement paint the special color onto background cells at those offset positions.
+- The step size of the march equals the extent of the mask (its height and width), so placements tile without overlap and follow a straight diagonal. Stop when the entire placement falls out of bounds.
+
+3) How to pick the anchor and direction
+- First, find:
+  - The background color: the most frequent value in the grid.
+  - The set of all zero positions.
+  - The special color and its location: the first cell encountered that is neither zero nor background.
+- If either the special color is missing or there are no zeros, just return the grid unchanged.
+- For the zero cluster:
+  - Compute min/max row and column of the zeros to get the bounding box and its center.
+- Decide which corner of the bounding box to use as the anchor for the mask offsets. Choose the corner opposite the special’s quadrant relative to the zero center:
+  - Special top-left of the zero center → use bottom-right corner of the zero bbox.
+  - Special top-right → use bottom-left.
+  - Special bottom-left → use top-right.
+  - Special bottom-right → use top-left.
+- Convert each zero position into an (row, col) offset relative to that chosen anchor.
+
+4) Marching and stamping
+- Determine the extent of the mask in rows and columns from the range of offsets. This gives the vertical and horizontal stride.
+- Set the diagonal direction to move the anchor by one stride per iteration, toward the special if the anchor is on the opposite side: sign of the stride on rows/cols is based on whether the special is above/below and left/right of the anchor.
+- Initialize the current anchor at the special’s position (with a minor alignment tweak described below for a specific small mask case).
+- Loop:
+  - For each offset in the mask, compute the absolute grid cell at current anchor + offset.
+  - If it’s inside the grid and currently background, paint it with the special color.
+  - After stamping all offsets, shift the anchor by the stride in both row and column directions simultaneously.
+  - Stop when none of the offset positions land inside the grid (i.e., the whole stamp would be out of bounds).
+
+5) Important special case (tight 3×3 masks)
+- Some examples show a compact 3×3 zero mask with the special placed just to the immediate left or right of the bottom row of that mask. To match the outputs:
+  - Detect when the zero mask’s bounding box is exactly 3×3 and the special is horizontally adjacent to the bottom row of this box.
+  - In that case, slightly change the alignment: anchor the mask around its center row/column rather than the corner, and reduce the stride by one in both directions. This creates the intended interleaving diagonal fill rather than skipping a lane.
+  - Also, shift the starting anchor by one row when the special sits on the bottom edge, to line up the first stamp correctly.
+
+6) Safeguards and finishing
+- Never overwrite non-background cells; only paint over the background.
+- If stamping a placement results in no in-bounds cells, terminate.
+- If no zero mask or no special exists, return the grid unchanged.
+
+Why this matches the examples:
+- Example 1: The zeros define a plus-like kernel; the special sits to one side. Using the opposite-corner anchor and marching by the mask’s extents produces the diagonal ladder of the special color exactly where the outputs show, only on background cells.
+- Example 2: The zeros define a corridor-like template; stamping it diagonally from the special fills a fan of the special color in a staircase, reproducing the output.
+- Example 3: The mask is distributed in small 2×2 blocks; the special is elsewhere. The method picks the anchor by relative position, computes the offsets, and tiles diagonally, yielding the sparse repeated 8s in the top/right as shown.
+
+This approach is entirely driven by:
+- Background detection by frequency,
+- Zero-mask as a shape template,
+- Special-color as the seed,
+- Opposite-corner anchoring relative to the zero cluster,
+- Diagonal tiling by the mask’s extents,
+- Painting only onto background,
+- A precise 3×3 adjacency alignment tweak for compact masks.

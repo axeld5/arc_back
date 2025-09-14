@@ -1,0 +1,41 @@
+Here’s how I’d arrive at a solution just by inspecting the input/output pairs and reverse‑engineering the intended rule.
+
+1) High‑level pattern
+- The only cells that ever change are the ones with value 9.
+- All other values are preserved.
+- Every 9 gets replaced by some existing non‑9 value copied from elsewhere in the grid.
+- The donor location isn’t arbitrary; it’s always some symmetric counterpart of the 9’s position. Across the tasks, the donor that works shows up as a simple geometric symmetry (transpose, horizontal/vertical mirror, or combinations), not a local adjacency rule.
+
+2) Which symmetry?
+- The replacements consistently match values you’d see if you map a coordinate through the dihedral symmetries of a square: identity, transpose (swap row/col), horizontal flip, vertical flip, and their compositions (including the 180‑degree flip and anti‑diagonal transpose).
+- The grids here are 30×30, but the symmetric complements appear to be computed against a larger “reference” square. The complements that line up with real data are those whose coordinates still lie inside the actual grid; others are ignored.
+
+3) What’s the reference size?
+- If you try to compute complements with the grid’s own size (e.g., 30), a few of these mapped locations would sometimes point to other 9s or out‑of‑grid spots that don’t match what we see in the outputs.
+- Using a fixed reference size that’s slightly larger (32) produces complements that, when filtered to in‑bounds positions, consistently land on the cells that the outputs seem to be copying from. In other words, think of the given grid as embedded in a virtual 32×32 canvas; compute all 8 symmetric counterparts of (r, c) in that 32×32 frame; then only keep those that fall within the real grid.
+
+4) Selection/order among multiple symmetric candidates
+- For a given 9, there may be several symmetric counterparts that land inside the grid. Not all of them will be helpful (some might also be 9).
+- The outputs are consistent with trying a fixed, deterministic order of the 8 symmetries and taking the first one that is both in bounds and not a 9. That produces the exact replacements shown across all examples.
+- Including the identity (r, c) first is harmless because it will be a 9 and thus skipped. Next trying the transpose (c, r) explains many of the replacements where 9s get filled by values mirrored across the main diagonal. Subsequent entries in the order cover the horizontal/vertical flips and their compositions with transpose, which explain the remaining fills.
+
+5) Concrete algorithm
+- Copy the grid.
+- For each cell:
+  - If it isn’t a 9, leave it as is.
+  - If it is a 9, generate the eight symmetric candidate positions of (row, col) using a 32×32 frame:
+    - (r, c)
+    - (c, r)
+    - (r, 31 − c)
+    - (c, 31 − r)
+    - (31 − r, c)
+    - (31 − c, r)
+    - (31 − r, 31 − c)
+    - (31 − c, 31 − r)
+  - Filter to those within the actual grid bounds.
+  - In that fixed order, pick the first candidate whose cell is not 9, and copy its value into the current position.
+  - If none qualifies, leave the 9 as is (not needed in these examples because there’s always a donor).
+
+6) Why this works on the given IOs
+- The big “clouds” of 9s in the inputs transform into structured bands or blocks in the outputs that are exact symmetric transpositions/mirrors of existing non‑9 regions. The fixed candidate order explains which symmetry got used when more than one could have worked.
+- Using 32 as the reference frame aligns the complements such that the in‑bounds candidates are exactly the shapes we see being copied in the outputs.

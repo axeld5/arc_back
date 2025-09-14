@@ -1,0 +1,45 @@
+Here’s how I would reason my way to a solution just from the input/output pairs.
+
+- First, identify background vs. foreground.
+  - In all examples the 0s dominate and act as background. So I’ll detect the background color as the most frequent value in the grid.
+
+- Work component-wise on non-background cells.
+  - The foreground is made of blobs of 3s with an occasional 2 that acts like a “handle” or “seed.” The outputs show that only blobs that contain at least one 2 get transformed.
+  - So I’ll find all 4-connected components consisting of non-background cells (i.e., anything not equal to the background color). A simple BFS/queue will enumerate each component’s cells.
+
+- Within each component that contains a 2, infer the intended “direction” and stripe placement from the seed 2s.
+  - The 2s sit along one side of the component’s 3s and tell us which way to extend a line of 2s out of the component.
+  - I’ll compute two bounding boxes: one for the whole component and one for the subset of its cells that are color 2.
+  - By comparing which sides of the component’s bounding box the 2-sub-bounding-box touches (top/bottom and left/right), I can derive a direction vector (di, dj) in {-1, 0, +1} for vertical and/or horizontal movement:
+    - If the 2s touch the top edge, that contributes -1 to di; if they touch the bottom, +1 to di.
+    - If the 2s touch the left edge, that contributes -1 to dj; if they touch the right, +1 to dj.
+    - If they touch both opposite sides on an axis, the contributions cancel to 0 on that axis.
+  - Use the center of the 2-cluster (center of its bounding box) as a stable origin point in case the 2s form more than one cell.
+
+- Shoot a straight ray of 2s in the inferred direction.
+  - From that center point, step along (di, dj) until you leave the grid, collecting all visited coordinates into a set. If the direction is (0, 0) (degenerate case), use just the starting point.
+  - Do this for all such components and union the rays. Paint the entire union as color 2 on the working grid. This matches the outputs where 2-lines extend straight across rows/columns beyond the component, often to the edge of the grid.
+
+- Determine stripe thickness and paint 3s around those 2-lines, perpendicular to the line’s direction.
+  - From the component’s bounding box, get height h and width w, and take m = min(h, w). This acts as the stripe’s half-width on each side, i.e., total thickness 2*m - 1.
+  - Build an offset range from -(m - 1) to +(m - 1).
+  - If the line direction is vertical (dj == 0), expand horizontally: for each point on the ray, add all offsets in the y-direction.
+  - If the line direction is horizontal (dj != 0), expand vertically: for each point on the ray, add all offsets in the x-direction.
+  - Accumulate these expanded positions for each component into a set. Then, for any such cell that is in-bounds and is currently background, paint it 3. This preserves existing 2s and 3s and only fills into empty space, which matches the examples.
+
+- Why two passes (2s first, then 3s)?
+  - Painting all the 2-lines first ensures the subsequent 3-fill doesn’t overwrite the 2s. The final pass only paints 3s onto background cells.
+
+- Implementation details I’d use:
+  - Count most common value for background detection.
+  - BFS over 4-neighbors to get components.
+  - Helper to compute bounding boxes and the center of a set of coordinates.
+  - A ray-shooting helper that walks in a direction accumulating cells until it exits the grid.
+  - Sets for fast membership and unions; a deque for BFS.
+  - Keep a copy of the grid to modify and return.
+
+This pipeline matches the observed transformations:
+- Only components with a seed 2 are processed.
+- The 2-line extends straight through the grid in the inferred direction.
+- A band of 3s, with thickness tied to the smaller dimension of the original blob, is drawn around that line, perpendicular to it.
+- Existing non-background cells remain untouched; only background gets filled with 3, and the 2s are placed explicitly along the line.

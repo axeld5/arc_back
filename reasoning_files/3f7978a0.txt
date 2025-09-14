@@ -1,0 +1,37 @@
+Here’s how I’d solve it:
+
+- First, recognize the transformation is a crop, not a rewrite: the outputs are rectangular subgrids copied verbatim from the inputs.
+
+- What determines the crop? In every example, the columns kept are exactly the leftmost and rightmost columns where a 5 appears, and the rows kept span from the topmost 5 to the bottommost 5, but with one extra row included above and one extra row included below. The 8s in the output are just whatever happened to be in those retained cells of the original grid.
+
+- So the plan:
+  1. Scan the grid to collect the coordinates of all cells equal to 5.
+  2. Compute the tight bounding box around all 5s:
+     - top = minimum row index where a 5 appears
+     - bottom = maximum row index where a 5 appears
+     - left = minimum column index where a 5 appears
+     - right = maximum column index where a 5 appears
+  3. Expand that box vertically by one row on each side:
+     - adjusted_top = top - 1
+     - adjusted_bottom = bottom + 1
+     - That implies height = (bottom - top + 1) + 2 = bottom - top + 3
+     - Horizontally, leave it as-is: width = right - left + 1
+  4. Extract the subgrid defined by:
+     - rows from adjusted_top to adjusted_top + height - 1 (inclusive)
+     - columns from left to left + width - 1 (inclusive)
+  5. Return that extracted subgrid.
+
+- Notes lining up with the examples:
+  - Example 1: 5s are on rows 2..4 and columns 1..5. Expanding rows gives 1..5, columns stay 1..5 -> 5×5 crop, matching the output.
+  - Example 2: Same rule applies; the width equals the span of 5s, rows get one extra above and below.
+  - Example 3: There are four rows containing 5s, so the output has 4 + 2 = 6 rows; columns are again the min..max span of the 5s.
+
+- Implementation details I’d use:
+  - One pass to collect all row indices and all column indices for cells equal to 5.
+  - Compute min/max on those lists for the bounding box.
+  - Compute adjusted top and total height as above.
+  - Slice the grid by rows and then slice each row by the column range.
+  - Keep enumerate injectable (as a parameter) to ease testing or controlled enumeration in certain environments.
+
+- Assumptions:
+  - Inputs guarantee there is at least one row available above and below the 5s so the vertical expansion doesn’t go out of bounds (as in the given examples). If not guaranteed, clamp to the grid bounds.

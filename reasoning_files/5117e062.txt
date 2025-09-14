@@ -1,0 +1,13 @@
+Here’s how I’d solve it from the given input/output pairs:
+
+- Observation: Each big grid contains exactly one special marker cell with value 8. The output is always a 3x3 patch centered on that 8.
+- The 3x3 output looks like the local 3x3 neighborhood around the 8, except the center is not 8 anymore; it’s replaced by the dominant non-zero color among the eight surrounding cells.
+- Zeros act as background and should be ignored when deciding the dominant color.
+
+Algorithm:
+1. Scan the grid (excluding the outermost border to avoid bounds issues) to find the cell with value 8.
+2. Collect the values of the eight neighboring cells in its 3x3 neighborhood; ignore zeros.
+3. Determine the most frequent value among those non-zero neighbors.
+4. Extract the 3x3 neighborhood centered at the 8 into a 3x3 pattern.
+5. Replace the center of this pattern with the most frequent neighbor value from step 3.
+6. Return this 3x3 pattern as the output.

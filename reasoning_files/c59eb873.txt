@@ -1,0 +1,27 @@
+Here’s how I would solve it:
+
+- First, look for a consistent structural change between each input and its output. Across all examples, the output has exactly twice the number of rows and twice the number of columns compared to the input.
+
+- Check how values are placed. Take any input row, for example: 0 5 1. In the output, this becomes 0 0 5 5 1 1 on one line, and the same line is repeated immediately below. This pattern holds for every row: each element is duplicated horizontally, and each resulting row is duplicated vertically.
+
+- Confirm with other examples:
+  - A single row like 2 1 becomes two rows, each reading 2 2 1 1.
+  - A 3x3 or 4x4 grid expands so that every original cell becomes a 2x2 block of that same value in the output.
+
+- So the rule is a nearest-neighbor scale-up by a factor of 2 in both dimensions:
+  - For each row in the input, build a new row by repeating each element twice (horizontal duplication).
+  - Then add that expanded row to the result twice (vertical duplication).
+
+- This guarantees:
+  - Output height = 2 × input height.
+  - Output width = 2 × input width.
+  - Each input cell maps to a 2x2 block of the same value.
+
+- Implementation plan:
+  - Initialize an empty result grid.
+  - For each input row:
+    - Create a horizontally expanded row by appending each element twice in order.
+    - Append this expanded row to the result twice.
+  - Return the result.
+
+- Complexity is linear in the number of input cells, with a fixed factor due to duplication. This exactly reproduces the outputs shown.

@@ -1,0 +1,31 @@
+High-level reasoning to arrive at this solution from the I/O pairs:
+
+Observations
+- The output is always a 9x9 grid partitioned into nine 3x3 macro-blocks.
+- Inside any macro-block that is “active,” the numbers form a repeating 3x3 pattern identical to the original 3x3 input. Inactive blocks are all zeros.
+- Which macro-blocks are active is determined by the same 3x3 input: a block at block-row r_b, block-col c_b is active if the input at (r_b, c_b) equals 2. Values 0 or 1 there mean the entire block is zeroed out.
+- When a block is active, the value at any cell (row, col) in the 9x9 is taken from the input at (row % 3, col % 3), i.e., tile the 3x3 input across the whole 9x9 with period 3 in both directions.
+
+Inference
+- For any cell (row, col) in 0..8:
+  - Identify which macro-block it belongs to via integer division: block coordinates are (row // 3, col // 3).
+  - Check the selector value from the input at those block coordinates. If it equals 2, this block should show the tiled pattern; otherwise the cell should be 0.
+  - If active, fetch the tiled value by modulo indexing into the input: element = input[row % 3][col % 3].
+
+Algorithm
+- Initialize an empty 9x9 result.
+- For row in 0..8:
+  - For col in 0..8:
+    - Let block_selector = input[row // 3][col // 3].
+    - If block_selector == 2:
+      - Set result[row][col] = input[row % 3][col % 3].
+    - Else:
+      - Set result[row][col] = 0.
+- Return the 9x9 result.
+
+Why this matches the examples
+- Example 1: Only the block at (1,0) is 2, so only the middle-left 3x3 is filled with the tiled input; everything else is zero.
+- Example 2: Blocks (0,2) and (2,0) are 2, so top-right and bottom-left 3x3 regions show the tiled input; other blocks are zero.
+- Example 3: Blocks (0,0), (0,2), (1,1), (2,0) are 2, so those four macro-blocks show the tiled input in their positions; the rest are zero.
+
+This leads directly to looping over all 81 cells, using integer division to choose the block (and thus whether to fill), and modulo to tile the input pattern inside active blocks.

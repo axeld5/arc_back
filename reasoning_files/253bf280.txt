@@ -1,0 +1,31 @@
+Here’s how I’d solve it from the I/O patterns:
+
+- Observation:
+  - Only the numbers 0 and 8 appear in inputs.
+  - Outputs add 3s only in straight lines between pairs of 8s that are aligned horizontally or vertically.
+  - The 3s fill the cells strictly between the two 8s; the 8s themselves remain unchanged.
+  - If multiple 8s sit along the same row/column, the 3s span only between adjacent 8s (the nearest one in that direction), and this happens independently in each of the four orthogonal directions.
+  - No diagonals are ever drawn.
+  - Grids without a second 8 in a direction remain unchanged in that direction.
+
+- Algorithm:
+  1. Make a copy of the grid to write the result into, so that decisions are always based on the original positions of 8s and not influenced by newly written 3s.
+  2. Collect coordinates of all cells that contain an 8.
+  3. For each 8, scan in the four orthogonal directions: right, down, left, up.
+     - Step cell by cell until you either leave the grid or encounter another 8.
+     - If you encounter another 8, fill every cell along the path between the starting 8 and this 8 with 3s in the output grid.
+     - Do not include the endpoints (the 8s) in the fill.
+     - Stop scanning in that direction once the first 8 is found (so you only connect to the nearest 8 in that direction).
+  4. Return the modified grid.
+
+- Implementation details to match the examples:
+  - Use a helper that, given a start cell, a direction (delta_row, delta_col), and a number of steps to the next 8, fills 3s for steps 1 to steps-1 along that direction.
+  - Directions to use: right (0,1), down (1,0), left (0,-1), up (-1,0).
+  - Iterate over all discovered 8 positions; because we always read from the original grid and write to the copy, overlapping segments or bidirectional passes don’t cause issues (writing 3 multiple times is harmless).
+  - If a scan reaches the boundary without finding another 8, do nothing for that direction.
+
+- Why this reproduces the outputs:
+  - It draws continuous 3s between aligned 8 pairs on rows/columns (e.g., long horizontal bridges in one row).
+  - It creates vertical “columns” of 3s between two 8s stacked in the same column.
+  - It leaves grids untouched when no connectable pair exists in a direction.
+  - It connects only adjacent 8s in a given direction, exactly as shown in the multi-8 examples.

@@ -1,0 +1,22 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- First, notice the outputs are just labels (single integers) and not coordinates or shapes. Each output set is three numbers, and they look like the three dominant non-zero values in the grid.
+- Check the examples: in each input, there are large regions of a few colors (integers), with 0 filling the background. The outputs match the three most frequent non-zero labels in descending order of how often they appear in the entire grid, regardless of position or connectivity.
+- Therefore, spatial structure doesn’t matter; only global frequency counts do. The background 0’s are extremely common and must be excluded.
+- So the rule is: count how many times each integer appears in the grid, ignore 0, sort labels by descending count, and take the top three. Output them each on their own row (i.e., a column vector of length 3).
+
+Algorithm:
+
+1. Flatten the 12x12 grid into a single sequence of integers.
+2. Tally occurrences of each integer (a frequency map).
+3. Since 0 is the background and overwhelmingly the most frequent, either explicitly discard 0 or take the top n+1 and drop the top one (which will be 0).
+4. Take the next three most frequent labels.
+5. Return them as a list of single-item lists, preserving the frequency order.
+
+Notes and edge cases:
+
+- If there are fewer than three non-zero labels, return as many as exist.
+- Ties, if any, can be resolved by the natural ordering of the counting tool (not critical here, since examples don’t show ties).
+- Complexity is linear in the number of cells (144), so trivial.
+
+This reasoning directly yields a simple frequency-based solution: count all values, exclude the background 0 by skipping the most common overall, then return the next three labels as a column.

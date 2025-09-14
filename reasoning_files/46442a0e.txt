@@ -1,0 +1,22 @@
+Here’s how I would solve it:
+
+- First, notice the output is exactly a 2×2 tiling of the input and its rotations. The top-left block is the original grid. The top-right block matches the input rotated 90° clockwise. The bottom-left block matches the input rotated 270° clockwise (or 90° counterclockwise). The bottom-right block is the input rotated 180°. This pattern holds in all given examples.
+
+- So the task is:
+  1) Build the 90°, 180°, and 270° clockwise rotations of the input grid.
+  2) Horizontally stitch two grids row-by-row to form the top strip (original | 90°) and the bottom strip (270° | 180°).
+  3) Vertically stack the two strips to form the final 2×2 tiling.
+
+- Implementation plan:
+  - Write a helper to rotate a grid 90° clockwise. The standard trick is: reverse the order of rows, then transpose (i.e., take columns by zipping the reversed rows). Convert the transposed tuples back to lists so everything stays list-of-lists.
+  - Get the 180° and 270° rotations by applying the 90° rotation successively.
+  - Write a helper that, given two grids of the same height, concatenates corresponding rows (left_row + right_row). This “sum” is not numeric addition; it’s horizontal concatenation.
+  - Build the top half by horizontally concatenating the original with the 90° rotation.
+  - Build the bottom half by horizontally concatenating the 270° rotation with the 180° rotation.
+  - Finally, vertically stack the top and bottom halves (list concatenation of the row lists) and return that as the result.
+
+- This exactly reproduces the shown outputs:
+  - Top-left = original
+  - Top-right = 90° clockwise
+  - Bottom-left = 270° clockwise
+  - Bottom-right = 180° clockwise

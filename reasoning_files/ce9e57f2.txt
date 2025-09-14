@@ -1,0 +1,28 @@
+Here’s how I would solve it from the examples:
+
+- The change happens independently per column. Zeros are untouched; only non-zero entries (the 2s) are candidates for modification.
+- For each column, look at which row indices contain a non-zero value. From the examples, the non-zeros are 2s.
+- Count how many non-zeros there are in that column. Take the floor of half that count (i.e., integer division by 2). This gives how many cells to flip in that column.
+- Starting from the bottom of the column, flip that many of the non-zero cells to 8. Leave the other non-zeros as they are.
+- Do this for every column. The process doesn’t depend on other columns, so we can process columns left to right on a copy of the grid (so the original is not mutated while computing).
+
+Breaking that into steps I’d implement:
+
+1) A tiny helper that, given a list (of indices), returns its half size via integer division by 2.
+
+2) A column updater:
+   - Build a list of row indices where this column’s value is non-zero.
+   - Compute how many to change: half of that list’s length.
+   - Starting from the end of that list (the bottom-most non-zeros), change that many cells to 8 in the same column.
+
+3) A driver:
+   - Copy the grid row-by-row.
+   - For each column index (optionally accepting a custom index range, defaulting to all columns), apply the column updater to the working grid.
+   - Return the processed copy.
+
+This exactly reproduces the behavior in the examples:
+- If a column has 6 non-zeros, flip the bottom 3 to 8.
+- If a column has 5 non-zeros, flip the bottom 2 to 8.
+- If a column has 3 non-zeros, flip the bottom 1 to 8.
+- Zeros are never changed.
+- Only the chosen bottom half of non-zeros become 8; others remain 2.

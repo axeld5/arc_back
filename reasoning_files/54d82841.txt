@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+- From the I/O pairs, the only changes in the output are 4’s written on the last row. Their column positions correspond to a very specific “pattern” found somewhere above in the grid.
+
+- The pattern is:
+  - At some position (r, c), the cell is 0.
+  - Its immediate left and right neighbors (r, c-1) and (r, c+1) are equal to each other, non-zero, and
+  - The cell directly above (r-1, c) is the same value as those neighbors.
+  - In other words, we’re looking for a “T” formed by the same non-zero number around a zero:
+    - Row r-1 at column c has X,
+    - Row r at columns c-1 and c+1 have X,
+    - Row r at column c is 0,
+    - X ≠ 0.
+
+- Whenever such a configuration exists at (r, c), we mark the bottom row (last row) at column c with a 4.
+
+- This must be done without disturbing the original numbers, so:
+  - Make a copy of the grid to write the marks.
+  - Iterate r from 1 to the last row (so we can safely look “above” at r-1).
+  - Iterate c from 1 to width-2 (so we can safely look left and right).
+  - Check the condition described above; if it holds, set the bottom row’s column c to 4 in the copy.
+
+- Return the modified copy as the result.
+
+This matches all examples:
+- The 4’s appear only under columns that are centers of such “T” patterns.
+- The value forming the T (3, 6, 8, etc.) doesn’t matter, only that it’s non-zero and consistent in the three positions (above, left, right).
+- Multiple detections for the same column just keep it at 4.

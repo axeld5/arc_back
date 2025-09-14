@@ -1,0 +1,41 @@
+Here’s how I’d solve it from the I/O examples:
+
+- First, infer the rule from the examples:
+  - Cells with value 2 are solid borders/walls.
+  - Cells with value 0 are empty space.
+  - In the outputs, all 0s that are enclosed by 2s become 1s.
+  - Any 0 that touches the outer boundary, or is connected (4-directionally) to such a boundary 0, remains 0.
+  - 2s are never changed.
+
+- Reduce the task to a standard “fill enclosed regions” problem:
+  - We don’t want to fill every 0, only those that are not connected to the outside.
+  - So, mark all 0s that are connected to the border as “safe” (water).
+  - Then convert the remaining, unmarked 0s (the truly enclosed ones) to 1s.
+
+- High-level plan:
+  1. Create a same-sized boolean/0-1 matrix called marked to track which 0-cells are connected to the border.
+  2. Seed a queue with all border cells that are 0, marking them as visited/safe.
+  3. Perform a breadth-first search (BFS) from these border 0s, marking every reachable 0 as safe (4-directional adjacency: up, down, left, right).
+  4. Build the output grid:
+     - If a cell is 2, keep it as 2.
+     - If a cell is 0 and marked safe, keep it 0.
+     - If a cell is 0 and not marked safe, turn it into 1.
+
+- Why this works with the examples:
+  - Any “holes” fully surrounded by 2s do not get reached by the BFS from the border, so they remain unmarked and get turned into 1s (matching the outputs).
+  - Any 0 area that connects to the outer boundary gets marked via BFS and remains 0.
+
+- Implementation details I’d follow:
+  - Assume a square grid (size = number of rows = number of columns), like in the examples.
+  - Identify border cells as those in the first or last row, or first or last column.
+  - Use a queue for BFS expansion and a small list of direction offsets for 4-neighborhood traversal.
+  - When producing the final grid, do a single pass: if original is 0 and not marked, write 1; otherwise copy the original value.
+
+- Complexity:
+  - Time O(n^2), as every cell is processed a constant number of times.
+  - Space O(n^2) for the marked matrix and the BFS queue in the worst case.
+
+This reasoning directly yields a structure with:
+- A step to collect and mark border 0s,
+- A BFS to expand marks to all border-connected 0s,
+- And a final pass that flips only the unmarked 0s to 1s, leaving 2s and marked 0s unchanged.

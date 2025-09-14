@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+- From the examples, the only changes from input to output are:
+  - Zeros remain zeros.
+  - Twos stay as twos unless they are “alone.”
+  - A “lonely” two (a 2 with no non-zero neighbors in the four cardinal directions) turns into a 1.
+
+- So the rule is: for each cell that is non-zero, if all of its orthogonal neighbors (up, down, left, right) are either out of bounds or zero, then replace that cell with 1. Otherwise, leave the cell as it is. Cells that are zero remain zero.
+
+- Steps:
+  1. Iterate over each cell (row, col).
+  2. If the cell is zero, copy zero to the output.
+  3. If the cell is non-zero, check its four neighbors:
+     - Up: (row-1, col)
+     - Down: (row+1, col)
+     - Left: (row, col-1)
+     - Right: (row, col+1)
+     Only consider neighbors within bounds.
+  4. If any in-bounds neighbor is non-zero, the cell is not isolated; copy the original value.
+  5. If none of the in-bounds neighbors are non-zero, the cell is isolated; write 1 at that position.
+  6. Build a new grid with these results and return it.
+
+- This matches all examples:
+  - Any 2 with at least one adjacent 2 remains 2.
+  - Any 2 with all neighbors zero (or outside the grid) becomes 1.
+  - Zeros are unchanged.
+
+- Complexity is linear in the number of cells.

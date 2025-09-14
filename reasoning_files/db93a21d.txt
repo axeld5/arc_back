@@ -1,0 +1,47 @@
+Here’s how I would solve it from the given input/output pairs:
+
+1) Identify the objects to decorate
+- The only non-zero structure in all inputs are connected components of 9s, always axis-aligned rectangular blocks.
+- First, scan the grid, and for each unvisited 9, perform a 4-neighborhood flood fill (stack/DFS). While filling, track min/max row and column to get the bounding box of that region.
+- Store each region as (min_row, min_col, max_row, max_col) and also keep the order in which we discovered it.
+
+2) Define a scale per region
+- For each region, compute its width = max_col - min_col + 1.
+- Define an “offset” = width // 2.
+- All decorations (the 3-area and the 1-area) scale as multiples of this offset, which makes the decorations larger for wider 9-blocks and matches the examples.
+
+3) Decide drawing order to control overlaps
+- Sort the regions by their bottom edge (max_row), then by discovery order.
+- This ensures a consistent layering when decorations overlap: lower regions get processed later (or earlier) in a way that reproduces the shown outputs.
+
+4) Prepare an empty canvas
+- Start with an output grid initialized to 0s. We will paint decorations and then paint the 9s themselves last for each region so that the original 9 rectangles remain intact over any decorations.
+
+5) Normalize “bottom alignment” for regions that touch the bottom
+- Regions that touch the bottom edge can be vertically clipped; the examples show decorations aligned as if the whole block height were 2*offset.
+- Compute region_height = max_row - min_row + 1. If the region touches the very bottom (max_row == height - 1), virtually extend its bottom by extend_bottom = 2*offset - region_height. Define row_end = max_row + extend_bottom; otherwise, row_end = max_row.
+- This makes the decoration positioning consistent whether or not the block is clipped by the bottom border.
+
+6) Paint the vertical “1” strip under each region
+- Directly below row_end, fill rows from row_end + 1 down to the bottom of the grid with 1s, but only in the column range [min_col, min_col + 2*offset).
+- Clamp the right edge to the grid width.
+- This produces the vertical 1-filled area underneath each 9 block seen in the outputs.
+
+7) Paint the “3” square platform around/above the region
+- Create a square of 3s of size (4*offset) x (4*offset).
+- Horizontal span: from col = min_col - offset to col = min_col - offset + 4*offset - 1 (i.e., [min_col - offset, min_col + 3*offset]).
+- Vertical span: from row = row_end - 3*offset + 1 up to row = row_end + offset.
+- This square straddles above and around the 9 block, matching the 3-patterned plateaus in the outputs.
+- While painting, clip to grid bounds so it doesn’t go out of range.
+
+8) Paint the original 9 region last
+- Finally, overwrite the region’s bounding box [min_row..max_row] x [min_col..max_col] with 9s.
+- This guarantees the 9s are intact atop any 1s/3s that might overlap.
+
+9) Return the decorated grid
+- After processing all regions in the chosen order, the result matches the provided outputs:
+  - The 3 areas scale with the width of the 9 block and are positioned relative to the bottom of the block adjusted by the virtual extension.
+  - The 1 area forms a vertical strip below the block with width 2*offset.
+  - Overlaps are consistent due to the sort order and repainting of 9s last for each component.
+
+This exact sequence—flood-fill to find 9-rectangles, compute offset from width, bottom-aligned decoration placement (with virtual extension at bottom), draw a 4*offset square of 3s positioned relative to row_end and min_col - offset, draw a 1 strip below of width 2*offset, and finally repaint the 9 rectangle—reproduces all the illustrated I/O pairs.

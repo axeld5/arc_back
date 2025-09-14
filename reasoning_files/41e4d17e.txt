@@ -1,0 +1,19 @@
+Here’s how I would solve it from the I/O examples:
+
+- Observation from the examples:
+  - The 1s form hollow 5x5 squares: a 5x5 border of 1s with the 3x3 interior being non-1s. A 5x5 border has exactly 16 cells, so any 5x5 window containing exactly 16 ones is one of these hollow squares.
+  - For each such hollow square, the output shows an entire row and an entire column filled with 6s, passing through the exact center of that 5x5 square.
+  - Existing 1s must be preserved (never overwritten), and only non-1 cells on those rows/columns are turned into 6.
+
+- Plan:
+  1. Slide a 5x5 window over every possible position in the grid (rows 0..n-5, cols 0..m-5).
+  2. For each window, count how many cells equal 1. If the count is exactly 16, we’ve found a hollow 5x5 ring.
+  3. The center of that 5x5 window is at (start_row + 2, start_col + 2). Collect these center row indices and center column indices as “critical” rows and columns.
+     - Using sets prevents duplicates, but duplicates don’t break correctness anyway.
+  4. After scanning the whole grid, go through every cell (r, c). If r is a critical row or c is a critical column, and the cell is not 1, set it to 6. Leave 1s unchanged.
+  5. Return the modified grid.
+
+- Why this matches the outputs:
+  - In each example, every detected hollow 5x5 ring contributes one horizontal line and one vertical line of 6s through its center, spanning the entire grid but respecting 1s.
+  - Where multiple rings exist, their center rows/columns combine, creating a crosshatch of 6s exactly as shown.
+  - The count of 16 in a 5x5 window is the distinguishing signature of the hollow square, so this reliably finds the right centers.

@@ -1,0 +1,26 @@
+Here’s how I would solve it based on the IO pairs:
+
+- First, spot the invariant pattern in all inputs: there is exactly one row where every cell is non-zero, and exactly one column where every cell is non-zero. These two “full” lines intersect at a single cell.
+
+- The output places a plus-shaped pattern of 4s centered around that intersection, with one key detail: the center cell itself is left unchanged. The arms of the plus extend one cell in each cardinal direction, and the horizontal bar of length 3 is drawn on the rows immediately above and below the full row.
+
+Concretely:
+1) Find the index of the unique row whose elements are all non-zero.
+2) Find the index of the unique column whose elements are all non-zero. Easiest way is to look at the columns via a transpose of the grid.
+3) Let (r, c) be the intersection.
+4) Modify the grid in-place to draw the plus of 4s:
+   - On row r-1, set columns c-1, c, c+1 to 4.
+   - On row r+1, set columns c-1, c, c+1 to 4.
+   - On row r, set columns c-1 and c+1 to 4 (leave the center at (r, c) as-is).
+5) Leave all other cells unchanged.
+
+Assumptions observed in the examples:
+- The “full” row and column are not at the borders, so their immediate neighbors exist.
+- “Full” means non-zero, not necessarily the same number across the row/column.
+- The drawn value is always 4, regardless of what was there before (including overwriting 0s, 8s, 9s, etc.), except the center cell which is preserved.
+
+Implementation outline:
+- Scan rows and pick the first index where all entries are non-zero.
+- Scan columns similarly (via transposing or direct column iteration).
+- Write the 4s in the specified positions using slice assignment for the 3-wide segments and direct indexing for the single left/right cells.
+- Return the modified grid.

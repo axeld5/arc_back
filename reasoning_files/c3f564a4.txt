@@ -1,0 +1,31 @@
+Here’s how I would solve it based on the I/O pairs.
+
+1) Spot the pattern in the outputs
+- Each output is a fully filled grid where numbers cycle 1..K repeatedly across columns.
+- Each subsequent row is the previous row shifted left by one (i.e., it’s a cyclic Latin square pattern).
+- Zeros in the input are ignored in the output; they don’t constrain anything.
+- K is the largest number that appears anywhere in the input (5 in the first set, 6 in the second, 7 in the third).
+- The output preserves the input’s height and width.
+
+2) Derive the cell formula
+- If we index rows r = 0..H-1 and columns c = 0..W-1, the value at (r, c) equals ((r + c) mod K) + 1.
+- This produces the first row as 1,2,…,K repeating, and each next row is a 1-step cyclic shift.
+
+3) Determine parameters from the input
+- Height = number of rows in the input.
+- Width = number of columns in the first row.
+- K = maximum value present anywhere in the grid (zeros are harmless since max ignores them if any positive values exist).
+
+4) Construct the output
+- Create a new H×W grid.
+- For each cell (r, c), compute ((r + c) % K) + 1 and store it.
+
+5) Complexity and behavior
+- Single pass to find K.
+- Single pass to fill the new grid.
+- Time O(H×W), space O(H×W).
+- Matches all provided outputs: same size as input, values 1..K, cyclic across columns, and each row shifted by one.
+
+That’s the reasoning that leads to a simple solution:
+- First pass to find the maximum value in the input grid.
+- Then generate a fresh grid of the same size with value at (r, c) given by ((r + c) mod max_value) + 1.

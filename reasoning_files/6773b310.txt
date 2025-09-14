@@ -1,0 +1,23 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, notice the grid is 11x11 and contains only 0, 6, and 8.
+- The 8s form full “fence” lines: the 4th and 8th rows are all 8s, and similarly the 4th and 8th columns align with 8s. So the grid is partitioned into a 3x3 array of interior blocks, each interior block being a 3x3 area, separated by these “walls.”
+- That means the nine interior blocks start at row indices 0, 4, 8 and column indices 0, 4, 8 (0-based). Each block covers three rows and three columns from its start.
+- The outputs are 3x3 matrices of 0/1. Inspecting examples shows a single bit corresponds to one interior block.
+- The only non-wall signal inside blocks is 6 (0s are just empties). From the examples, the rule that matches all outputs is: a block maps to 1 if it contains at least two 6s within its 3x3 area; otherwise it maps to 0.
+- You can verify on the first input:
+  - Top-left block (rows 0–2, cols 0–2) contains two 6s → output 1.
+  - Top-middle (rows 0–2, cols 4–6) contains one 6 → output 0.
+  - Top-right (rows 0–2, cols 8–10) contains two 6s → output 1.
+  - The rest follow similarly and match the provided output.
+
+Implementation plan:
+- Initialize a 3x3 result matrix with zeros.
+- For each block_row in {0,1,2} and block_col in {0,1,2}:
+  - Compute the top-left of the block as (block_row*4, block_col*4).
+  - Iterate the 3x3 cells inside that block (offsets 0..2 for rows and cols).
+  - Count how many cells equal 6.
+  - Set the corresponding result cell to 1 if the count is at least 2; otherwise 0.
+- Return the 3x3 result.
+
+This matches the observed structure (walls every 4th line) and the thresholding behavior (≥2 sixes → 1) across all provided examples.

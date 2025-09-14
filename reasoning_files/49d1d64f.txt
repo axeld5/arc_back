@@ -1,0 +1,24 @@
+Here’s how I’d solve it from the given I/O pairs:
+
+- First, notice the output grid is the input grid with a 1-cell border added on all sides, so its height and width are each increased by 2.
+- The interior (everything except the new border) is exactly the original input, shifted by +1 in both row and column indices.
+- The top border (excluding corners) is a copy of the first row of the input.
+- The bottom border (excluding corners) is a copy of the last row of the input.
+- The left border (excluding corners) is a copy of the first column of the input.
+- The right border (excluding corners) is a copy of the last column of the input.
+- The four corners of the new border are zeros.
+
+From that, the construction is straightforward:
+1) Let h, w be the input’s height and width.
+2) Create a new (h+2) by (w+2) grid initialized to zeros.
+3) Copy the input into the center: for each cell (i, j) in the input, place it at (i+1, j+1) in the padded grid.
+4) Set top and bottom borders: for each column j, place input[0][j] at (0, j+1) and input[h-1][j] at (h+1, j+1).
+5) Set left and right borders: for each row i, place input[i][0] at (i+1, 0) and input[i][w-1] at (i+1, w+1).
+6) Do not touch the four corners; they remain zero.
+
+This exactly reproduces the examples:
+- The interior matches the input.
+- Each border cell copies the nearest edge value from the input.
+- The four corners are zero.
+
+To keep iteration generic, I’d allow passing in the iterator function (defaulting to the usual range), and the main solver just delegates to this padding routine.

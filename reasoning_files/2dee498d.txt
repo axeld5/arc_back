@@ -1,0 +1,7 @@
+Here’s how I would solve it:
+
+- Look at each example: the number of columns in the input rows is always divisible by 3 (9, 12, 6), and the output keeps the same number of rows but only the first third of the columns (3, 4, 2). The values are unchanged and in the same order—just truncated horizontally.
+- So the task is to take the leftmost third of the grid, i.e., crop the grid to its left third subgrid.
+- Compute the subgrid width as the total number of columns in a row divided by 3. Since all rows are the same length, get this from the first row.
+- For each row, take its first subgrid_width elements and keep row order intact.
+- Return the collection of these truncated rows as the result.

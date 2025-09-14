@@ -1,0 +1,26 @@
+Here’s how I’d solve it from the I/O examples:
+
+- Observation from examples:
+  - The interesting content is confined to a contiguous block of non-empty rows (rows that contain at least one non-zero).
+  - In both examples, that block is three rows tall.
+  - The output is the original block of rows repeated vertically in a cycle to fill the entire height of the grid.
+  - The columns are not altered independently; each output row is exactly a copy of one of the rows from that block.
+  - The repetition wraps both downward and upward relative to where the block originally starts, depending on how the modulo lines up.
+
+- Therefore, the task is to:
+  1. Find the index of the first non-empty row (the “top” of the motif).
+  2. Determine the height of the motif: count how many consecutive rows starting at that top are non-empty, stopping at the first all-zero row or the grid bottom.
+  3. Create an output grid of the same size.
+  4. For each row index r in the output, select which source row to copy from by cycling through the motif:
+     - Compute the offset within the motif using modular arithmetic: (r - top) modulo motif_height.
+     - The source row is top + that offset.
+  5. Copy that entire source row into the output row.
+
+- Why this matches the examples:
+  - In the first example, the first non-empty row appears at row 4, and the next two rows are also non-empty, then a zero row appears, so the motif height is 3. Repeating those three rows cyclically across all 15 rows yields the given output.
+  - In the second example, the first non-empty row is at row 3, and again the motif height is 3. Repeating those three rows cyclically across all rows produces the shown output. The modulo alignment causes the first output row to match the first motif row here.
+
+- Notes:
+  - This approach treats the motif as a vertical stripe and tiles it over the entire height.
+  - Complexity is linear in the number of cells (scan to find the block, then a single pass to copy rows).
+  - Assumes there is at least one non-empty row; otherwise, you’d need a special case for an all-zero grid.

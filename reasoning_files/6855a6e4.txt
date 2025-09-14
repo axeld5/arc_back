@@ -1,0 +1,53 @@
+Here’s how I would solve it, looking only at the given input/output pairs and trying to generalize the behavior:
+
+- What’s going on in the examples
+  - The red 2s form a rectangular “frame” (sometimes sparse or broken, but clearly defining two horizontal rows and two vertical columns).
+  - All green 5s end up inside that framed rectangle in the output. Any 5s that were originally inside get cleared and replaced by a new, organized placement.
+  - The way 5s move into the rectangle preserves their alignment: either they move vertically (same column) from above/below into the interior, or horizontally (same row) from left/right into the interior. Which way is chosen depends on which frame sides look “stronger” (i.e., whether the horizontal borders or the vertical borders contain more 2s).
+  - The final placement keeps greens away from the red frame by at least a small margin.
+
+Given that, here’s the algorithm I’d write:
+
+1) Identify the frame defined by the red 2s.
+   - Count, for each row, how many 2s it has; do the same for each column.
+   - The frame rows are the two rows with a lot of 2s (preferably those with at least 3 reds). If no rows reach that threshold, pick the top two rows by 2-count anyway as a fallback. Do the analogous selection for columns.
+   - From those, take the topmost and bottommost rows as the horizontal borders, and the leftmost and rightmost columns as the vertical borders. That’s your bounding rectangle.
+
+2) Work inside the subgrid.
+   - Extract the subgrid bounded by those top/bottom rows and left/right columns.
+   - Clear any 5s currently inside that subgrid (set them to 0), because the output shows a fresh, orderly placement rather than preserving interior 5s.
+
+3) Decide whether to project greens vertically or horizontally.
+   - Compare the total red mass on the horizontal borders (sum of 2s on top and bottom rows) to that on the vertical borders (sum of 2s on left and right columns).
+   - If the horizontal borders are stronger or equal, we will pull in 5s vertically (i.e., look at columns inside the frame, and bring in any 5s found above or below). Otherwise, we pull them in horizontally (look at rows inside the frame, and bring in any 5s found to the left or right).
+
+4) Project the greens into the interior with a margin, preserving alignment.
+   - Vertical mode (horizontal borders stronger):
+     - For each interior column (strictly between the left and right borders), scan the entire column in the original grid.
+     - For each green found above the top border, mirror it across the top edge into the interior (same column), and nudge it inward so it doesn’t sit right on the edge. Do similarly for greens found below the bottom border, pushing them upward into the interior and biasing their landing closer toward the center rather than the border they came from.
+     - Only accept landings that keep a small vertical margin from the red frame (e.g., at least two rows away from top/bottom).
+     - Place the 5 at the computed landing row, same column, inside the subgrid.
+   - Horizontal mode (vertical borders stronger):
+     - For each interior row (strictly between the top and bottom borders), scan the entire row in the original grid.
+     - For each green found left of the left border, mirror it across the left edge into the interior (same row), nudging it inward; do similarly for greens found right of the right border, pushing them toward the center.
+     - Enforce a small horizontal margin from the vertical red frame (e.g., at least one column away from left/right).
+     - Place the 5 at the computed landing column, same row, inside the subgrid.
+   - The mirroring/nudging rule ensures:
+     - Greens above/below (or left/right) are “reflected” across the nearest frame edge.
+     - A bias toward the middle of the subgrid is added so that items coming from the far side don’t crowd the opposite frame and end up in roughly central bands.
+     - Landings are clamped to stay within the interior margins.
+
+5) Rebuild the output.
+   - Start with an all-zero 15x15 grid.
+   - Paste the modified subgrid back into its original position.
+   - Leave everything outside the rectangle as zero (as seen in the outputs).
+
+Why this matches the examples:
+- Example 1: Horizontal borders are stronger, so 5s at the same columns get pulled down/up into the rectangle, forming vertical placements with a two-cell margin from the top/bottom edges. That yields the vertical pair and the bottom triple inside the frame as shown.
+- Example 2: Vertical borders are stronger, so 5s from left/right get pulled into the rectangle along their rows, creating two central 2x2 green blocks inside, symmetric and away from the frame.
+- Example 3: Same horizontal-vs-vertical decision makes the interior pattern a cross-like cluster centered inside, again respecting margins.
+
+Edge handling:
+- If there aren’t clearly “heavy” frame rows/cols, the fallback picks the two most likely rows/cols by 2-count, which still yields a reasonable rectangle.
+- Clearing interior greens first and reconstructing only the subgrid ensures the output contains only the intended interior pattern and zeros elsewhere.
+- The margin checks prevent greens from touching the red frame, exactly as seen.

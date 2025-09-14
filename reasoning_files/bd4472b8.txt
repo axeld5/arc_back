@@ -1,0 +1,32 @@
+Here’s how I would solve it, based purely on the input/output patterns:
+
+- Observation from examples:
+  - The first two rows are preserved exactly as in the input.
+  - Every row from the third onward is constant across its columns (all entries in that row are the same).
+  - Those constant row values follow the sequence from the very first row, in order, repeating cyclically down the grid. For example, if the first row is [a, b, c], then rows 3, 4, 5, 6, … become [a a a], [b b b], [c c c], [a a a], [b b b], [c c c], and so on.
+  - The second row (e.g., 5s in the examples) is not used for generating the pattern; it’s simply kept as-is.
+
+- Concrete rule:
+  - Let pattern be the first row of the grid.
+  - For each row index r from 2 to the last row:
+    - Determine which element of the pattern to use by taking the (r − 2)-th element of a repeated version of the pattern (so the first new row uses pattern[0], the next uses pattern[1], etc., wrapping as needed).
+    - Fill the entire row with that single value.
+
+- Practical implementation details to keep it simple:
+  - Compute num_rows and num_cols from the grid.
+  - Take the top row as the pattern source.
+  - To avoid having to do modulo arithmetic, pre-expand the pattern into a 1D list long enough to cover all needed rows. A quick-and-dirty way is to repeat the first row several times so its length is safely beyond the number of rows we need to fill. Repeating it by the column count is enough for the shown cases.
+  - Then, for row r in [2, num_rows):
+    - Pick the element at index (r − 2) from the expanded pattern.
+    - Set that row to a list of that element repeated across all columns.
+
+- Summary of steps:
+  1. Keep rows 0 and 1 unchanged.
+  2. Build a long 1D sequence by repeating row 0 enough times.
+  3. For each subsequent row r, set it to a constant row containing the (r − 2)-th element of that long sequence, repeated num_cols times.
+  4. Return the modified grid.
+
+This exactly reproduces:
+- Using only the first row as the generator for the pattern.
+- Leaving the second row untouched.
+- Filling all later rows with uniform values that cycle through the first row’s entries in order.

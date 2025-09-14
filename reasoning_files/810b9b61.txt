@@ -1,0 +1,41 @@
+Here’s how I would solve it from just the examples:
+
+1) What is changing?
+- Only some clusters of 1s get changed to 3s.
+- The clusters that change look exactly like hollow, axis-aligned rectangular frames (the “outline” of a rectangle). Lines, L-shapes, plus-shapes, or filled blocks of 1s do not change.
+- Interior content (0s or unrelated 1s) stays as-is; only the border cells of those frame-clusters get recolored.
+
+2) So detect connected clusters of 1s
+- Use 4-directional connectivity (up, down, left, right).
+- Traverse the grid, and whenever I find a 1 that’s not visited, do a DFS/BFS to collect the whole component.
+- Track visited cells to avoid revisiting.
+
+3) For each component, compute its bounding box
+- Let min/max row indices be min_x/max_x; min/max column indices be min_y/max_y over all cells in the component.
+
+4) Decide whether this component is exactly a rectangular frame
+- A component that is the border of its bounding box must:
+  - Touch all four sides of the bounding box.
+  - Have no “holes” or extra branches sticking out beyond that border.
+- A quick, robust test for “exactly the border” is to compare the component size to the perimeter cell count of the bounding box:
+  - Let width_cells = max_y - min_y + 1
+  - Let height_cells = max_x - min_x + 1
+  - The number of cells on the rectangle border is 2*(width_cells + height_cells) - 4
+  - If component_size equals that number, then every border cell is present and there are no extra interior cells in the component.
+- Also exclude degenerate cases (a line instead of a 2D rectangle). Require both dimensions > 1, i.e., max_x > min_x and max_y > min_y.
+
+5) Ensure it’s actually hollow (not a tiny filled square or a solid block)
+- Check the interior of the bounding box (rows min_x+1..max_x-1, cols min_y+1..max_y-1).
+- Require that there exists at least one 0 in that interior. This prevents falsely marking a completely filled small rectangle (e.g., a 2x2 block) or any fully filled rectangle.
+- Note: if the interior were fully filled with 1s connected to the border, the perimeter-size check would already fail because the component would be larger than the border count. This extra check also avoids edge cases where the interior is empty (no interior cells at all, like 1x2 or 2x2), which we don’t want to mark.
+
+6) If all conditions pass, recolor the component to 3
+- Write the changes into a copy of the original grid so that detection always uses the original 1/0 layout.
+
+7) Complexity and details
+- The overall run is O(n^2) for an n-by-n grid, since each cell is visited at most once for clustering, and the checks are linear in component size and its bounding box.
+
+That logic reproduces the behavior in the examples:
+- Rectangular frames become 3s.
+- Non-frame 1-clusters remain 1.
+- Interiors and unrelated parts of the grid are left unchanged.

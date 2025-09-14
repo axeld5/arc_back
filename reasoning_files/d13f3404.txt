@@ -1,0 +1,22 @@
+High-level reasoning from the examples:
+
+- The output is always a 6x6 grid initialized with zeros.
+- Each non-zero entry in the input grid creates a “streak” of that same value along the down-right diagonal in the output.
+- The streak starts at the same row and column as the non-zero input cell and continues until it hits the bottom or right edge of the 6x6 grid.
+- Zeros in the input do nothing.
+- If multiple non-zero entries would write to the same cell, the later write would overwrite the earlier one, but in the provided examples, the non-zero entries lie on distinct diagonals so there’s no conflict.
+
+Algorithm plan:
+
+- Create a 6x6 result grid filled with zeros.
+- Iterate over each cell (row, col) in the input grid.
+  - If the cell’s value is non-zero:
+    - Compute the number of steps we can move down-right before hitting the boundary: steps = 6 - max(row, col).
+    - For i from 0 to steps-1, write the value to result[row + i][col + i].
+- Return the result grid.
+
+This logic directly reproduces the observed input/output behavior:
+- A non-zero at (0,0) fills the main diagonal positions (0,0), (1,1), ..., up to the edge.
+- A non-zero at (0,1) fills (0,1), (1,2), (2,3), ...
+- A non-zero at (2,0) fills (2,0), (3,1), (4,2), ...
+- And so on, always stopping at the grid boundary.

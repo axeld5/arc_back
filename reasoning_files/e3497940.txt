@@ -1,0 +1,40 @@
+Here’s how I’d reason it out from the given I/O pairs:
+
+- First, note the shape: each input row has 9 entries; each output row has 4 entries. The number of rows stays the same. So we’re transforming each row independently and reducing 9 columns to 4.
+
+- The fifth column (index 4) is always 5 in the inputs and absent from the outputs. That suggests the 5s mark a vertical mirror axis and we only care about combining symmetric pairs around it: columns j and 8−j for j in 0..3.
+
+- Look at how pairs are merged. Consider the first dataset, row 4:
+  - Input row: [0, 0, 0, 4, 5, 4, 4, 0, 0]
+  - Pairs: (0,0), (0,0), (0,4), (4,4)
+  - Output row: [0, 0, 4, 4]
+  This implies:
+  - If both are zero → result 0.
+  - If one side is zero and the other non-zero → result is the non-zero.
+  - If both are non-zero → result is the left value.
+
+- Check this rule on a different dataset where right-side values differ, to verify the left-bias when both sides are filled:
+  - Second dataset, row 3:
+    - Row: [0, 0, 0, 2, 5, 0, 0, 0, 0]
+    - Pairs: (0,0), (0,0), (0,0), (2,0) → output [0,0,0,2]
+  - Second dataset, row 2:
+    - Row: [0, 0, 0, 2, 5, 2, 6, 0, 0]
+    - Pairs: (0,0), (0,0), (0,6), (2,2) → output [0,0,6,2]
+    - The third pair yields 6 from the right (since left is zero), and the fourth pair yields 2 from the left (both non-zero, left wins). Matches the sample.
+
+- So the per-pair merge rule is:
+  - Treat 0 as empty.
+  - If at least one side is empty, take the non-empty side.
+  - If both sides are non-empty, keep the left side’s value.
+
+- Implementation approach per row:
+  - For j from 0 to 3, look at the pair (row[j], row[8−j]).
+  - Decide the merged value by the rule above.
+  - Append to the transformed row.
+  - Ignore the middle column (index 4, the 5); it’s just the mirror axis.
+
+- A compact way to detect “at least one side is zero” is to check if the product of the pair is zero. Then to select the non-zero side when at least one is zero, use a left-preferential choice: if the left is non-zero, take it; otherwise take the right. If both are non-zero (product non-zero), take the left.
+
+- Apply this row-wise to the entire grid to produce a grid with the same number of rows and exactly 4 columns per row.
+
+That’s the full reasoning that yields the transformation seen in the examples.

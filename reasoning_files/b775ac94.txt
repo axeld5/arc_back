@@ -1,0 +1,47 @@
+Here’s how I’d solve it
+
+- Goal I infer from the IO pairs
+  - Nonzero colors live on a zero background.
+  - When a special 2x2 “reference square” contains four distinct values, a nearby shape for one of those values is used as a template and then cloned to the other values by reflecting that template around the 2x2 square.
+  - Only reasonably small, compact blobs are used as templates (so we don’t pick the whole background or giant components).
+  - Cloning respects orientation: depending on which corner of the 2x2 a value sits in, the template is mirrored across row and/or column axes to land in the right orientation.
+
+- High-level plan
+  1) Work on a copy of the grid (so detections aren’t affected by our writes).
+  2) Use 8-neighborhood connectivity to find components (so diagonals are connected).
+  3) Scan for all 2x2 blocks in the grid. Any 2x2 that has four different entries (i.e., all four values are distinct) is a “reference square.”
+  4) For each such square, pick one of its nonzero cells to be the “template provider,” but only if its connected component looks like a small, compact shape with the anchor on the component’s boundary. If multiple nonzero corners would work, take the first by a fixed order so behavior is deterministic.
+  5) Compute all offsets of that component relative to the anchor cell.
+  6) For each of the three other corners in the 2x2, replicate that offset pattern, reflecting deltas across row and/or column depending on how that corner’s “quadrant” compares to the template corner’s quadrant. Assign the replicated cells the other corner’s value (not the template’s value).
+  7) Accumulate all these writes and apply them at the end (to avoid interaction between detections and updates).
+
+- Details that make it match the IO
+  - Connectivity: Use 8-neighbor flood fill to get the full component of a candidate color.
+  - Candidate filter:
+    - Ignore zero-valued cells as template providers (they’re background).
+    - Component size must be between 3 and 10 cells. This avoids trivial singles/doubles and big blobs.
+    - Bounding box of the component must be at most 5x5 (compactness).
+    - The chosen anchor (the cell inside the 2x2) must lie on the component’s bounding box border (so we’re cloning outward from an edge, not the middle).
+  - Quadrant system for the 2x2:
+    - Label the four positions of the 2x2 as top-left (U), top-right (R), bottom-left (L), bottom-right (V).
+    - Associate each with a sign pair: U=(-1,-1), R=(-1,1), L=(1,-1), V=(1,1).
+    - Compute the component’s offset set relative to the template anchor (delta_row, delta_col).
+    - When cloning to another corner:
+      - If the row-sign of the target corner differs from the template corner’s row-sign, flip the sign of delta_row; otherwise keep it.
+      - If the col-sign differs, flip delta_col; otherwise keep it.
+      - Add these (possibly flipped) deltas to the other corner’s anchor coordinates to get target cells.
+    - This exactly mirrors/rotates the template shape into the other corner’s frame.
+  - For each transformed cell that remains in bounds, mark it to be set to the other corner’s value.
+  - After processing all reference squares, write all marked cells into the output grid.
+
+- Why this produces the shown outputs
+  - In each example, there is at least one 2x2 with four distinct numbers next to a small component of one of those numbers. The component passes the size/compactness/border checks.
+  - The template offsets get reflected into the other three corners of the 2x2, “painting” those shapes with the corresponding other values. That yields the expansions and mirrored copies visible in the outputs.
+  - Background zeros remain unchanged because we never consider zero as a template and only write where transformations target.
+
+- Implementation notes I’d follow
+  - Write a flood fill using a stack/DFS over 8 directions to gather a component.
+  - For each candidate component, compute its rows/cols list, bounding box (height/width), and check border condition: the anchor row equals min/max row or the anchor col equals min/max col of the component.
+  - Gather all transformations first, then apply them to a copy of the grid at the end.
+  - Iterate 2x2 squares in row-major order; among the four corners, consider U, R, L, V in that fixed sequence for choosing the template provider.
+  - Treat the grid as square and use a helper to test in-bounds. Optional range_function argument can allow reverse or custom iteration orders if needed.

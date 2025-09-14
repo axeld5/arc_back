@@ -1,0 +1,22 @@
+Here’s how I would solve it from the I/O pairs:
+
+- First, notice the transformation affects only the regions made of 4’s. Everything else (0’s) is left unchanged except that some interior cells inside 4-regions are overwritten with new labels.
+- In each example, among all the separate 4-regions, the smallest one by area gets its interior filled with 1’s, and the largest one by area gets its interior filled with 2’s. The “interior” means the region excluding a one-cell-wide border, so the visible boundary of 4’s stays intact.
+- Therefore, I need to:
+  1) Find all connected components in the grid under 4-connectivity (up, down, left, right). I’ll compute components for every value but only keep those whose number is 4.
+  2) Among those 4-components, identify the smallest and the largest by counting their cells.
+  3) For each chosen component, compute its bounding box: min_row, min_col, max_row, max_col over the component’s coordinates.
+  4) Shrink that box by one cell on all sides to preserve the border. That gives the “inner” rectangle to fill. If the component is too thin, shrinking may yield an empty range; in that case nothing gets filled (which is fine).
+  5) Fill every coordinate inside the inner box of the smallest component with 1, and inside the inner box of the largest component with 2. Leave all other cells as they were.
+
+Implementation details I’d use:
+- Represent visited cells with a 10x10 boolean/int grid.
+- Use a stack (DFS) or queue (BFS) to flood-fill each unvisited cell and collect coordinates of its connected component for its specific number.
+- After gathering all components, filter to those whose number is 4.
+- Pick the min-size and max-size components.
+- Copy the grid to a new one, then overwrite the inner rectangles as described.
+- Return the modified grid.
+
+This exactly matches the examples:
+- Example 1: the small top-left 4-square has its 2x2 interior changed to 1; the larger bottom-right 4-rectangle has its interior changed to 2.
+- Example 2: the large 4-block at top-left gets interior 2; the small 4-block at bottom-right gets interior 1; borders of 4 remain as 4.

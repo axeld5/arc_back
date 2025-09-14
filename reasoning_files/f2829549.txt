@@ -1,0 +1,30 @@
+Here’s how I would solve it:
+
+1) Look at shapes
+- Each input is a 4×7 grid; each output is a 4×3 grid.
+- So we’re transforming each of the 4 rows and reducing 7 columns down to 3.
+
+2) Find which columns drive each output column
+- The outputs line up with the first three input columns, but they clearly also depend on the last three columns. The middle column (index 3, always 1) seems to be a separator and does not influence the output.
+- Empirically, output column j (for j in 0..2) depends on input column j and input column j+4.
+
+3) Determine the rule per pair of columns
+- The outputs only contain 0 or 3.
+- Check when a 3 appears: it happens exactly when both involved inputs (col j and col j+4) are 0.
+- If either side is nonzero (7, 5, or anything positive), the output is 0.
+
+4) Express the rule succinctly
+- For each row and for j in {0,1,2}, combine input[j] and input[j+4].
+- If both are 0, output 3; otherwise output 0.
+- Since all inputs are non-negative, this is equivalent to taking their sum and checking: if the sum is greater than 0, output 0; if the sum is 0, output 3.
+
+5) Apply row-wise
+- Process each of the 4 rows independently.
+- For each row, compute the three outputs as above and collect them as that row’s result.
+- Ignore the middle column (index 3); it’s just a fixed divider.
+
+6) Implementation outline
+- A helper that, given a 7-length row, for j=0..2 adds entry j to entry j+4, and maps “sum > 0” to 0, “sum == 0” to 3, returning the three mapped values.
+- A wrapper that applies this helper to each of the 4 rows and returns the 4×3 grid.
+
+This exactly reproduces all given input/output pairs.

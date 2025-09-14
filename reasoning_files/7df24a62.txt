@@ -1,0 +1,29 @@
+Here’s how I’d solve it given the I/O pairs:
+
+- What the task is doing
+  - The first training example clearly contains a “legend” region: a block of 1s forming a frame with some 4s inside it. The output then shows similar 1-frames drawn elsewhere in the grid, aligned around other places where the same arrangement of 4s appears (possibly rotated or mirrored), while preserving all 4s.
+  - So the job is: learn the inner 4-pattern from the framed example, search the entire grid for occurrences of that 4-pattern in any orientation, and for every match, draw a 1-thick frame (one-cell padding box) around the matched window. Finally, keep every original 4 in the output.
+
+- Extract the prototype pattern from the first example
+  - Find every cell that is 1. Compute the tight bounding box around all the 1s. That box is the frame (border).
+  - Shrink this box by one cell on all sides. The remaining inner rectangle is the “content” area framed by the 1s. Inside this inner rectangle, record a boolean mask of where the value equals 4. This becomes the prototype pattern we will search for.
+
+- Allow all symmetries (rotations and reflections)
+  - The examples show the same motif in multiple orientations. To catch them, generate 8 variants of the prototype: 4 rotations (0/90/180/270) and, for each rotation, its transpose (mirror across diagonal). These cover rotations and reflections of the learned mask.
+
+- Pattern matching across the grid
+  - For each variant mask, slide it over every possible top-left position where it fits in the grid.
+  - At each position, verify a strict match: for every cell in the mask’s footprint, “cell is 4” must exactly agree with the mask’s True/False. In other words, the pattern requires 4s exactly at the True positions and forbids 4s where the mask is False.
+
+- Mark matches by drawing a padded box of 1s
+  - When a match is found, take the matched window and expand it by one cell in each direction (clamped to the grid bounds). Fill that expanded rectangle with 1s in the output. This effectively draws a one-cell-thick frame around the matched window; the fill is fine because the original 4s will be restored later and will overwrite 1s inside, leaving the characteristic framed appearance seen in the outputs.
+
+- Always preserve the 4s
+  - After processing all matches, iterate over the grid and set every cell that is 4 in the input to 4 in the output. This guarantees all original 4s are present in the final result and take precedence over any 1s we placed.
+
+- Fixed grid size and constants
+  - The grids are 23x23. The “ink” value we key on is 4. Initialize the output as all zeros, then accumulate frames, then overlay the 4s.
+
+Why this matches the samples:
+- The first I/O shows learning the inner 4-layout from the framed region in the top-left, then finding that motif elsewhere and placing 1s around those locations, while keeping 4s.
+- The subsequent I/O pairs show the same behavior in different configurations: the code finds all rotated/reflected occurrences of the learned 4-pattern, frames them with a one-cell margin of 1s, and then restores the 4s so the interiors show the correct 4-vs-1 structure.

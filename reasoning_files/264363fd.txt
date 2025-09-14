@@ -1,0 +1,47 @@
+Here’s how I would reason my way to a solver that reproduces the shown outputs from the inputs:
+
+1) Treat the most frequent color as the background
+- In all three tasks, there’s a dominant color (8 in the first and third, 1 in the second). That’s the background. Everything else is foreground structure living on top of a neutral canvas.
+
+2) Identify all non-background connected components
+- Work with 4-neighborhood connectivity. We’ll need components to (a) detect a small “key glyph,” (b) define per-region bounding boxes so we can confine line drawing, and (c) avoid drawing through the global background.
+
+3) Find the smallest non-background object and use it as a “key”
+- In each group there’s a tiny, distinctive motif. That motif encodes:
+  - An anchor color: the color at its center cell.
+  - A line color: the color in a specific direction from that center.
+  - An orientation hint: whether the tiny motif is taller or wider determines whether we should treat the “primary” direction as vertical or horizontal.
+- Compute the tiny object’s bounding box, its height/width, and its center coordinates.
+- Read the center color (anchor_color).
+- Look at the cell adjacent to the center in one axis to get the line color (line_color). The direction is chosen from the tiny object’s aspect: if the object is tall (height == 5 in these tasks), pick “up” (vertical orientation). Otherwise pick “right” (horizontal orientation). The neighbor cell in that direction tells us the line color to propagate.
+
+4) Remove the tiny key object from the grid
+- After “reading” the key, erase it from the picture so it doesn’t interfere with what we’re going to detect or paint. Re-identify the background on the cleaned grid (because removing the key can change the mode in edge cases). Also record which cells are background so we can restore them later after painting.
+
+5) Find all occurrences of the anchor color in the remaining foreground
+- The outputs show that the “line color” gets propagated through rows/columns that pass through positions where the anchor color sits. So collect all positions of the anchor color (center_color) on the cleaned grid.
+
+6) For every component (non-background) in the cleaned grid, draw a plus inside its bounding box through each anchor cell
+- For each component’s bounding rectangle, check which cells inside currently equal the anchor color.
+- For each such anchor cell:
+  - Paint a full line of the line color along one axis within the component’s bounding box (row or column depending on orientation dictated by the key’s aspect).
+  - Also paint along the orthogonal axis within the same bounding box. The orientation test is symmetric using height/width of the tiny key to decide which axis you paint first; then paint the other axis as well. Net effect: draw a “plus” (row + column) of the line color, but constrained to the component’s bounding rectangle so it doesn’t bleed into background or other regions.
+- This exactly matches how the outputs show rows/columns of a new color cutting across regions where the anchor color appears, forming crosses and bands.
+
+7) Stamp copies of the tiny key around each anchor occurrence with a fixed offset derived from the key’s size
+- The outputs also show small symbols reappearing near anchor positions (e.g., the appearance of 6’s/5’s/4’s around certain 3’s in the third example). The simplest consistent rule is to normalize the tiny key’s shape (value and relative offsets), and stamp it near each anchor cell with a fixed offset dependent on whether the tiny key is tall or wide.
+- Normalize the tiny key’s pixels to coordinates relative to its own bounding box.
+- Compute a placement offset (dx, dy) relative to the anchor position:
+  - If the key is tall (height == 5), place it one extra step above and/or left (so the stamp is offset more in that axis).
+  - If the key is wide (width == 5), do the analog along the horizontal.
+  - In practice this becomes dx = -(1 + (height == 5)), dy = -(1 + (width == 5)).
+- For each anchor occurrence, add the normalized pixels with this base offset if they land in-bounds. This reintroduces the tiny symbol systematically near each anchor, mirroring what the outputs show.
+
+8) Finally, restore background cells
+- Any place that was background after removing the tiny key should be set back to the current background color. This cleans up any accidental painting outside components.
+
+Why this matches the examples:
+- In the first and second groups, the cross-like bands of a new color appear exactly through the locations where the anchor color sits, constrained to the component bounds, producing the row/column bands seen in the outputs.
+- The smallest key object provides both which color to spread (neighbor of center) and which orientation to emphasize (based on the key’s aspect). That explains consistent selection of lines (vertical vs horizontal first) and the color of those bands.
+- The tiny key is replicated near anchor occurrences with a consistent offset, producing the small marks that appear alongside the lines in the outputs (notably in the third group with 5/6/4 being stamped and bands of 5/6 appearing).
+- Restoring background prevents coloring from leaking into empty space, which is why the bands stop cleanly at region borders.

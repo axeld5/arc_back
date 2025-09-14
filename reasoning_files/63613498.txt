@@ -1,0 +1,38 @@
+Here’s how I’d reason my way to a solver from just the I/O pairs:
+
+1) Spot the invariant “template” region
+- In every input, the only place I can be absolutely sure of is the top-left 3×3 area. It’s small, consistent across puzzles, and looks intentionally populated with a small nonzero pattern.
+- Hypothesis: that 3×3 nonzero layout is the “shape” we should search for elsewhere in the grid.
+
+2) Define what “shape” means
+- We need a representation that’s independent of absolute position. The clean way is to express a shape as the set of relative offsets of its cells, anchored by translating the shape so its minimum row and column land at (0, 0).
+- For the template: collect all nonzero cells in the top-left 3×3, then normalize their coordinates this way. That’s our target shape.
+
+3) Find candidate occurrences elsewhere in the grid
+- The examples show we only recolor entire blobs of the same number (e.g., all 6s in a particular cluster, or all 9s in a cluster), never partial fragments. So we need connected components under 4-neighborhood connectivity, but components must be same-valued cells.
+- Enumerate all connected components in the whole 10×10 grid: for each unvisited nonzero cell, do a BFS/DFS over 4-neighbors that share the same value. Record the set of coordinates for each component.
+
+4) Compare shapes
+- For each component found, normalize its coordinate set the same way (translate to its top-left).
+- If the normalized set equals the target shape from the 3×3 seed, then this component is a match, regardless of what value it currently holds.
+
+5) Recolor matches with a fixed value
+- The outputs show that matching components are recolored to 5, even if they were originally 1, 6, or 9.
+- So collect all cells from all matching components, and set them to 5 in a copy of the input grid.
+
+6) Preserve the seed region
+- The examples never alter the original top-left 3×3 region itself, even if it would trivially match. To enforce that, after recoloring matches, restore the original values within the 3×3 seed area from the input grid.
+
+7) Details and helpers
+- Grid size is fixed at 10×10.
+- Neighborhood is 4-directional (up, down, left, right).
+- Use a visited set to avoid revisiting cells when extracting components.
+- Use a queue for BFS over components.
+- Build the output as a separate grid to avoid in-place interference.
+
+Why this matches the I/O:
+- Example 1: The top-left 3×3 nonzero pattern is a 5-cell diagonal staircase. The only component elsewhere with the same normalized footprint is the cluster of 6s shaped exactly like that; it gets recolored to 5. Everything else is left intact.
+- Example 2: The top-left 3×3 pattern is an L of three 3s. Elsewhere, the only component with that footprint is a cluster of 9s in an L shape; they get recolored to 5.
+- Example 3: The top-left 3×3 pattern is a “T”-like arrangement of 4s; the matching component elsewhere is the cluster of 1s forming the same footprint; they get recolored to 5.
+
+In short: extract the nonzero shape from the 3×3 seed, find all same-valued connected components in the grid, compare normalized shapes, paint matches with 5, and restore the seed region.

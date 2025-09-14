@@ -1,0 +1,16 @@
+Here’s how I would solve it:
+
+- Look for a geometric relationship between each input and output. The values themselves (0, 2, 6, 9) aren’t being changed; only their positions move. That suggests a rotation or reflection.
+
+- Compare input columns to output rows across examples:
+  - In each case, the output’s first row matches the input’s last column, the output’s second row matches the input’s middle column, and the output’s last row matches the input’s first column.
+  - That is exactly a 90-degree counterclockwise rotation.
+
+- Confirm with a simple positional rule: an element at (row r, col c) in the input moves to (row n-1-c, col r) in the output for an n×n grid. The examples match this.
+
+- Implementation plan:
+  - The clean way to rotate 90 degrees counterclockwise is to transpose the grid (swap rows and columns), then reverse the order of the rows (flip top-to-bottom). After transposing, the original rightmost column becomes the top row once you reverse the rows, which matches the observed pattern.
+  - Create a helper to transpose the grid (use a row/column swap).
+  - Create a helper to reverse the order of rows.
+  - Compose them: transpose first, then reverse rows to get the rotated grid.
+  - The solver function simply applies this rotation to the input grid.

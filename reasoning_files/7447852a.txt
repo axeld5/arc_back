@@ -1,0 +1,61 @@
+Here’s how I would solve it from the given I/O pairs.
+
+- First, observe what changes and what doesn’t:
+  - Only 0s ever turn into 4s.
+  - 2s always stay 2.
+  - The positions that turn into 4s don’t depend on the current value (beyond being allowed to change); they follow a positional pattern across the columns.
+
+- Flatten each of the three input rows (call them A, C, E) and line up the outputs to see where 4s appear. Do this across all three examples (lengths 10, 15, 18). You’ll see:
+  - The columns where row A gets 4s repeat every fixed number of columns.
+  - Same for row C and row E.
+  - The three per-row patterns are synchronized: at a given column index (mod some period), a specific subset of rows is flipped to 4.
+
+- Determine the minimal period by aligning the “4” columns across examples. The smallest period that fits all examples is 12. Over this 12-column cycle:
+  - At column mod 12 = 5: A flips to 4
+  - At column mod 12 = 6: A and C flip to 4
+  - At column mod 12 = 7: A flips to 4
+  - At column mod 12 = 0: C and E flip to 4
+  - At column mod 12 = 1: E flips to 4
+  - At column mod 12 = 11: E flips to 4
+  - All other residues do nothing
+
+- It’s convenient to encode, for each of the 12 positions in the cycle, which combination of rows to flip. Use a 3-bit mask at each cycle position:
+  - Bit 0 for row A, bit 1 for row C, bit 2 for row E.
+  - With that encoding, the 12-position cycle is:
+    - 0: C+E
+    - 1: E
+    - 2: none
+    - 3: none
+    - 4: none
+    - 5: A
+    - 6: A+C
+    - 7: A
+    - 8: none
+    - 9: none
+    - 10: none
+    - 11: E
+
+- From that combined cycle, derive three per-row boolean masks by extracting the respective bit for each cycle position:
+  - Row A mask = least significant bit of the combined pattern
+  - Row C mask = the middle bit
+  - Row E mask = the most significant bit
+
+- Apply the masks to the rows:
+  - Iterate index i from 0 to len(row)-1.
+  - Compute cycle_index = i mod 12.
+  - If the row’s mask at cycle_index is 1, set that cell to 4; otherwise, leave the cell as-is.
+  - Do this independently for A, C, and E.
+
+- This reproduces all given outputs:
+  - Wherever the cycle says a row should flip, you see a 4 in the output.
+  - All 2s remain 2.
+  - The pattern wraps naturally for any row length via modulo 12.
+
+- Functionally:
+  - Accept the three rows as a tuple.
+  - Predefine the 12-step combined cycle using the 3-bit encoding above.
+  - Build three per-row masks by taking the appropriate bit from each combined entry.
+  - Walk each row once, using index modulo 12 to decide whether to overwrite with 4.
+  - Return the updated three rows.
+
+That’s the reasoning that leads to a simple implementation: one 12-long cycle encodes the row combination to set to 4; split that into three per-row masks via bit extraction; then stream over each row and set to 4 when the mask says so.

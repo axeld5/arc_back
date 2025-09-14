@@ -1,0 +1,35 @@
+Here’s how I’d reason from the examples to a solution:
+
+1) Observe the column rule
+- In each example, look down each column of the input and mark any column that contains at least one non-zero number.
+- In the output, every zero that sits in a “marked” column is turned into an 8.
+- Zeros in columns that are entirely zero remain 0.
+- Any non-zero value in the input stays exactly as it is (e.g., 2, 4, 5 are preserved).
+
+2) Build the modified base grid
+- Create a new grid the same size as the input.
+- For each cell:
+  - If its value is non-zero, copy it as-is.
+  - If it’s zero and its column is marked (i.e., that column has some non-zero somewhere), change it to 8.
+  - If it’s zero and its column is unmarked (entire column is zeros), keep it as 0.
+
+3) Expand by tiling 2× in both dimensions
+- The outputs are exactly the modified base grid repeated in a 2 by 2 tile:
+  - If the input is n×n, the output is (2n)×(2n).
+  - Each quadrant is the same as the modified base grid.
+  - Equivalently, the value at output row r, col c is the value from the modified grid at row (r mod n), col (c mod n).
+
+4) Summary of the algorithm
+- Determine the set of column indices that contain any non-zero entries.
+- Produce a modified grid where zeros in those columns become 8; everything else is unchanged.
+- Produce a (2n)×(2n) grid by repeating that modified grid in a 2×2 tiling using wrap-around indexing.
+
+This exactly matches all given I/O:
+- Example 1: columns 0 and 2 are marked, zeros there become 8; then repeat 2×2.
+- Example 2: columns 0, 1, and 5 are marked; fill zeros there with 8; then tile to 12×12.
+- Example 3: only column 1 is marked; fill zeros there with 8; then tile to 4×4.
+
+Complexity is linear in the number of cells for each pass:
+- One pass to find marked columns.
+- One pass to build the modified grid.
+- One pass to write the tiled (2n)×(2n) output via wrap-around indexing.

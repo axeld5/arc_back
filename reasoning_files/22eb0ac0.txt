@@ -1,0 +1,15 @@
+Here’s how I’d solve it based on the I/O patterns:
+
+- Work row by row. Nothing ever propagates vertically; all changes are within a row.
+- Zeros are placeholders that can be filled. Non-zero numbers are anchors and should never be overwritten.
+- A number only spreads if it appears at least twice in the same row. When it does, it fills every zero between its leftmost and rightmost occurrences with itself.
+- Different numbers act independently. If a row has 4 ... 4, the zeros between them become 4. If a row has 9 ... 6, nothing fills between because the endpoints are different values.
+- If a number appears only once in a row, there’s nothing to fill (its leftmost and rightmost positions are the same).
+- To implement:
+  - For each row, collect the distinct non-zero values present (so you handle each value once).
+  - For each such value, find its first occurrence index and its last occurrence index in that row.
+  - For every position between those two indices (inclusive), if the cell is zero, set it to that value; leave non-zero cells unchanged.
+- This exactly matches the examples:
+  - A row like [4, 0, 0, ..., 0, 4] becomes all 4s.
+  - A row like [9, 0, ..., 0, 6] stays the same, because 9 and 6 don’t match.
+  - If no value repeats in a row, the row is unchanged.

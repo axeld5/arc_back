@@ -1,0 +1,11 @@
+Here’s how I’d solve it from the examples:
+
+- The grid size stays the same.
+- The pattern’s horizontal positions don’t change, but its vertical position shifts down by one row, wrapping around: the last row becomes the first row, and every other row moves down one. This is a cyclic row shift (a vertical rotation by one).
+- The only value change is that every 8 in the resulting grid becomes a 2. All other values remain the same (zeros stay zeros, and there are no other numbers shown to change).
+
+So the procedure is:
+1) Take the last row of the grid and move it to the top; shift all other rows down by one.
+2) After that rotation, scan the grid and replace every 8 with 2; leave all other cells unchanged.
+
+That matches all the given input/output pairs.

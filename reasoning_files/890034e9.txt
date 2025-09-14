@@ -1,0 +1,50 @@
+Here’s how I’d reason my way to a solver from the I/O pairs.
+
+1) Core observations from the examples
+- Each grid is 21x21.
+- The value that gets “painted” in the output is the one that is rarest in the input (e.g., 2 in the first set, 8 in the second set, 4 in the third set).
+- The pattern of that rare value (its exact shape, not just a block) is reproduced elsewhere in the grid.
+- The places where it gets reproduced are determined by a stencil made of zeros: specifically, a rectangular loop of zeros that matches a certain “inner frame” derived from the original pattern’s bounding box.
+- The rare-value pattern is stamped into those zero-framed positions with a consistent 1-cell inset from the frame (i.e., aligned just inside the frame).
+
+2) Hypothesis
+- Identify the rarest color in the grid; call it the motif color.
+- Take all coordinates of the motif color and compute its axis-aligned bounding box.
+- Shrink that bounding box by one cell on all sides to form an “inner rectangle.”
+- Use the perimeter of this inner rectangle as a search template. Wherever this perimeter can be laid onto the grid such that all those template cells are zeros, that location is a valid placement.
+- Copy the motif’s shape into each valid placement, offset by one cell from the frame so it sits just inside.
+
+3) Concrete plan
+- Frequency step: Flatten the grid and find the least frequent value. This decides which color’s shape to replicate.
+- Motif geometry:
+  - Collect all coordinates of that color.
+  - Compute min/max row and col → this is the motif’s bounding box.
+  - Build the “inner rectangle” by adding +1 to min row/col and −1 to max row/col. If the motif touches its bounding-box edge, this step naturally shrinks the search template so we look for a frame just inside the motif’s outermost extent.
+  - From this inner rectangle, take only its border cells to form a frame mask.
+- Normalize the mask:
+  - Translate the frame’s border coordinates so the top-left of the frame is at (0, 0). This gives a reusable shape you can slide over the grid.
+  - Record the width/height of this normalized frame mask to limit the sliding window.
+- Search for placements:
+  - Slide this normalized frame across all positions where it fits within the 21x21 grid.
+  - A placement is valid if every frame cell in the mask lands on a zero in the grid.
+  - Collect all such valid top-left anchors.
+- Stamp the motif:
+  - Express the motif’s coordinates relative to its bounding box’s top-left.
+  - Shift that relative shape by (−1, −1) so it sits exactly one cell inside the inner frame when placed (this aligns the motif to be inset from the zero frame by one cell on both axes).
+  - For each valid placement anchor, add the shifted motif offsets and paint those cells with the motif color (the rarest color).
+- Return the modified grid.
+
+4) Why the “shrink by one” and “shift by (−1, −1)” details matter
+- Shrinking the bounding box by one cell on each side creates the inner frame that serves as a zero-only template we can reliably search for elsewhere.
+- Shifting the motif by (−1, −1) aligns the motif to sit just inside that frame, matching the spatial relationship seen in the examples.
+
+5) Sanity and edge handling
+- The inner frame perimeter might be degenerate if the bounding box is too small; in the given data the motif is large enough that the frame exists and has a perimeter.
+- While stamping, we guard against coordinates going out of bounds (the placement-range computation already ensures this).
+- If there are multiple valid placements, we stamp the motif at all of them, as shown by the examples where multiple areas get filled.
+
+This explains:
+- Why we pick the rarest value.
+- How we derive the mask to detect zero-framed “holes.”
+- How we align and copy the motif’s exact shape into those holes.
+- Why the results match the provided outputs.

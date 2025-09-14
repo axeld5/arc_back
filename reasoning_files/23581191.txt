@@ -1,0 +1,24 @@
+Here’s how I’d solve it from the I/O patterns:
+
+- Observe the input always has exactly two nonzero cells, each with its own value (e.g., 8 and 7). Everything else is 0.
+- In the output, each nonzero cell “paints” its entire row and its entire column with its own value.
+  - So if the nonzero cells are at (r1, c1) = v1 and (r2, c2) = v2, then:
+    - Every cell in row r1 and column c1 becomes v1.
+    - Every cell in row r2 and column c2 becomes v2.
+- The two “cross” intersections between these two lines (r1, c2) and (r2, c1) are special: they are set to 2, overriding whatever would be painted there by the row/column fills.
+- All other cells (those not in these painted rows/columns) remain 0.
+
+Algorithm I’d implement:
+
+1) Initialize a fresh 9x9 grid of zeros for the result (we don’t need to modify the input).
+2) Scan the input to collect all nonzero entries as tuples (row, col, value). From the examples, there will be exactly two.
+3) For each collected (row, col, value), fill the entire corresponding row and column in the result grid with that value.
+4) After all painting is done, set the two cross positions to 2:
+   - Use the row from the first nonzero and the column from the second.
+   - Use the row from the second nonzero and the column from the first.
+5) Return the resulting grid.
+
+This exactly matches the examples:
+- The columns of the two nonzeros get filled down the whole grid.
+- The rows of the two nonzeros get filled across the whole grid.
+- The two cross-points between those lines are 2.

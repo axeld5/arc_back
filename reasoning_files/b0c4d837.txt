@@ -1,0 +1,23 @@
+Here’s how I would solve it:
+
+- First, notice the outputs are always a 3×3 grid whose last row is all zeros. So all the information is summarized into the top two rows (6 cells total).
+
+- Look at what’s consistent across inputs: the scene is composed of horizontal bands of rows that contain 5s (a frame) and contiguous rows that contain 8s (a filled interior band). The only thing that varies is how many rows of 5s there are and how many rows of 8s there are.
+
+- Empirically, the number of 8s that appear in the 3×3 output depends only on how many rows contain 5s versus how many rows contain 8s. The rule that fits all examples is:
+  number_of_output_8s = (number of rows that contain any 5) − 1 − (number of rows that contain any 8)
+
+- Since the 3×3’s top two rows give us exactly 6 cells to place 8s and 0s, treat this as a 6-slot strip:
+  - Fill the first k slots with 8s, where k is computed above.
+  - Fill the remaining (6 − k) slots with 0s.
+
+- Map that 6-slot strip to the 3×3:
+  - First row = the first three slots (left to right).
+  - Second row = the last three slots, but read from right to left (so the strip’s tail appears mirrored on the second row).
+  - Third row = [0, 0, 0].
+
+- Implementation outline:
+  - Scan the grid row by row to collect the indices of rows containing 5 and the indices of rows containing 8.
+  - Compute k using the formula above.
+  - Build the 6-slot list as k eights followed by (6 − k) zeros.
+  - Slice the first three for the first output row, take the last three in reverse for the second row, and set the third row to zeros.

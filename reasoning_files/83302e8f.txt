@@ -1,0 +1,36 @@
+Here’s how I’d reverse–engineer the rule from the I/O, and turn it into a solver:
+
+1) Colors and roles
+- 0 is the background.
+- There is exactly one other color present in each input (8 or 1 or 9). It acts like a “guide” color and is preserved in the output.
+- Two new colors appear in the outputs: 4 (yellow) and 3 (green). All background cells (0) end up as either yellow or green.
+
+2) What determines yellow vs green
+- Many rows or columns have a lot of the guide color. In the outputs, all background cells (0) in such “guide-dominant” rows/columns become yellow (4).
+- After that, any remaining background cells form connected black regions. If a region touches any yellow cell (4) orthogonally, the whole region turns yellow; otherwise it turns green (3).
+
+3) How to detect “guide-dominant” rows/columns
+- For each row, if the guide color occupies a strict majority of the cells (> width/2), then that row is guide-dominant.
+- For each column, if the guide color occupies a strict majority of the cells (> height/2), then that column is guide-dominant.
+- Only convert 0s in those dominant rows/columns to 4; leave the guide color itself unchanged.
+
+4) Component fill for the remaining 0s
+- After the row/column pass, scan the grid for remaining background (0) cells.
+- For each 4-connected component of 0s (BFS/DFS), check whether any cell in the component has a 4-neighbor orthogonally.
+- If yes, color the entire component 4 (yellow). If no, color the entire component 3 (green).
+
+5) How to pick the guide color
+- It’s the (non-zero) color present in the input that isn’t 3 or 4. If multiple non-zero colors existed, use the least frequent one among them (fits the given examples and is robust).
+
+6) Order of operations
+- Copy the grid.
+- Identify the guide color.
+- Mark dominant rows/columns by majority of the guide color.
+- Paint 0s in those rows/columns to 4.
+- Flood-fill remaining 0-components: to 4 if touching 4, otherwise to 3.
+- Return the recolored grid, preserving the guide color as-is.
+
+This matches:
+- In all examples, the guide color (8/1/9) stays unchanged.
+- Rows/columns with a majority of the guide color cause their 0s to become 4.
+- Remaining pockets of 0s become 3 unless they touch a 4 region, in which case they also become 4.

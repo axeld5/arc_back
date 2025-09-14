@@ -1,0 +1,33 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- The task is to “stretch” an existing framed rectangle (a border color surrounding an interior color) so that it expands to also include a lone marker cell (value 8). The result is always a clean rectangle: interior uniformly one color, with a uniform border of a second color. The background is the ubiquitous color filling the rest of the grid.
+
+- Observations from the examples:
+  - The background is the most common value across the whole grid (in all examples it’s 0).
+  - The “8” is not part of the color scheme; it just marks a target location to be included in the final rectangle.
+  - The rectangle uses exactly two colors: a border color and an interior color. The interior color is the rarer of the two; the border color is the other one.
+  - The final rectangle is the bounding box that covers all non-background cells, i.e., the original small framed rectangle together with the marker 8.
+
+- So the plan:
+  1. Identify the background color as the global mode (most frequent value in the grid).
+  2. Find all coordinates that are not background. This set includes the original framed rectangle and the 8 marker.
+  3. Compute the bounding box (min row, max row, min col, max col) of these non-background cells. That’s the rectangle we will paint in the output.
+  4. Determine which two colors form the interior and the border:
+     - First, ignore the marker: treat any 8 as background for color counting purposes so it doesn’t get picked as a rectangle color.
+     - Among the remaining values, the interior color is the least frequent color (rarest among non-background and non-marker values). If there’s a tie, choose the smaller integer to keep things deterministic.
+     - To get the border color, temporarily remove the interior color from consideration (pretend those cells are background) and pick the least frequent color among what’s left (again with a numeric tie-break). In these tasks that reliably yields the border color.
+  5. Paint the rectangle:
+     - First fill the entire bounding box with the interior color.
+     - Then overwrite its perimeter (top row, bottom row, left column, right column) with the border color.
+
+- Why this works on the examples:
+  - The background is 0 (most frequent).
+  - The 8 is just a location cue; by excluding it when choosing colors, we don’t accidentally select 8 as a rectangle color.
+  - The interior color is rarer than the border color in the original small frame, so picking the least frequent color gives the interior; removing it and picking the next least frequent gives the border.
+  - The bounding box over all non-background cells spans from the original small frame to the 8, so repainting that box as “interior filled + border outline” exactly yields the shown outputs.
+
+- Implementation details I’d keep in mind:
+  - Use a frequency counter over the flattened grid to find both the most common value (background) and the least common values (interior first, then border after masking the interior).
+  - When computing the bounding box, derive it from all cells not equal to the background.
+  - Explicitly set all border indices of the bounding box to the border color after filling its interior with the interior color.
+  - Apply a deterministic tie-breaker (smaller numeric value wins) when comparing equal counts, to avoid ambiguity.

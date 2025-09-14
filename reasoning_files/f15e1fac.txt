@@ -1,0 +1,71 @@
+Here’s how I would solve it from the given I/O pairs.
+
+1) What’s invariant across all examples
+- The only color that grows is cyan (8). Red (2) never moves or gets overwritten.
+- Growth starts from cyan that lie on a single border:
+  - If cyan are on the top or bottom border, the growth is vertical.
+  - If cyan are on the left or right border, the growth is horizontal.
+- Red acts as a blocker, but not by occupying interior cells. Instead, its positions on the orthogonal borders determine where growth is segmented and how it shifts sideways between segments.
+
+2) Read the orientation from the input
+- If all cyan are on the top/bottom edges, we solve “vertically.”
+- Otherwise, the same rule applies “horizontally.” To avoid writing two versions, just transpose the grid, solve vertically, then transpose back. That way, we implement only one vertical solver and reuse it for the horizontal case.
+
+3) Vertical solver: what to grow, how far, and how to shift
+- Seeds:
+  - Take the cyan positions that are on the “starting” edge: top row if any cyan are there; otherwise bottom row.
+  - These seed columns define the columns we will paint within each segment.
+- Direction of growth:
+  - If we start from the top, we grow downward; if from the bottom, upward.
+- Where segments start and stop:
+  - Red is consulted only on the left/right borders. Any row index where a red sits on either the left or the right border becomes a “barrier row.”
+  - Sort these barrier rows in the order we’ll encounter them while scanning from the starting edge.
+  - Append a final sentinel barrier beyond the last row (R if growing down; -1 if growing up) so the last segment runs to the edge if no more barriers remain.
+- Sideways push between segments:
+  - Determine which border has any red: right border vs left border.
+  - If red appears on the right border, each new segment shifts all seed columns one step to the left; otherwise shift one step to the right.
+  - The shift only increments when you pass from one segment to the next (i.e., after crossing a barrier row).
+- Painting within a segment:
+  - For the current segment, compute the current columns as original seed columns plus (shift × push direction).
+  - For each such column, fill cyan from the current “anchor row” (start edge or previous barrier) up to (but not including) the next barrier row.
+  - Only paint into zeros; leave existing nonzeros (including original 8s or 2s) untouched.
+  - After finishing a segment, set the anchor row to the barrier row you just stopped at, increment the shift by 1, and continue to the next barrier.
+
+4) Why this matches the examples
+- Example 1:
+  - Cyan seeds on the top edge → grow downward.
+  - Reds are only on the left border at rows 4 and 10 → barrier rows at 4 and 10; red is not on the right border → shifts go to the right.
+  - Segment 0 (rows 0–3): draw at original seed columns.
+  - Segment 1 (rows 4–9): draw at seed columns shifted +1.
+  - Segment 2 (rows 10–end): draw at seed columns shifted +2.
+  - That reproduces the output exactly.
+- Example 2:
+  - Cyan seeds on the top edge → grow downward.
+  - Reds on the right border at rows 4, 8, 12 → barrier rows there; since red is on the right border, shift goes left each segment.
+  - Between barriers, draw in the seed columns shifted by segment index to the left. Matches output.
+- Example 3:
+  - Cyan seeds are on the left edge, not on top/bottom → it’s the horizontal case.
+  - Transpose to make it vertical:
+    - Cyan seeds move to the top edge as columns.
+    - The two red cells that were on the bottom row (in the original) become reds on the right border in the transposed grid, giving two barrier rows.
+  - Apply the same vertical logic: grow downward, shifting left after each barrier.
+  - Transpose back to get horizontal cyan bands that shift as shown in the output.
+
+5) Implementation outline
+- Make a copy of the grid to avoid in-place interference.
+- Orientation:
+  - If cyan are only on the top/bottom edges, solve directly; else transpose, solve, transpose back.
+- Vertical solver:
+  - Collect top/bottom cyan seed columns; choose top vs bottom as the starting edge.
+  - Collect barrier rows from any red on either the left or right border; sort in scan order, append sentinel.
+  - Decide push direction: left if any red on the right border, right otherwise.
+  - For each segment between consecutive barriers:
+    - Compute current columns = seed columns + shift × push.
+    - From current anchor row to just before next barrier, paint cyan in those columns where cells are zero.
+    - Move anchor to barrier, increment shift, continue.
+
+This reasoning yields exactly the observed behavior:
+- Growth only from border cyan.
+- Growth proceeds in straight lines until a barrier-aligned row.
+- Each time a barrier row is crossed, the pattern shifts sideways by one toward the side opposite the red border.
+- Works symmetrically in horizontal cases by transposing.

@@ -1,0 +1,43 @@
+Here’s how I would solve it from the given input/output pairs:
+
+1) Hypothesis from the examples
+- Each input is a grid of integers containing 0s and 2s.
+- The outputs are always one of a small set of 3×3 binary patterns.
+- The output does not encode positions of the 2s directly; instead, it seems to depend on a single scalar derived from the grid.
+- Looking across the examples, the scalar that matches perfectly is “how many 2×2 subgrids are fully positive” (i.e., all four cells > 0). For each example:
+  - Example 1: exactly 1 fully-positive 2×2 block → first pattern
+  - Example 2: 2 blocks → second pattern
+  - Example 3: 3 blocks → third pattern
+  - Example 4: 2 blocks → second pattern
+  - Example 5: 1 block → first pattern
+  - Example 6: 4 blocks → fourth pattern
+  - Example 7: 5 blocks → fifth pattern
+  - Example 8: 4 blocks → fourth pattern
+
+2) Core computation
+- Slide a 2×2 window over the grid at every possible top-left position.
+- For each 2×2 window, check whether all four entries are strictly greater than zero. If yes, increment a counter.
+- This gives a single integer: the number of fully-positive 2×2 subgrids.
+
+3) Mapping the count to the output
+- The 3×3 output is not computed geometrically; it’s chosen from a fixed, finite set of five patterns based solely on the count.
+- The five patterns, in order, progressively add 1s in specific cells:
+  1. Only the top-left cell is 1.
+  2. Top-left and top-right are 1.
+  3. Add the center as 1.
+  4. Add the bottom-left as 1.
+  5. Add the bottom-right as 1.
+- If the count falls outside 1..5, return an empty pattern (or a sensible default), since the examples only require up to five.
+
+4) Implementation outline
+- Write a helper to extract a 2×2 subgrid, given a start row and column.
+- Write a helper to flatten a small matrix into a list so it’s easy to run an “all > 0” check.
+- Loop over all valid top-left indices (rows 0..n-2, cols 0..m-2), count subgrids whose entries are all positive.
+- Optionally add this count to an accumulator A (default 0) to allow pre-biasing or chaining if needed.
+- Use a fixed lookup table that maps 1..5 to the five 3×3 patterns described above.
+- Return the pattern by that key; if not present, return empty.
+
+5) Why this matches the I/O
+- Every provided input’s output corresponds exactly to the number of fully-positive 2×2 blocks in the grid.
+- The values are only used for positivity, not magnitude; 2 works just as “positive.”
+- The particular 3×3 patterns are fixed representatives for counts 1 through 5.

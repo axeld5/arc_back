@@ -1,0 +1,26 @@
+Here’s how I would solve it from the examples:
+
+- Pattern from the I/O pairs:
+  - The grid is 5x5 with values 0, 1, and 5.
+  - For any column that contains a 1 somewhere above, the output removes that 1 from its original position and places a 1 in the bottom row of that same column.
+  - The bottom row initially has all 5s; in columns where a 1 exists above, that 5 gets replaced by 1. In columns without a 1 above, the bottom 5 stays as 5.
+  - Any 5s in the row above the bottom (or elsewhere) remain unchanged.
+  - After the operation, there are no 1s left in upper rows; they are all moved to row 4 in their respective columns.
+
+- Algorithm to implement the rule:
+  - Iterate over each column index 0..4.
+  - For each column, scan all rows (0..4) looking for any cell with value 1.
+  - If a 1 is found:
+    - Set that cell to 0 (remove the 1 from its original position).
+    - Set the cell in the bottom row (row 4) at the same column to 1.
+    - It’s fine to keep scanning the rest of the rows; setting the bottom cell to 1 again is harmless. Alternatively, you could break after the first find.
+  - Leave all other cells as they are.
+  - Return the updated grid.
+
+- Structural choices mirroring the code:
+  - Use a helper that updates a single column: it scans rows in that column, performs the “move 1 to bottom” action if encountered, and returns the grid.
+  - The main function loops over all columns, applying the helper to each.
+  - Use a default range(5) for both rows and columns to keep it generic for 5x5.
+  - Work on a copy/reference of the grid and return the modified grid.
+
+This logic exactly matches the provided transformations: every 1 is “dropped” to the last row in its column, replacing the bottom 5, and removed from its original position, while all other values remain unchanged.

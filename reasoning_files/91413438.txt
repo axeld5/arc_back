@@ -1,0 +1,42 @@
+Here’s how I would reason my way to a solver that matches those input/output pairs:
+
+- The input is a small square grid. The output is a larger square grid whose size is a multiple of the input size. In all examples, the output is composed of blocks of size equal to the input size, tiled across a larger canvas.
+
+- The nonzero value driving the output is always the first nonzero number encountered when scanning the input grid row by row, left to right. Call this the primary value.
+
+- Inside any nonzero block of the output, the pattern of that block is exactly the shape formed by the positions in the input where the primary value occurs. In other words, if P is the set of (row, col) coordinates in the input where the primary value appears, then each placed block in the output marks those same coordinate offsets with the primary value, and everything else remains zero.
+
+- Next, determine how large the output should be and how many blocks it contains per dimension:
+  - Let n be the input size (number of rows/cols).
+  - Let K be the number of positions in P (the count of primary-value cells).
+  - Let M = n^2 − K (the number of cells in the input that are not the primary value).
+  - The output grid is formed as an M-by-M tiling of n-by-n blocks, so its side length is n * M.
+
+- Now decide where to place those patterned blocks. The examples show that:
+  - The number of blocks actually filled equals K (the number of primary positions).
+  - These K blocks are placed in row-major order across the M-by-M block grid. That is, for block index i = 0..K−1:
+    - The block’s top-left corner (base) in output coordinates is:
+      - base_row = (i // M) * n
+      - base_col = (i % M) * n
+  - For each such block, we stamp the primary pattern: for every (pr, pc) in P, set output[base_row + pr][base_col + pc] = primary value.
+
+- Everything else in the output remains zero. This exactly reproduces:
+  - The number of blocks across and down (M),
+  - The size of each block (n),
+  - The placement of K blocks across the first block row and then down to the next block rows as needed,
+  - The content of each block matching the input’s primary-value footprint.
+
+- Implementation outline:
+  - Compute n = size of input.
+  - Find the first nonzero value by scanning row-major; call it primary.
+  - Collect and sort all positions where the cell equals primary; call this list P.
+  - Compute M = n^2 − |P| and expanded_size = n * M.
+  - Initialize an expanded_size-by-expanded_size grid of zeros.
+  - For i from 0 to |P|−1: compute the block’s base position using i // M and i % M; then for each (pr, pc) in P, mark primary at base + (pr, pc).
+  - Return the expanded grid.
+
+This procedure accounts for:
+- Why the output’s side length is n * (n^2 − K),
+- Why only K blocks are filled,
+- Why the filled blocks appear first across the top block row and then continue into subsequent block rows,
+- Why each filled block’s internal pattern matches the input’s primary-value positions.

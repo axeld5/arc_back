@@ -1,0 +1,37 @@
+Here’s how I would solve it, given the input/output pairs:
+
+- Observation from examples:
+  - The grids contain 0 as background and several clusters of 8s.
+  - In the output, all 8s become 1, except exactly one connected cluster which becomes 2.
+  - The chosen cluster is not determined by size or position alone; it’s the “odd-one-out” by shape, ignoring location.
+
+- Plan:
+  1) Identify all connected components of nonzero cells (in these puzzles, all nonzeros are 8). Use 8-connectivity (neighbors include diagonals), because the examples treat diagonally touching 8s as connected.
+
+  2) For each component, compute a canonical “shape signature” that is invariant to translation:
+     - Translate the component’s coordinates so that its topmost-leftmost cell is at (0,0) by subtracting the minimum row and column from every cell in that component.
+     - Sort or otherwise order the set of translated coordinates to form a stable, hashable representation of the shape.
+     - This lets us compare shapes across the grid regardless of where they appear.
+
+  3) Count shape frequencies:
+     - Use a frequency map from shape signature to its count across all components.
+     - We also need a deterministic tie-breaker if multiple shapes share the minimum frequency. The examples are consistent with picking the earliest encountered component in scan order (top-to-bottom, left-to-right), i.e., the first time that shape appears when we discover components.
+
+  4) Select the target component:
+     - Choose the component whose normalized shape has the smallest frequency.
+     - If there’s a tie, choose the first such component encountered in the scanning/discovery order.
+
+  5) Recolor:
+     - First, recolor every 8 in the grid to 1.
+     - Then recolor all cells belonging to the selected (target) component to 2.
+     - Leave zeros as zeros.
+
+- Details to make this robust and deterministic:
+  - Component discovery: iterate cells in row-major order; when you find a nonzero cell not yet visited, run a BFS/DFS (I prefer BFS) using 8-direction neighbors to collect all cells of that component and mark them visited.
+  - Neighbor generation: for each cell, consider offsets in {-1, 0, 1} for both row and column, skipping (0,0), and only include neighbors within bounds.
+  - Shape normalization: for a component with coordinates (r, c), find min_row and min_col and shift all cells to (r - min_row, c - min_col). Sort the resulting list and store as an immutable structure so it can be counted.
+  - Choosing the target: determine the shape frequency map; then among the components (in the same order they were found), pick the one whose shape has the minimal frequency. This achieves the “rarest shape, tie broken by first occurrence” behavior.
+  - Recoloring order matters: recolor all 8s to 1 first, then overwrite the chosen component with 2.
+
+- Why this matches the examples:
+  - In each example, there are multiple clusters of 8s. Many share the same shape (after normalization), and one shape is rarer. The outputs show that all clusters become 1 except the rare-shape cluster, which becomes 2. In cases with multiple rare shapes of equal scarcity, the leftmost-topmost cluster among them is selected (consistent with first-found during scanning).

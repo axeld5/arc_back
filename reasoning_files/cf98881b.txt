@@ -1,0 +1,37 @@
+Here’s how I would solve it from the I/O alone:
+
+- First, recognize the structure of each input row: it’s 14 cells long and clearly split into three 4-cell groups separated by the constant 2 at fixed positions. In 0-based indexing:
+  - Group A: columns 0–3
+  - Separator 2 at column 4
+  - Group B: columns 5–8
+  - Separator 2 at column 9
+  - Group C: columns 10–13
+
+- The output is always a 4×4 grid, i.e., four rows each with four values. Those four values align with the last group (Group C) after some merging logic using the earlier groups.
+
+- From the examples:
+  - Zeros behave like “empty” and should not overwrite anything.
+  - Positive values (1,4,9,…) are “meaningful” and should be copied.
+  - If both A[i] and B[i] are zero, the output at that position can remain whatever was originally in C[i] (which can be 0 or 1 in the examples).
+  - If B[i] is positive, it fills the slot unless A[i] is also positive, in which case A[i] takes precedence.
+
+- This suggests a merge with precedence A > B > C, position-wise:
+  - For each row and for each position i in 0..3:
+    - Start with C[i] as the baseline.
+    - If B[i] > 0, copy B[i] into C[i].
+    - If A[i] > 0, copy A[i] into C[i] (overwriting what B might have set).
+  - After processing all four positions, the updated C (columns 10–13) is exactly the output row.
+
+- Implementation plan matching that reasoning:
+  - Iterate over each of the 4 rows.
+  - For i from 0 to 3:
+    - If the value in column 5+i is > 0, write it into column 10+i.
+    - If the value in column 0+i is > 0, write it into column 10+i (this gives A precedence over B).
+  - Return the last four columns (10–13) of each row as the 4×4 result.
+
+- Sanity checks against the provided examples:
+  - When A has a positive at some position, that exact value appears in the output at the corresponding position.
+  - When A is zero and B has a positive at that position, the output shows B’s value.
+  - When both are zero, the output keeps whatever was already in C at that position (often 0 or 1 in the samples).
+
+This merging-by-copying-only-positive-values, done first from B then from A into C, exactly reproduces the shown outputs.

@@ -1,0 +1,37 @@
+Here’s how I’d reverse‑engineer the rule from the examples and turn it into a solver:
+
+1) Notice the output sizes
+- For an h×w input, the output is always n^2×n^2 where n = min(h, w).
+- So the transformation “zooms” the image by a factor of n in both dimensions.
+
+2) Spot the two n×n source tiles
+- Extract two square tiles of size n:
+  - Top‑left n×n block (call it A).
+  - Bottom‑right n×n block (call it B).
+- These two tiles are the only parts of the input used to build the large output.
+
+3) Determine which tile is the “pattern” and which is the “weights”
+- The large outputs are composed of n×n blocks of size n; each block is the same “shape” (zeros and non‑zeros) as one of the tiles, repeated everywhere, but with different amplitudes.
+- The tile that contains 8s defines the “on/off” stencil (the motif): wherever that tile has 8s, the output shows non‑zeros; where it has 0, the output shows 0.
+- The other tile carries the per‑block amplitudes (values like 1, 2, 3, 4).
+- Operationally: if the top‑left tile A contains any 8, swap A and B so that B is the motif (has the 8s) and A is the amplitudes.
+
+4) Build the n^2×n^2 output by block replication with scaling
+- Think of the output as an n×n grid of blocks, each block of size n×n.
+- For output position (y, x):
+  - Identify which block you’re in via (y // n, x // n) → that indexes into A to get the amplitude.
+  - Identify the position inside the block via (y % n, x % n) → that indexes into B to get the motif value.
+- Combine them by scaling with 1/8:
+  - out[y, x] = floor( A[y // n, x // n] × B[y % n, x % n] / 8 ).
+- This explains the numbers:
+  - If B has 0 → output 0.
+  - If B has 8 → output equals the amplitude from A (e.g., 2, 3, 4).
+  - If B has 4 → you get half the amplitude, floored (e.g., 2×4/8 → 1; 4×4/8 → 2).
+
+5) Summary of the pipeline
+- n = min(h, w).
+- A = top‑left n×n, B = bottom‑right n×n.
+- If A contains any 8, swap(A, B).
+- Produce an n^2×n^2 grid where each cell is floor(A_block_value × B_motif_value / 8), with block indices from (y // n, x // n) and within‑block indices from (y % n, x % n).
+
+This is essentially a scaled (by 1/8) Kronecker‑style expansion: repeat the motif tile at every block, scaling it by the corresponding amplitude from the other tile, with a pre‑swap to ensure the motif is the one that carries the 8s.

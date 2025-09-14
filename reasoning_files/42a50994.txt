@@ -1,0 +1,30 @@
+Here’s how I’d approach it after studying the I/O pairs:
+
+- What changes from input to output?
+  - Zeros stay zero everywhere.
+  - Non-zero entries only survive if they are “part of a cluster” of the same value; if a non-zero cell is completely alone (no equal-valued neighbors around it), it gets removed (turned into zero).
+  - Adjacency is 8-connected (orthogonal and diagonal). For example, in the first grid, the 8 at (row1,col2) survives because it is diagonally adjacent to an 8 at (row2,col1). Isolated 8s like the ones on row 3 at columns 8 and 10 are deleted because they have no equal neighbor in any of the 8 directions.
+
+- So the rule is:
+  - For each cell that is not zero, check all 8 neighboring offsets (-1,0,1 in both axes, skipping (0,0)).
+  - If none of those neighbors is within bounds with the same value, set the cell to zero.
+  - Otherwise, leave it as is.
+
+- Borders:
+  - Cells at the edges simply have fewer neighbors to check. Out-of-bounds positions are treated as non-matching (i.e., they don’t prevent deletion).
+
+- Single pass suffices:
+  - We only want to remove pixels that were already isolated in the original configuration (not iteratively peel layers). A single sweep where a cell is removed only if it currently has no equal neighbors accomplishes exactly what the examples show. Notably, any pair (or larger group) of same-valued neighbors will never be deleted because each has at least one matching neighbor.
+
+- Implementation outline:
+  - Make a working copy of the grid for the output.
+  - For each cell (i,j), if its value is zero, skip.
+  - Otherwise, scan the 8 neighbor positions; if any neighbor is in-bounds and has the same value, keep the cell; if not, write zero at (i,j) in the output.
+  - Return the modified grid.
+
+- This matches all provided examples:
+  - 8s/6s/5s/4s that have at least one same-valued neighbor (including diagonals) remain.
+  - Truly isolated non-zero cells disappear.
+  - Zeros remain untouched.
+
+- Complexity: O(H*W) with a constant factor for the 8-neighbor checks.

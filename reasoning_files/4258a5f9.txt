@@ -1,0 +1,22 @@
+Here’s how I’d solve it:
+
+- First, infer the rule from the examples: every cell with a 5 “lights up” all eight of its immediately adjacent neighbors (N, NE, E, SE, S, SW, W, NW) by setting them to 1. The 5 itself stays 5. Cells not adjacent to any 5 remain 0. At edges/corners, only in-bounds neighbors are affected.
+
+- Strategy:
+  - Iterate the grid by row and column indices.
+  - Whenever I encounter a 5, visit each of the eight neighbor offsets:
+    (-1,-1), (-1,0), (-1,1), (0,-1), (0,1), (1,-1), (1,0), (1,1).
+  - For each neighbor, compute its coordinates and check bounds:
+    0 <= new_row < number_of_rows and 0 <= new_col < number_of_cols.
+  - If in bounds, set that neighbor cell to 1.
+  - Do not include the (0,0) offset, so the 5 cell itself is never changed.
+  - If multiple 5s influence the same neighbor, it remains 1, which is fine.
+
+- Implementation notes:
+  - Use a helper that, given the grid and the coordinates of a 5, applies the eight neighbor updates with bounds checking.
+  - Use enumerate to get row and column indices during the scan.
+  - Modify the grid in place and return it after processing.
+  - Provide a simple wrapper function p that just calls the main processing function on the grid.
+
+- Complexity:
+  - Each cell is inspected once, and for each 5 we touch up to 8 neighbors, so overall O(R*C). This matches the examples exactly.

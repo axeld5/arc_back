@@ -1,0 +1,75 @@
+Here’s how I would solve this from the given input/output pairs.
+
+1) Read the scene semantics from the examples
+- There are three relevant colors:
+  - 2 = a solid “red band” along the top rows, with some 0-cells as holes.
+  - 5 = shapes lying below the red band that look like puzzle pieces.
+  - 0 = background.
+- The target outputs:
+  - Replace every 5 with 0 (erase the pieces from where they sit).
+  - Move those 5-shapes upward and stamp them as 1’s so that, inside the red band, each hole of 0’s gets exactly filled by the in-band part of one piece. The remainder of the piece may hang outside the band (that’s why we see 1’s just below the band in the outputs).
+  - Do not overwrite the red cells.
+  - If an exact “tiling” of holes by the pieces is impossible, still push pieces up into the top region and cover as many hole cells as possible using a sensible heuristic.
+
+2) Basic geometry and bookkeeping
+- Dimensions and 4-neighbor adjacency for flood fills.
+- Most common color computation to identify the background color (which will be 0 in these examples).
+- Identify the red band:
+  - Find all cells with value 2.
+  - If there are none, just return the grid unchanged (nothing to do).
+  - Let rmin be the topmost row index containing a 2; rmax the bottommost such row. The red band is the rectangle spanning rows rmin..rmax across the whole width.
+- Within the red band, find all “holes”:
+  - Flood-fill connected components of 0’s using 4-neighborhood, but only within the band rectangle. Each such component is a hole that needs to be filled.
+- Below the band, find all pieces:
+  - Flood-fill connected components of 5’s over the entire grid. Each component is one shape.
+- “Pick up” the pieces:
+  - Paint all cells of value 5 to the most common color (effectively erase the pieces so we can place them elsewhere as 1’s).
+
+3) Normalize piece shapes for matching
+- For each 5-component, record its set of cell coordinates.
+- Normalize each shape by translating it so its top-left cell is at (0, 0). This lets us efficiently try all translations of each shape over the board.
+
+4) Generate exact-fit candidates for each hole
+- For each hole H:
+  - For each shape S:
+    - For each alignment (anchor a cell of S onto a cell of H), compute the translated set T of S.
+    - Constraints for a valid candidate placement:
+      - T must be entirely within the grid.
+      - T must not extend above the top of the red band (no row in T < rmin); pieces can hang below the band but not above it.
+      - The intersection of T with the band must be exactly the hole H. In other words, when you look only inside the band, the piece cells cover the hole cells and nothing else; hence, no overlap with red.
+    - Each valid T for this hole and this shape is a candidate.
+- This gives, for each hole, a list of candidate placements (shape index and translated cell set).
+
+5) Solve the assignment (exact cover style)
+- We must pick at most one placement per piece and one placement per hole, and placements must not overlap each other anywhere on the grid.
+- Sort holes by ascending number of candidates to reduce branching.
+- Use backtracking:
+  - For the current hole, try each candidate:
+    - Skip if that piece is already used or if its footprint overlaps any already chosen footprint.
+    - Otherwise, select it and recurse to the next hole.
+  - If all holes are assigned, success.
+- If this succeeds:
+  - Paint every chosen placement as 1’s (the whole footprint T, not only the part inside the band). This matches the outputs where the placed piece’s “lower” cells show up as 1’s below the band.
+
+6) Heuristic fallback if exact covering fails
+Sometimes holes can’t be perfectly tiled by the available shapes and placements. Then:
+- Work only with the shapes (their normalized masks) and try to place each one near the top of the grid so as to cover as many hole cells (within the band) as possible, without touching red, and without overlapping already placed shapes.
+- Scoring idea (the priorities that guide the greedy):
+  - Huge reward for the number of band-hole cells newly covered by a placement (this dominates).
+  - Prefer placements whose cells lie in the top few rows (to mimic “pushing upward”).
+  - Disallow any placement that would overlap a red cell.
+  - Penalize placements that suggest awkward gaps around the footprint in the top rows (discourage leaving empty rims or hollow rectangles around the patch).
+  - Prefer higher (closer to the top) placements.
+- For each shape:
+  - Evaluate all translations that fit in-bounds, do not touch red, and do not overlap already placed patches; compute the score.
+  - Choose the translation with the best score, fix it, and mark those cells as used and their in-band overlap as covered.
+- Finally, paint all chosen greedy placements as 1’s.
+
+7) Return the resulting grid
+- In the exact-cover case, you’ll see perfect hole-filling and piece silhouettes possibly hanging below the band as 1’s.
+- In the fallback case, you’ll see best-effort coverage of the holes, with the shapes pushed as high as constraints allow.
+
+Why this matches the examples
+- The red top band remains untouched except where holes are exactly filled by in-band parts of placed pieces.
+- The 5’s vanish from their original positions (erased to background) and reappear as 1’s where placed.
+- In the provided outputs, you can see pieces placed so their in-band part exactly equals hole shapes, with the lower parts appearing as 1’s beneath the band.

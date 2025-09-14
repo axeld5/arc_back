@@ -1,0 +1,30 @@
+Here’s how I’d solve it, based only on the input/output patterns:
+
+- What the outputs show:
+  - Zeros act like “cuts” that extend across an entire color region, but only along one axis:
+    - In some tasks the cuts are vertical (entire columns inside a color block become zero if any zero appears in that column within the block).
+    - In others they’re horizontal (entire rows inside a color block become zero if any zero appears in that row within the block).
+  - The extension is applied per color independently and is confined to that color’s minimal bounding rectangle (you don’t zero outside the extent of that color).
+
+- When to use vertical vs horizontal:
+  - If the grid has any row that is a single uniform color, the examples show vertical striping.
+  - If no row is uniform (rows contain multiple colors), the examples show horizontal striping.
+  - So use that as the heuristic to choose the sweep direction.
+
+- How to implement cleanly:
+  - Write one routine that performs a “vertical” sweep. If you need a horizontal sweep instead, transpose the grid first, run the same vertical routine, then transpose back. This keeps the logic simple and symmetric.
+
+- Vertical sweep for each color:
+  1) Group all coordinates by their color (ignore zeros).
+  2) For each color, find its tight bounding box (min/max row and column indices over its cells).
+  3) Inside that box, look for any zero cells (of any color). Record the set of column indices within the box that contain at least one zero.
+  4) For all cells of this color, if their column index is in that recorded set, set them to zero. This produces full vertical zero columns within the color’s box.
+  5) Apply this independently for every color and merge the changes.
+
+- Horizontal sweep:
+  - Same as above, but achieved by transposing the grid first so columns become rows; then do the same “vertical” logic and transpose back. Effectively, you’re zeroing entire rows within each color’s bounding box where any zero appears in that row of the box.
+
+- Why this matches the examples:
+  - Examples with monocolor rows produce vertical zero columns within each block (because the heuristic chooses the vertical sweep).
+  - Examples without any monocolor row produce horizontal zero rows within each block (by transposing, sweeping, and transposing back).
+  - The zeroing is limited to each color’s bounding box, so stripes don’t spill into other color regions, which matches all outputs.

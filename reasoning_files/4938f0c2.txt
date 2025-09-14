@@ -1,0 +1,27 @@
+Here’s how I would solve it from the I/O alone:
+
+- The 3s act as a reference marker, not something to be modified. In all examples, the 3s form a 2x2 block that marks the center of symmetry of the transformation.
+
+- The transformation applied to the 2s is: enforce bilateral symmetry across both the vertical and horizontal axes that pass through the center of that 2x2 block. Practically, every 2 must appear together with its three symmetric counterparts: its reflection across the vertical axis, its reflection across the horizontal axis, and the 180-degree rotation (the combination of both reflections).
+
+- To reflect using integer indices, compute the symmetry “center” using integer math. Let r and c be row and column indices. If the 3s form a 2x2 block centered at (cx, cy), then reflections are:
+  - vertical reflection: (r, 2*cy − c)
+  - horizontal reflection: (2*cx − r, c)
+  - both: (2*cx − r, 2*cy − c)
+
+- Since the 3s are a 2x2 block, you can avoid floating-point by summing all row indices where the cell is 3 and summing all column indices where the cell is 3. Because there are exactly four 3s, the doubled center coordinates are:
+  - Sx = sum(rows of 3s) // 2 which equals 2*cx
+  - Sy = sum(cols of 3s) // 2 which equals 2*cy
+  Then the symmetric coordinates are computed with Sx and Sy as:
+  - (r, c), (Sx − r, c), (r, Sy − c), (Sx − r, Sy − c)
+
+- Algorithm:
+  1. Scan the grid, accumulate total row and column indices where the value is 3. Compute Sx and Sy as those totals halved (integer division).
+  2. Scan the grid again. For each cell with value 2, write 2 into the four symmetric positions listed above.
+  3. Return the updated grid.
+
+- Doing the updates in place is safe: newly written 2s only reproduce the same four positions when encountered later; no unintended growth occurs.
+
+This exactly reproduces the observed behavior:
+- In the first and second examples, the sparse 2s are mirrored across both axes defined by the 2x2 3 block, yielding symmetric patterns in all four quadrants.
+- In the third example, the input is already symmetric with respect to that center, so the output is unchanged.

@@ -1,0 +1,40 @@
+Here’s how I would solve it from the I/O pairs.
+
+- First, observe the consistent structures:
+  - There is a solid “line” of 2s (either a full row or a full column).
+  - There is a contiguous band of rows (or columns) that contain 3s.
+  - The output reorganizes the grid so that the 3-band is placed adjacent to the 2-line with a full separator of 8s between, and everything else becomes zeros. Orientation (row vs column) varies between tasks.
+
+- Unify row/column cases:
+  - If the grid is wider than it is tall, the special line (2s) tends to be a column and the 3s span columns. To avoid branching on rows vs columns, normalize by transposing when width > height. That way, we always work in a “tall” frame where the line of 2s is a row and the 3 band is a set of rows.
+
+- Identify anchors in the normalized (possibly transposed) grid:
+  - Find the index of the row that is the line of 2s. Because that line is uniform 2s, its first cell is 2; we can use that as a simple marker. If there were multiple such rows (not in these tasks), pick the last one encountered.
+  - Find the first and last row indices that contain any 3. That gives the contiguous 3-band.
+
+- Fix vertical direction:
+  - The 3-band can be above or below the 2-line. The output in all examples always positions the content in a specific stack order in the final arrangement.
+  - To avoid duplicating logic for “3-band above” vs “3-band below,” if the first 3-row is above the 2-line, flip the grid vertically (reverse the row order), then do the reassembly, and flip back at the end. That way, the assembly logic always assumes the 3-band is at or below the 2-line when we build the new grid.
+
+- Reassemble in normalized orientation:
+  - Slice the grid into:
+    - part1: all rows from the top through the 2-line inclusive (index 0 through index_of_2).
+    - part2: the consecutive rows that contain 3s (from first_index_of_3 through last_index_of_3).
+    - separator: a single full row of 8s (same width as the grid).
+    - blanks: enough all-zero rows to keep the total number of rows unchanged.
+  - The count of blank rows is: total_rows − len(part1) − len(part2) − 1. This simplifies to total_rows − (index_of_2 + 1) − (last_index_of_3 − first_index_of_3 + 1) − 1, which matches what you see in the examples.
+
+- Undo normalizations:
+  - If we flipped due to 3-band being above the 2-line, reverse back after reassembly.
+  - If we transposed at the start, transpose the final result back. This turns the inserted row of 8s into a column of 8s when the original problem was column-oriented, matching the first example.
+
+- Sanity check against examples:
+  - Example 2 (taller grid): the 3-band is initially above the 2-line. We flip, stack as [top..2-line] + [3-band] + [row of 8s] + [zeros], then flip back. This places the 8s above the 3-band, then the 3-band, then the 2-line, matching the output.
+  - Example 3 (taller grid): the 3-band is below the 2-line, so no flip. We place [top..2-line], then [3-band], then [8s], then [zeros], matching the output.
+  - Example 1 (wider grid): we transpose first so the 2-column becomes a 2-row, do the same logic (including flip because the 3-band is above), and transpose back. That yields a column of 8s between the 3 region and the 2 column, matching the output.
+
+- Notes:
+  - Using the first cell of a row to detect the line of 2s works because that row is entirely 2s.
+  - The 3-band is defined by the first and last rows that contain any 3; order is preserved.
+  - The zeros elsewhere are simply filled as needed to maintain original dimensions.
+  - Transpose/flip logic keeps the core assembly simple and symmetric across row/column variants.

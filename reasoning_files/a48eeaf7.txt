@@ -1,0 +1,22 @@
+Here’s how I’d solve it from the given examples:
+
+- Observation from IO pairs:
+  - The 2s form a contiguous block. The outputs show 5s ending up on the one-cell-thick ring that surrounds this block (i.e., the perimeter of the bounding box of the 2s expanded by one cell in all directions).
+  - Every original 5 moves to its nearest point on that ring, measured by Manhattan distance. When two ring points are equally near, the one with the smaller row, then smaller column, is chosen.
+  - Original 5s are cleared from their old positions; only their new positions on the ring are set to 5. Other cells remain unchanged.
+  - If multiple 5s choose the same ring spot, it collapses to a single 5 (since the grid stores a single value per cell).
+
+- Algorithm:
+  1. Scan the grid to collect all coordinates where the cell value is 2.
+  2. Compute the tight bounding box around these 2s: min row, max row, min col, max col.
+  3. Expand that bounding box by one cell on every side to get top, bottom, left, right limits of the target ring.
+  4. Enumerate the perimeter coordinates of this expanded rectangle: all cells along the top edge, bottom edge, left edge, and right edge.
+  5. Collect all current coordinates of 5s.
+  6. For each 5, find the nearest perimeter coordinate by Manhattan distance. Break ties deterministically by choosing the perimeter coordinate with the smallest (row, col).
+  7. Clear all original 5 positions (set to 0).
+  8. Set 5 at each chosen perimeter coordinate (using a set of chosen positions so duplicates collapse).
+  9. Return the modified grid.
+
+- Notes:
+  - This exactly explains the movements seen in both examples: each 5 relocates to the closest point on the ring around the 2-block’s expanded bounding box.
+  - The tie-break rule is necessary for deterministic placement when distances tie.

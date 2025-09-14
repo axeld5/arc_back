@@ -1,0 +1,48 @@
+Here’s how I would solve it from just looking at the input/output pairs.
+
+1) Infer the rule from I/O
+- The grids contain only 0s and 5s initially.
+- In the outputs, some 0s remain 0, some 0s are changed to 4, and 5s stay as 5.
+- The 0s that become 4 always form a solid axis-aligned rectangle of zeros (no holes, no missing cells inside) that is completely enclosed by a one-cell-thick ring of 5s on all four sides.
+- Any 0-region that is not a perfect filled rectangle, or that touches non-5s on its immediate border, or that touches the grid edge (so it cannot be fully surrounded) remains unchanged.
+
+So the transformation is: “Fill every rectangular block of connected zeros that is fully surrounded by a ring of 5s with 4s (replace those 0s with 4s).”
+
+2) Break the problem down
+- We need to find connected components of zero cells. Use 4-directional adjacency (up, down, left, right). Each component is a set of coordinates of 0s.
+- For each zero-component, decide if it’s a solid rectangle and if that rectangle is surrounded by 5s.
+- If yes, change all cells in that component from 0 to 4.
+- Leave everything else unchanged.
+
+3) Detect zero-components
+- Iterate the grid; when you see a 0 not yet processed, BFS/DFS flood-fill from there using 4-neighbors, collecting the whole component of 0s.
+- Track visited zero-cells so each component is processed once.
+
+4) Check the “solid rectangle” property
+- Compute the bounding box of the component: top = min row, bottom = max row, left = min col, right = max col.
+- A component is exactly a filled rectangle if and only if the component’s size equals the area of that bounding box: size == (bottom - top + 1) * (right - left + 1).
+- If this fails, skip this component (don’t transform it).
+
+5) Check it’s surrounded by 5s
+- Consider the one-cell-thick border ring immediately outside the rectangle: rows top-1 and bottom+1 across left..right, and columns left-1 and right+1 across top..bottom.
+- All those in-bounds border cells must be 5 for the rectangle to be “enclosed.” If the block touches the grid edge, there won’t be border cells in that direction; such rectangles can’t be fully surrounded, so they should fail the check.
+- Precompute the set of all positions of 5s to make membership tests O(1).
+- Be careful with bounds at the border of the grid: only positions that lie in-bounds are required to be 5; if a border position is out of bounds, that implies the rectangle touches the edge and thus is not fully surrounded, so the rectangle should not be transformed.
+
+6) Apply the transformation
+- Collect all zero-components that pass both tests.
+- For every cell in such a component, set it to 4 in the output grid.
+
+7) Key implementation choices aligning with the behavior
+- Use a simple 4-neighbor function for BFS/DFS.
+- Use a visited set for zero-cells while enumerating components.
+- Use the bounding-box area equality test to ensure the zero-component is a perfect filled rectangle (this also rules out L-shapes or rings).
+- Build the border ring around that bounding box and verify it is composed of 5s where in-bounds.
+- Only after all qualifying blocks are identified, write 4s into those positions.
+
+This logic precisely explains:
+- Why narrow corridors or non-rectangular zero regions remain 0.
+- Why inner rectangular “rooms” encircled by 5s get filled with 4.
+- Why rectangles that abut the grid boundary don’t change (cannot be fully enclosed by 5s).
+
+That’s the reasoning I’d follow to get to this solution.

@@ -1,0 +1,35 @@
+Here’s how I would solve it:
+
+- Observation from the examples:
+  - The big grid can be perfectly tiled into 3x3 blocks (either stacked vertically, horizontally, or in a full grid).
+  - The values inside the blocks vary (2, 3, 4, 7, 8, etc.), but what’s consistent across “duplicate” blocks is the placement of zeros.
+  - In each case, exactly one 3x3 block has a zero/non-zero layout that no other block shares. The required output is that unique 3x3 block with its original numbers.
+
+- Plan:
+  1. Split the full grid into disjoint 3x3 blocks in row-major order:
+     - Iterate block rows and block columns.
+     - For each block position (block_row, block_col), collect the 3x3 slice by taking rows block_row*3..block_row*3+2 and cols block_col*3..block_col*3+2.
+     - Store each 3x3 block as its own 2D array.
+
+  2. For each 3x3 block, abstract away the actual numbers and compute a “pattern” that captures only zero vs non-zero:
+     - Build a 3x3 boolean mask where each cell is True if the original cell is zero, otherwise False.
+     - This mask is the pattern signature for the block.
+
+  3. Find the unique pattern:
+     - For each block, compare its pattern against the patterns of all other blocks and count how many times it appears.
+     - The block whose pattern count is exactly 1 is the “odd one out.”
+
+  4. Return that block (with the original numbers, not the mask).
+
+- Notes mirroring the examples:
+  - In the first example, the first two 3x3 blocks share the same zero layout; the third has a different zero layout, so we return the third.
+  - In the second and third examples, many blocks share a common mask, while one block (the one to output) has a unique mask.
+  - In the fourth example, the first block’s zero layout is unique; the other three share a layout.
+
+- Implementation sketch:
+  - First pass: extract all 3x3 blocks into a list.
+  - For each block, compute its zero-mask pattern (use a structure you can compare, e.g., nested tuples).
+  - For each block, count how many blocks share its pattern by comparing to every other block’s pattern.
+  - Return the first block whose pattern count is 1.
+
+This exactly reproduces the behavior shown: it doesn’t care about the actual numbers except for whether they are zero, and it outputs the single 3x3 block whose zero pattern is unique among all 3x3 blocks in the input grid.

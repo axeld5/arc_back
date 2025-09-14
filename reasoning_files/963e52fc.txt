@@ -1,0 +1,23 @@
+Here’s how I would solve it:
+
+- First, look at shapes. In every example, the number of rows in the output is the same as the input. The number of columns in the output is exactly twice the number of input columns.
+
+- Next, look at what content is being repeated. Horizontally, the output is a periodic tiling of a fixed-width motif taken from the input. Checking the examples shows that the motif length is 6 columns:
+  - Example 1 has width 6; doubling gives 12, and the output is just the 6-column row repeated twice.
+  - Example 2 has width 7, but the output clearly repeats only the first 6 columns (the 7th input column is ignored) to reach width 14.
+  - Example 3 has width 8, but again the output repeats only the first 6 columns to reach width 16.
+
+  So horizontally, we should select the input at column index j modulo 6, not modulo the input width. That reproduces the observed truncation/tiling behavior in examples 2 and 3.
+
+- Vertically, nothing changes: the output rows are the input rows, one-for-one. All examples have exactly 5 rows, so indexing rows by i modulo 5 reproduces the same rows in order (this is equivalent to just using row i since we aren’t changing the height, but using modulo 5 matches the fixed 5-row structure seen in the data).
+
+- Putting it together:
+  - Let H = number of input rows, W = number of input columns.
+  - The output has H rows and 2W columns.
+  - For each output cell at row i and column j:
+    - Take the value from the input at row (i mod 5) and column (j mod 6).
+  - This keeps the vertical content identical and horizontally repeats the first 6-column motif to fill the doubled width, which matches all given outputs exactly.
+
+- Sanity check against examples:
+  - Example 2, third row: input is [2,3,3,2,3,3,2]. Using j mod 6 yields [2,3,3,2,3,3] repeated, producing [2,3,3,2,3,3,2,3,3,2,3,3,2,3], matching the provided output.
+  - Example 3, third and fourth rows likewise match by repeating only the first six entries of each row.

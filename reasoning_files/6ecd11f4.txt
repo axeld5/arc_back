@@ -1,0 +1,35 @@
+Here’s how I would solve it:
+
+- Interpret the task as operating on a grid where 0 is background and any non-zero value is foreground. The grid contains multiple disjoint “objects” (contiguous regions of non-zero cells), and the goal is to combine information from the largest and smallest such objects to produce the output.
+
+- Find objects via 8-connected component labeling:
+  - Traverse the grid. For every unvisited non-zero cell, run a flood-fill (BFS/DFS) using 8-neighborhood (including diagonals) to collect all coordinates in that object.
+  - Track visited cells so each is processed once.
+  - Store each object as the set of its coordinates.
+
+- Select the largest and smallest objects by area (number of cells).
+
+- For each of those two objects, compute its tight bounding box: min/max row and col over its coordinates.
+
+- Crop the original grid to those bounding boxes, producing two subgrids:
+  - largest_grid: the rectangular crop containing the largest object
+  - smallest_grid: the rectangular crop containing the smallest object
+
+- Align scales so we can transfer a “mask” from the large object to the small one:
+  - Compute a downscaling factor as an integer ratio of widths: floor(width(largest_grid) / width(smallest_grid)), with a minimum of 1.
+  - Downscale the largest_grid by this factor by simple subsampling: take every k-th row and every k-th column (starting at the top-left), producing a coarse version of the large object that approximates the smallest_grid’s resolution. Use the same factor for rows and columns to keep it square.
+
+- Build a zero-mask from the downscaled largest grid:
+  - Record all positions in the downscaled grid that are 0 (background).
+
+- Apply this mask to the smallest object’s crop:
+  - Make a copy of smallest_grid.
+  - For each zero position (i, j) in the downscaled largest grid, if (i, j) is within the bounds of smallest_grid, set smallest_grid[i][j] to 0. This “punches out” holes in the smallest object wherever the large object’s downscaled view is background.
+
+- Return the modified smallest_grid. This matches the samples where the output is the smallest object’s bounding-box crop with zeros introduced according to the structure of the downscaled largest object.
+
+This explains:
+- Why we detect components (to find “largest” and “smallest” objects).
+- Why we crop by bounding boxes (to isolate just those objects).
+- Why and how we downscale the largest (to map its structure onto the smallest’s resolution via simple stride sampling).
+- Why we only zero-out (we treat zeros in the downscaled large object as a stencil/mask) and leave non-zeros of the smallest unchanged.

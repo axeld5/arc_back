@@ -1,0 +1,50 @@
+Here’s how I’d solve it from just the given input/output pairs.
+
+1) Read the puzzle’s visual grammar
+- Across the examples, one non-zero color clearly dominates. That dominant color behaves like a scaffold/background within larger composite shapes, while the other colors are the “features” embedded in those shapes.
+- Some connected components contain that dominant color (these are the templates/stencils we want to place). Other components do not contain the dominant color; those are free-standing “feature clusters” that indicate where a matching template should be placed.
+
+2) Extract connected components and separate roles
+- Compute all 4-connected components of non-zero cells.
+- Find the most frequent non-zero color in the entire grid; treat it as the scaffold color.
+- Partition components:
+  - Template components: components that include at least one cell of the dominant color.
+  - Feature-only components: components that contain no dominant color; these are the targets to match against.
+
+3) Normalize each template into a local coordinate system and extract its signature
+- For each template component:
+  - Normalize coordinates relative to the top-left of the component’s bounding box. Keep two views:
+    - Full footprint: every cell in the component with its color.
+    - Signature pattern: only the cells whose color is not the dominant color (these are the distinctive features that must align with existing feature clusters).
+  - Record the template’s height and width in its local frame so we can rotate it correctly later.
+
+4) Index the free feature cells
+- Collect all cells belonging to feature-only components and group them by their color value. This gives us, for each color, a list of candidate target positions.
+
+5) Find placements by rotation+translation using feature matching
+- For each template:
+  - Try all four 90-degree rotations of its signature pattern (rotate within the template’s local bounding box).
+  - For the rotated signature:
+    - Use an “anchor-and-offset” search: for each signature cell of color v, try pairing it with each free cell of color v. This gives a candidate translation (offset).
+    - Under that rotation and offset, check whether every feature cell in the rotated signature lands on an existing non-zero cell of exactly the same color in the original input. If so, we’ve found a valid placement.
+    - When a placement is accepted, mark those matched target positions as used so we don’t reuse the same feature cells for other templates.
+  - If no placement is found for any rotation, fall back to a default placement (keep its original pose or a fixed default).
+
+6) Reconstruct the output by stamping templates
+- Start with an all-zero output grid.
+- For each template with its chosen rotation and offset:
+  - Rotate all cells of the template’s full footprint (including the dominant-color scaffold) with the same rotation as the signature used for matching.
+  - Translate by the found offset.
+  - Write those colors into the output grid at the final coordinates (bounds-checked).
+- Cells not covered remain zero.
+
+7) Why this reproduces the examples
+- The dominant color acts as a stencil/background in composite shapes. The non-dominant colors define unique mini-patterns. By rotating and translating each stencil so that its non-dominant feature cells coincide with the existing free feature clusters, we “snap” each stencil into the correct pose. Stamping the full stencil then generates the target outputs shown.
+
+Key implementation details that matter
+- Connected components use 4-neighborhood.
+- The dominant color is computed as the most frequent non-zero value.
+- Templates are normalized to top-left to enable clean rotation in a local frame.
+- Rotation is applied consistently to both matching (signature) and stamping (full footprint).
+- Matching requires exact color agreement for all feature cells.
+- A “used positions” set prevents two templates from claiming the same feature cells.

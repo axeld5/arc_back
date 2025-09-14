@@ -1,0 +1,49 @@
+Here’s how I would solve it from the given input/output pairs:
+
+1) Look for simple invariants in the outputs:
+- All outputs are 3x3.
+- The only nonzero value in outputs is 5.
+- The 5s appear in one of three patterns:
+  - Entire first row is 5s.
+  - Primary diagonal (top-left to bottom-right) is 5s.
+  - Secondary diagonal (top-right to bottom-left) is 5s.
+- Everywhere else is 0.
+
+2) Check what aspect of the input correlates with which pattern:
+- The exact values (2, 3, 4) don’t seem to matter; only how many different values appear in the input grid seems relevant.
+- Test this hypothesis against the examples:
+  - Example 1: Input has two unique numbers {2,3} → Output is primary diagonal of 5s.
+  - Example 2: Input has three unique numbers {2,3,4} → Output is secondary diagonal of 5s.
+  - Example 3: Input has one unique number {4} → Output is first row of 5s.
+  - Example 4: Input has one unique number {3} → Output is first row of 5s.
+  - Example 5: Input has two unique numbers {3,4} → Output is primary diagonal of 5s.
+- This fits consistently: the rule depends only on the count of distinct numbers in the input.
+
+3) Define the mapping rule:
+- If the number of distinct values in the input is 1 → fill the first row with 5s.
+- If it is 2 → fill the primary diagonal with 5s.
+- If it is 3 → fill the secondary diagonal with 5s.
+
+4) Implementation plan:
+- Fix grid size to 3 since all examples are 3x3.
+- Build a function to create a 3x3 zero grid.
+- Build a function to count unique values in the input grid.
+- Build helpers to:
+  - Fill the primary diagonal with a given value (5).
+  - Fill the secondary diagonal with a given value (5).
+  - Fill the first row with a given value (5).
+- In the solver:
+  - Start with a zero grid.
+  - Count unique values in the input.
+  - Branch on the count:
+    - 2 → primary diagonal.
+    - 3 → secondary diagonal.
+    - otherwise (covers 1) → first row.
+
+5) Sanity checks with the given examples:
+- 2 uniques → primary diagonal matches.
+- 3 uniques → secondary diagonal matches.
+- 1 unique → first row matches.
+- All outputs place only 5s where needed and 0 elsewhere.
+
+This reasoning yields a concise solution that ignores the specific input values and relies solely on the number of distinct values to choose one of three fixed fill patterns using the constant 5.

@@ -1,0 +1,9 @@
+Here’s how I’d solve it:
+
+- Compare inputs and outputs cell-by-cell. The only changes are that every 5 becomes an 8, every 8 becomes a 5, and all other numbers stay the same. This holds across all provided examples.
+- That means the task is just a swap mapping between 5 and 8.
+- A simple, compact way to implement a two-value swap is to use XOR with the bitmask equal to 5 xor 8. Since 5 xor 8 = 13, we have:
+  - 5 xor 13 = 8
+  - 8 xor 13 = 5
+- We must apply this XOR only to cells that are 5 or 8; all other values should be left unchanged.
+- So the algorithm is: iterate through the grid and replace each element with element xor 13 if it’s 5 or 8; otherwise, keep it as is.

@@ -1,0 +1,37 @@
+Here’s how I would solve it from the examples.
+
+- Interpret the colors:
+  - 0 = empty
+  - 1 = blue
+  - 2 = red
+  - 5 = green
+
+- Observe the invariant “barrier” row: there is exactly one row that is entirely green, and it remains exactly as a full green row in the output.
+
+- Core transformation:
+  - Red blocks form vertical segments that grow toward the green barrier.
+    - If a red block is above the green row, it grows downward until the cell immediately above the green row.
+    - If a red block is below the green row, it grows upward until the cell immediately below the green row.
+  - Blue blocks form vertical segments that grow away from the green barrier.
+    - If a blue block is above the green row, it grows upward to the top edge.
+    - If a blue block is below the green row, it grows downward to the bottom edge.
+
+- Important implementation detail: do the painting on a fresh, empty result grid (same size), not in-place on the input. First, copy in the green barrier row so it acts as an obstacle. Then, for each red/blue cell in the input:
+  - Decide its vertical direction based on its color and whether it is above or below the green row (red → toward green; blue → away from green).
+  - Starting from the block’s own position, “walk” one step at a time in that direction, painting its color into the result grid, until:
+    - You leave the grid, or
+    - You hit a non-empty cell in the result grid (this could be the green row or something already painted by a previous expansion).
+  - This “stop on non-empty” rule prevents overwriting and naturally handles multiple blocks in the same column. It also guarantees reds stop just before the green barrier, while blues run to the edge unless blocked by prior strokes.
+
+- Steps in order:
+  1. Find the index of the green row as the unique row whose cells are all green.
+  2. Initialize a new empty 10×10 grid.
+  3. Fill the entire green row in the result with green.
+  4. For every cell in the input:
+     - If it’s blue or red, determine the direction as described and paint along the column until blocked or out of bounds.
+  5. Return the result.
+
+This exactly reproduces the patterns in the examples:
+- Reds “reach toward” the green row from both sides, stopping right before it.
+- Blues “escape” from the green row toward the nearest grid edge.
+- Overlaps in a column are resolved by the first stroke occupying those cells; later strokes stop when they encounter painted or green cells.

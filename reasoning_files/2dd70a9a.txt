@@ -1,0 +1,59 @@
+Here’s how I’d reverse‑engineer the rules from the IO pairs and design a solver for them.
+
+1) Decode the grid semantics from the examples
+- 0 = empty/background
+- 3 = an existing green “stroke” segment we’re allowed to continue
+- 2 = red terminals (always exactly two of them)
+- 8 = cyan obstacles that you cannot step into; bends in the output always happen next to these
+
+What the output shows:
+- We “extend” the green stroke by painting new 3s on empty cells, forming a single continuous path.
+- That path runs as long straight runs and only turns at places where, if you continued straight, you’d run into a cyan cell. In other words, you can only change direction when a cyan is directly in front of you.
+- The path terminates when it reaches a red terminal, but only if the last step into the red is aligned with the axis of the two red cells (if the reds are vertically aligned, you must enter a red from above/below; if horizontally aligned, from left/right).
+- We do not overwrite reds or cyans; we only paint 0s to 3s along the discovered path. Existing 3s remain 3s.
+
+2) Model the movement constraint
+- State = (current cell, current heading).
+- Forward move: try to step one cell forward along the current heading.
+- If the cell ahead is:
+  - empty (0): move forward and add to the path.
+  - original green (3): move forward as well (we’re allowed to traverse existing stroke).
+  - cyan (8): you cannot step into it; instead, at the current cell you may turn to either perpendicular heading and continue from there. You do not move into the cyan cell.
+  - red (2): you may finish if the heading you used to arrive matches the reds’ alignment (vertical reds require a vertical approach; horizontal reds require a horizontal approach).
+
+3) Determine the legal finish condition from the reds
+- Find the two red cells and check whether they share the same row (horizontal) or the same column (vertical).
+- Only accept reaching a red if the last step direction is along that same axis. This explains why the examples stop cleanly at a red in the correct orientation, and why they don’t “graze” reds from the side.
+
+4) Where to start searching from
+- We don’t start from arbitrary empty cells; we extend the existing stroke.
+- Identify all original green cells and their “degree” (how many green neighbors they have in the 4‑neighborhood).
+  - Endpoints (degree ≤ 1) are natural starts; seed the search from these, preferably oriented along any present green neighbor (so we continue the existing line directionally).
+  - If there’s a green cell with higher degree (e.g., a loop or junction), also allow starting from it in any of the four directions, to cover that case.
+- In short: build a set of starting “heads” as (cell, heading), prioritizing endpoints pointing along their green neighbor; otherwise consider all 4 headings.
+
+5) Search strategy
+- Use BFS over (row, col, heading) to find the shortest path that obeys the turning rule and reaches a red in a legal approach direction.
+- Each queue entry also carries the current path (for painting) and a set of visited cells in that path to avoid self‑intersections.
+- Transition:
+  - If cell ahead is cyan: do not move; enqueue new states at the same position with the two perpendicular headings.
+  - If cell ahead is empty or original green and not already in the current path: move forward, extend path.
+  - If cell ahead is red and the approach direction is legal: stop and paint.
+  - If out of bounds: discard.
+
+6) Painting the answer
+- Once we find a valid path, produce the output grid by copying the input and painting only the background cells along the found path to green (3). Keep reds (2), cyans (8), and preexisting greens (3) unchanged.
+
+7) Why this matches the examples
+- Turns only appear adjacent to cyans because you only get to change direction when the next cell straight ahead is cyan.
+- The path originates from existing green endpoints and proceeds in straight segments until a forced turn or the red is reached.
+- Arrival to a red respects the reds’ axial alignment, which is why the examples show approaching the red along the correct axis.
+- Only 0s become 3s; reds remain 2s, cyans remain 8s, and existing 3s are preserved.
+
+This reasoning dictates:
+- Represent directions as unit vectors and precompute perpendicular pairs.
+- Build initial heads from green cells as described.
+- BFS over (position, direction), with a visited set keyed by (position, direction).
+- Special handling of cyan as an in‑place turning trigger instead of a traversable cell.
+- Validate red arrival direction based on the alignment of the two reds.
+- Paint the discovered path onto a copy of the grid, changing only 0s to 3s.

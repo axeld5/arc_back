@@ -1,0 +1,43 @@
+Here’s how I’d reverse‑engineer the rule from the examples and turn it into a solver:
+
+1) What survives from input to output
+- Only cells with 1 or 2 are preserved at their original locations.
+- Zeros remain unless specifically written by the rule below.
+- Values 3 and 7 in the input are not copied over; they act as “anchors” that influence where new 3s or 7s are written.
+
+2) What gets added around 1s and 2s
+- Around each 1, some adjacent cells (up, right, down, left) may become 7 in the output.
+- Around each 2, some adjacent cells (up, right, down, left) may become 3 in the output.
+- No diagonals are ever filled.
+- Only the cell immediately next to the 1 or 2 (distance 1) can be filled; nothing farther than one step is written.
+
+3) When an adjacent cell is written
+- An adjacent cell in a given direction is written with the “partner value” (7 for a 1, 3 for a 2) if and only if, looking further along that same straight line (past the adjacent cell), there exists at least one cell somewhere down the line that already contains that partner value in the input.
+- In other words, for a 1, you “look past” the immediate neighbor and scan outward along the row/column; if you eventually see a 7 in that direction, you place a 7 on the immediate neighbor in the output. Same for 2 and 3.
+- The scan starts two steps away (skip the adjacent cell) and continues until you leave the grid.
+- If you find the matching anchor, you write the partner value on the immediate neighbor and stop scanning further in that direction.
+- If you don’t find the anchor before going out of bounds, you don’t write anything in that direction.
+
+4) Interaction and edge cases
+- You only ever write at most one cell per direction per source (the immediate neighbor), even if multiple anchors exist further away; finding the first anchor is enough.
+- You never overwrite the source 1 or 2; those are copied first.
+- If multiple sources try to write the same cell, the last one processed would win, but the given examples don’t force a conflict.
+- Only the four cardinal directions are considered.
+- Grid boundaries are respected both for the neighbor and for the scanning.
+
+5) Algorithm outline
+- Prepare a new empty grid of the same size (all zeros).
+- For every cell:
+  - If it’s 1 or 2, copy it to the output and determine its partner value (7 for 1, 3 for 2).
+  - For each of the four directions (up, right, down, left):
+    - Identify the immediate neighbor (distance 1). Don’t write yet.
+    - Starting from distance 2 in that direction, step outward until you leave the grid:
+      - If you encounter the partner value in the input, then write the partner value on the immediate neighbor in the output (if that neighbor is within bounds), and stop scanning this direction.
+      - Otherwise keep scanning; if you leave the grid without a hit, do nothing for that direction.
+- Return the output grid.
+
+This exactly matches the observed behavior:
+- 1s place 7s next to them only when “seeing” a 7 further along the line.
+- 2s place 3s next to them only when “seeing” a 3 further along the line.
+- Only the immediate neighbor is affected; anchors can be any distance ≥ 2 away.
+- Existing 3s and 7s in the input are only used as anchors; they’re not copied unless created by the rule.

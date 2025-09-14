@@ -1,0 +1,48 @@
+Here’s how I’d approach the problem just from the given input/output pairs:
+
+- The inputs are large grids with a dominant “background” color and a few other colors forming shapes.
+- The outputs are small grids that look like:
+  - A cropped, normalized version of a small “sprite” (using one of the non-background colors),
+  - Where the arrangement matches a motif that appears elsewhere in the big grid as a 2x magnified version in another color.
+- In several examples, the “magnified” shape is the one that either touches the border or is the largest non-background region. The small sprite is another color whose pattern, when doubled (each pixel expanded to a 2x2 block) and shifted somewhere, exactly matches that magnified shape.
+
+So the task is: detect which color is the magnified shape, find which other color is its preimage under a 2x scale, and then output the small sprite cropped to its tight bounding box, with the background filling the rest.
+
+Concrete plan:
+
+1) Identify the background color
+- Flatten the grid and pick the most frequent color as the background.
+
+2) Collect positions for each non-background color
+- For each pixel that isn’t background, group its coordinates by color into a set/list.
+
+3) Pick the “magnified” target shape (magcolor)
+- Heuristic: among non-background colors, prefer those that touch the border (top row, bottom row, leftmost column, rightmost column). If any do, pick the one with the most pixels. If none touch the border, pick the largest non-background color overall.
+- Let S_mag be the set of coordinates of this color in the big grid.
+
+4) Define a 2x scaling operation on a point set
+- Given a set of points for a candidate sprite color, first compute its bounding box and rebase points to top-left (so pattern is relative to its own min row/col).
+- Scale by 2x: every original point (r, c) becomes the 2x2 block at (2r, 2c), (2r+1, 2c), (2r, 2c+1), (2r+1, 2c+1).
+- Keep the original bounding box information (min row, min col, height, width) for later cropping of the output.
+
+5) Try to match each other color as the preimage of the magnified shape
+- For each candidate color (all non-background colors except magcolor):
+  - Compute its 2x-scaled set S_scaled.
+  - Try to align S_scaled to S_mag by translation:
+    - For every pair of points (one from S_mag and one from S_scaled), compute the translation that would align them.
+    - Translate the entire S_scaled by that offset, clip to grid bounds, and check if the translated set equals S_mag exactly.
+  - If a match is found, that color is our chosen sprite. Record its bounding box from the unscaled set.
+
+6) Fallback if nothing matches
+- If no candidate’s 2x scale matches S_mag, pick the smallest non-background color (fewest pixels) as a fallback sprite, and use its tight bounding box.
+
+7) Build the output
+- Create an output grid whose height and width are the tight bounding box of the chosen sprite (from its original, unscaled coordinates).
+- Fill it with the background color.
+- For each original point of the chosen sprite, plot it into the output at coordinates rebased to the bounding box’s top-left, using that sprite’s color.
+
+Why this fits the examples:
+- The “magnified” object is either the biggest non-background object or the dominant one that touches the border. This matches the examples where a large border-touching mass is the zoomed version of a smaller motif elsewhere.
+- Trying all translations between the scaled candidate and the magnified set robustly finds exact matches regardless of where the magnified object is placed.
+- The output is the minimal bounding rectangle of the original small sprite, rendered on the background color, which matches the provided outputs in size, content, and layout.
+- The fallback (smallest color) handles cases where no exact 2x match exists.

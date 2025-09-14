@@ -1,0 +1,30 @@
+Here’s how I would solve it from the I/O pairs:
+
+1) Notice the fixed scaffold
+- Every 11×11 output has the same grid “frame”: full rows of 5s at rows 4 and 8, and full columns of 5s at columns 4 and 8 (1-based).
+- Equivalently, any cell whose row index or column index is a multiple of 4 (1-based) is 5; everything else starts as 0.
+- This partitions the canvas into a 3×3 set of interior regions, each 3×3, separated by the 5-lines.
+
+2) Identify foreground color and region activity
+- The inputs contain zeros, 5s (the separators), and one other positive color (1 in the first set, 2 in the second, 3 in the third).
+- Ignore 0 and 5. For each of the nine 3×3 regions, count how many non-zero, non-5 cells appear in that region in the input.
+- Track the color value you see (since there’s only one non-5 color per puzzle, any seen value will be the fill color).
+
+3) Pick the region(s) to fill
+- Find the maximum count among the nine region counts.
+- Any region whose count equals this maximum is considered “active” and should be filled in the output.
+
+4) Produce the output
+- Start from the fixed scaffold from step 1 (5s on the separator rows/columns, 0 elsewhere).
+- For each region selected in step 3, set all its non-separator cells in the output to the foreground color observed in step 2.
+- Leave other regions’ interior cells as 0.
+
+5) Details to ensure the regions line up
+- Map a cell to its region using integer division by 4 on row and column indices (0-based). This cleanly groups rows 0–3, 4–7, 8–10 and likewise for columns, which matches the 3×3 interior regions bounded by the 5-lines.
+
+6) Sanity-check against the examples
+- Example 1: The bottom-right region has the most 1s in the input, so that 3×3 block is filled with 1s; ties don’t occur here.
+- Example 2: There’s a tie for the most 2s across two regions (top-right and middle-left), so both those 3×3 blocks are filled with 2s.
+- Example 3: The bottom-right region has the most 3s; only that region is filled with 3s.
+
+This explains the consistent 5-line scaffold and why only the region(s) with the highest foreground activity get fully colored with the detected color.

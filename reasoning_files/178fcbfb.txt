@@ -1,0 +1,29 @@
+Here’s how I’d reverse-engineer the rule from the examples and turn it into an algorithm:
+
+1) Notice the row-wide overrides.
+- Any row that contains at least one 1 becomes entirely 1s in the output.
+- Any row that contains at least one 3 becomes entirely 3s in the output.
+- Priority: If a row had both 1 and 3 (not shown, but we need a tie-break), 1 should win over 3 to match the chosen implementation ordering.
+
+2) Notice the column-wide propagation of 2s.
+- Columns that contain at least one 2 in the input get 2s filled down that entire column in the output.
+- But this only applies to rows that aren’t already overridden by the row rule above (rows that became all 1s or all 3s must stay that way and not be changed to 2 in those columns).
+
+3) Don’t overwrite existing nonzero values when doing the 2-fill for neutral rows.
+- In the examples, the places where 2s are injected were zeros. To be safe and match behavior, only convert zeros in those marked columns to 2. If a cell is already nonzero (e.g., already 2), leave it as is.
+- This can be implemented simply by checking that the current cell value is less than 1 (i.e., zero), before writing a 2.
+
+4) Implementation outline:
+- First pass: scan the grid and collect the set of column indices that contain at least one 2. This gives you the “2-columns.”
+- Second pass: rebuild the grid row by row:
+  - If a row contains a 1, output a full row of 1s.
+  - Else if a row contains a 3, output a full row of 3s.
+  - Else (neutral row):
+    - For each cell: if it’s in a “2-column” and the current value is zero, write 2; otherwise keep the original value.
+
+5) Complexity and behavior:
+- Single scan to identify 2-columns plus a single pass to rebuild the grid gives linear time in the number of cells.
+- This exactly reproduces the observed outputs:
+  - Rows with 1 turn fully to 1s.
+  - Else rows with 3 turn fully to 3s.
+  - All other rows get 2s filled in only in the columns that had a 2 somewhere, leaving other positions as they were.

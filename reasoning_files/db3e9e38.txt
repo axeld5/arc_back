@@ -1,0 +1,23 @@
+Here’s how I would solve it:
+
+- Identify the anchor: scan the grid in row-major order and remember the coordinates of the last non-zero cell you see. This gives you:
+  - anchor_col = the column to mirror around
+  - anchor_row = the deepest row with a non-zero. We’ll only fill from the top down to this row (inclusive), never below it.
+
+- Establish the initial fill height as anchor_row + 1 (i.e., rows [0..anchor_row]). We’ll shrink this height as we move outward from the anchor column.
+
+- Sweep outward horizontally by “offset” from 0 up to the number of columns:
+  - Before drawing each pair of columns, reduce the current height by 1 (so the vertical extent shrinks as you move farther from center).
+  - Decide the paint value based on the offset: use 7 on even offsets, 8 on odd offsets. This makes the center stripe 7, then 8, then 7, etc., as you move outward.
+  - For every row r in [0..current_height-1], paint two mirrored columns:
+    - left_col = anchor_col - offset
+    - right_col = anchor_col + offset
+    - If a column is out of bounds, skip it. This naturally clips the pattern at the grid edges.
+
+- Return the modified grid.
+
+Intuition:
+- You’re drawing vertical stripes centered at the lowest non-zero column, mirrored to the left and right.
+- Stripe heights decrease by one per step away from the center.
+- Stripe values alternate 7, 8, 7, 8, … per offset (not per row).
+- Because rows are limited to [0..anchor_row], the fill never goes below the anchor, matching the examples.

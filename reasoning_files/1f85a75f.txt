@@ -1,0 +1,35 @@
+Here’s how I would solve it:
+
+- What the input/output pairs suggest
+  - We’re given a fixed-size 30x30 grid of integers.
+  - Zeros are background. Any non-zero number represents a “color” or label.
+  - We need to find the single largest connected blob of equal non-zero values using 8-way connectivity (N, NE, E, SE, S, SW, W, NW). The outputs show diagonally touching cells are considered connected.
+  - After finding that largest blob, we don’t return the whole 30x30 grid. Instead, we crop to the tightest axis-aligned rectangle that bounds that blob and return that subgrid exactly as it appears in the original grid. That means zeros remain zeros, and if the bounding box happens to include other values, they would appear too (the samples just happen to have zeros elsewhere in the box).
+
+- Algorithm outline
+  1. Treat the grid as 30x30.
+  2. Maintain a visited structure keyed by (row, col) so each cell is processed at most once per color component.
+  3. For each cell:
+     - If it’s zero or already visited, skip it.
+     - Otherwise, perform a flood fill (BFS is fine) starting at that cell:
+       - Record the value of the starting cell; the component only includes cells with exactly that value.
+       - Use a queue for BFS and the 8 neighbor offsets.
+       - For each neighbor within bounds: if it hasn’t been visited and its value equals the target value, mark visited and push it.
+       - Collect all (row, col) pairs in this component.
+  4. Track the largest component found so far by size. If the current component is larger, remember its list of cells.
+  5. When done scanning the whole grid, compute the tight bounding box of the largest component:
+     - min_row, max_row from the component’s row indices
+     - min_col, max_col from the component’s column indices
+  6. Extract and return the rectangular subgrid from the original grid using those bounds (inclusive of mins, exclusive of maxs in slicing terms).
+
+- Why this matches the samples
+  - In the first input, the biggest 8-connected cluster is of value 3; the cropped subgrid shows only that region (with zeros in places where no 3s exist inside the bounding box).
+  - In the second input, the largest cluster is of value 4; the cropped 3x3 region matches the given output.
+
+- Implementation choices that follow from this reasoning
+  - Use a deque-based BFS for clarity and to avoid recursion depth issues.
+  - Represent visited as a (row, col) keyed mapping (or a 2D boolean array); either works. A mapping makes it straightforward to index by coordinates.
+  - Predefine the 8 direction offsets for neighbor traversal.
+  - Return an empty list if no non-zero cells exist.
+
+This approach finds the largest 8-connected component of equal non-zero values and returns the exact minimal bounding rectangle from the original grid, matching the provided outputs.

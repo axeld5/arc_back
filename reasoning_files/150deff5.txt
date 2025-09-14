@@ -1,0 +1,49 @@
+Here’s how I would solve it, based purely on the observed input/output behavior:
+
+1) Infer the rule from the examples
+- Only cells with value 5 are changed; zeros stay zeros.
+- Every 5 is replaced by either 8 or 2.
+- 8s correspond to 2x2 blocks of 5s.
+- 2s correspond to straight lines of length 3 made of 5s (horizontal or vertical).
+- The chosen 2x2 squares and 1x3 lines exactly cover all the 5s without overlap.
+
+So the task is: cover all 5-cells with a set of non-overlapping shapes drawn from two types:
+- S: 2x2 squares → color 8
+- L: 1x3 lines (horizontal or vertical) → color 2
+This is an exact cover problem.
+
+2) Extract all target cells
+- Scan the grid and record all coordinates where the value is 5 into a set for O(1) membership checks.
+
+3) Generate all candidate shapes
+- For every top-left corner, if the 2x2 block lies entirely on 5s, add it as a square candidate (type S).
+- For every row, slide a window of length 3; if all three are 5s, add a horizontal line candidate (type L).
+- For every column, slide a window of height 3; if all three are 5s, add a vertical line candidate (type L).
+- Each candidate consists of its 3 or 4 coordinates and its type.
+
+4) Build position-to-shapes adjacency
+- For each 5-cell, keep the set of candidate-shape indices that cover that cell.
+- This lets us quickly know which shapes are relevant to any given cell.
+
+5) Solve the exact cover with backtracking and a “most constrained first” heuristic
+- Maintain the set of remaining 5-cells to cover.
+- If none remain, we have a valid cover; return the chosen shapes.
+- Pick the 5-cell with the fewest valid shapes that still fit entirely within the remaining cells (MRV heuristic).
+- Try each such shape:
+  - Create a new remaining set by removing all cells occupied by the chosen shape.
+  - Compute conflicts: any shape that touches any cell of the chosen shape can’t be used anymore.
+  - Propagate by removing conflicting shapes from the position-to-shapes mapping for the next recursive call.
+  - Recurse; if it succeeds, prepend the chosen shape and return.
+- If all options fail, backtrack.
+
+6) Paint the solution
+- If a full cover is found, copy the original grid and paint:
+  - Squares (S) as 8
+  - Lines (L) as 2
+- If no exact cover exists, return the original grid unchanged.
+
+Why this works
+- It enumerates all legal placements consistent with the observed rules.
+- The MRV heuristic reduces branching by attacking the most constrained cell first.
+- Conflict propagation prunes shapes that would overlap the chosen one, ensuring non-overlap and exact coverage.
+- The final painting matches the examples: 2x2s become 8, 1x3 lines become 2, and zeros remain zeros.

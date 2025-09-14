@@ -1,0 +1,29 @@
+Here’s how I would solve it.
+
+1) Spot the pattern from the examples
+- The nonzero values (7s, 6s, 5s) survive only where they are part of a “thicker” cluster.
+- Isolated cells and thin tips/ends get removed.
+- What “thicker” means here matches: a cell is kept only if it has at least two orthogonal neighbors (up/down/left/right) with the same value.
+- Diagonals do not count.
+- Zeros remain zero; there is no attempt to grow or change values, only to prune.
+
+You can verify this on the small 5-example:
+- The single 5s at the corners or ends vanish (they have 0 or 1 same-valued neighbor).
+- The 2×4 rectangle stays, including its border cells, because each of those has at least two same-valued orthogonal neighbors (e.g., one horizontal and one vertical).
+
+2) Formalize the rule
+- For each cell, count how many of its four orthogonal neighbors have exactly the same value as the cell.
+- If that count is greater than 1 (i.e., 2, 3, or 4), keep the cell’s value in the output.
+- Otherwise, set that position to 0 in the output.
+- Treat zeros uniformly: even if a zero has many zero neighbors, its value is still zero, so it remains zero.
+
+3) Implementation outline
+- Iterate all rows and columns.
+- For each cell, look up to four neighbors with bounds checks.
+- Count matches to the current cell’s value.
+- Write either the original value (if count > 1) or 0 into a new grid in the same shape.
+- Return the new grid.
+
+4) Notes
+- This is a single pass with O(R×C) time and O(1) work per cell (constant neighbor checks).
+- It’s effectively a degree-based pruning on the 4-neighborhood graph of equal-valued cells, removing nodes with degree 0 or 1 and keeping nodes with degree ≥ 2.

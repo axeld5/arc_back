@@ -1,0 +1,19 @@
+Here’s how I would solve it from the IO patterns:
+
+- The grid contains exactly one 2 and one 3. The outputs show an L-shaped path of 8s connecting them, with two consistent rules:
+  - First draw a horizontal segment along the row of the 2, moving toward the column of the 3.
+  - Then draw a vertical segment along the column of the 3, moving toward the row of the 3.
+- The 2 and 3 themselves are preserved; the path doesn’t overwrite them. The corner cell at the intersection (row of 2, column of 3) is part of the path and gets set to 8 via the horizontal step.
+
+Concretely:
+1. Scan the grid to find the coordinates of the cells containing 2 and 3.
+2. Determine horizontal direction: if the 3’s column is to the right of the 2’s column, move right; otherwise move left.
+   - On the row of the 2, fill 8s starting just after the 2 and continuing through the 3’s column (inclusive). This creates the horizontal leg and the corner at (row_of_2, col_of_3).
+3. Determine vertical direction: if the 3’s row is below the 2’s row, move down; otherwise move up.
+   - On the column of the 3, fill 8s starting from the row just past the 2’s row and stopping just before the 3’s row (exclusive), so the 3 itself is not overwritten. This creates the vertical leg.
+4. Return the modified grid.
+
+This matches all examples:
+- Horizontal leg on the 2’s row from the 2 toward the 3’s column (including the corner).
+- Vertical leg on the 3’s column from just beyond the 2’s row to just before the 3’s row.
+- 2 and 3 remain unchanged.

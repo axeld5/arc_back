@@ -1,0 +1,29 @@
+Here’s how I’d reverse-engineer the transformation from the given input/output pairs and arrive at the algorithm:
+
+- First, notice the output grid is exactly 2x the height and 2x the width of the input (10x10 inputs become 20x20 outputs).
+
+- In the outputs, the nonzero numbers always appear as solid 4x4 blocks, aligned on coordinates that are multiples of 4 (rows 0–3, 4–7, 8–11, etc., same for columns). That strongly suggests the pipeline is:
+  1) Reduce the input by grouping 2x2 patches.
+  2) Expand each reduced cell into a 4x4 block in the output.
+
+- Count how many 4x4 blocks tile the output: 20/4 = 5 per dimension → 5x5 blocks. That matches what you’d get by partitioning the 10x10 input into non-overlapping 2x2 patches (10/2 = 5 per dimension), i.e., a 5x5 reduced grid.
+
+- What value does each 4x4 block carry? By cross-checking several blocks across examples, each block’s value equals the maximum value inside the corresponding 2x2 patch of the input. For instance, when a 2x2 area in the input has a single nonzero entry, the block copies that value. When there are two different numbers in a 2x2 area (in the datasets where that occurs), the block shows the larger one. So the reducer is a 2x2 max-pooling with stride 2.
+
+- Once we have that 5x5 reduced grid, we need to expand it back to 20x20. Each reduced cell should become a 4x4 constant block. If we generate an output of size 2*rows by 2*cols (because output is twice the input in each dimension), we can map each output coordinate (r, c) to the corresponding reduced cell by integer division by 4: reduced[r // 4][c // 4]. That works because:
+  - Output height = 2 * input height = 4 * (input height / 2) = 4 * reduced height.
+  - So rows 0–3 map to reduced row 0, 4–7 to reduced row 1, etc. Same for columns.
+
+- Putting it together:
+  1) Build a reduced grid of size (rows/2) x (cols/2) by taking, for each even (r, c), the max over the 2x2 patch (r, c), (r, c+1), (r+1, c), (r+1, c+1).
+  2) Build the final grid of size (2*rows) x (2*cols) by filling each output cell at (r, c) with reduced[r // 4][c // 4].
+
+- This exactly reproduces the observed 4x4 blocks in the outputs, positioned and valued consistently with the inputs, and explains why the final grid dimensions are doubled relative to the input.
+
+- Complexity is linear in the number of input cells, and memory use is dominated by the output grid.
+
+That reasoning leads directly to:
+- a helper to take the max in a 2x2 subgrid,
+- a reduce step that strides by 2 over the input,
+- and an expand step that replicates each reduced value into a 4x4 block using integer-division indexing,
+- with the driver composing reduce then expand.

@@ -1,0 +1,10 @@
+Here’s how I’d solve it:
+
+- From the examples, the only transformation is that the rows are reversed top-to-bottom. The contents of each row stay exactly the same; only the vertical order changes.
+- There’s no need to parse numbers or dimensions. We can treat the entire input as raw text and operate on it wholesale.
+- A fast shortcut to flip the row order is to reverse the entire input string. Newlines act as separators, and when the whole buffer is reversed, the block of text is mirrored vertically, which places the last line first, then the previous line, and so on.
+- So the plan is:
+  - Read all input at once as a single string.
+  - Reverse that string in one operation.
+  - Output the reversed string.
+- This avoids splitting and rejoining lines, is O(n) in time and space, and matches the observed I/O pattern.

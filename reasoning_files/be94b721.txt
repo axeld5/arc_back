@@ -1,0 +1,23 @@
+Here’s how I’d solve it based on the I/O patterns:
+
+- What the outputs look like:
+  - Each output is a rectangular crop from the input grid.
+  - That crop tightly encloses all occurrences of a single nonzero value.
+  - The value chosen appears to be the one that occurs most frequently among all nonzero entries in the grid.
+  - Inside the crop, we don’t modify anything; we just return the submatrix (which therefore contains that value and any zeros within the bounding box).
+
+- Strategy:
+  1. Scan the whole matrix and collect all positions where the cell is nonzero. If there are none, return an empty result.
+  2. Among those positions, count how many times each nonzero value appears. Pick the value with the highest frequency. (If there’s a tie, any consistent rule is fine; the examples don’t rely on ties.)
+  3. Gather all coordinates where the chosen value occurs.
+  4. Compute the tight bounding rectangle that encloses those coordinates: the minimum and maximum row index, and the minimum and maximum column index among those positions.
+  5. Extract the submatrix defined by that rectangle from the original grid (inclusive of the bounds).
+  6. Return that submatrix.
+
+- Why this matches the examples:
+  - In each example, the chosen value is indeed the most frequent nonzero across the entire grid (2, then 4, then 8, then 2).
+  - The returned block is exactly the smallest rectangle that contains all instances of that value.
+  - The content of the block matches the original cells within those rows and columns (no postprocessing), hence you see the chosen value and zeros—no other numbers fall inside those bounding boxes in the examples.
+
+- Edge case:
+  - If there are no nonzero cells, return an empty list (no crop possible).

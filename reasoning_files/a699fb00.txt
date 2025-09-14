@@ -1,0 +1,20 @@
+Here’s how I would solve it:
+
+- First, inspect the I/O pairs to see what changes and what stays the same.
+  - Changes only ever happen within rows; columns are unaffected.
+  - The only cells that change become 2, and every such 2 is exactly between two 1s in the same row.
+  - Concretely, any horizontal pattern 1 0 1 turns into 1 2 1. Everything else remains unchanged.
+
+- From that, deduce the rule:
+  - For each row, if two cells at positions i and i+2 are both 1, then the middle cell at i+1 should be set to 2.
+  - This is independent of vertical or diagonal neighbors; only the row matters.
+  - Overlapping patterns should both be handled, e.g., in 1 0 1 0 1 the two zeros at positions 1 and 3 both become 2.
+
+- Implementation plan:
+  - Process the grid row by row.
+  - For each row, scan with a sliding window of length 3 from left to right (indices 0 through len(row) - 3 as window starts).
+  - At each window start i, check the endpoints: if the left (i) and right (i+2) entries are both 1, set the middle (i+1) to 2.
+  - It’s safe to modify the row in place: changing the middle to 2 doesn’t interfere with detecting other windows, since the check depends only on the endpoints being 1.
+  - Leave all other cells unchanged.
+
+- Apply this to every row in the grid and return the modified grid.

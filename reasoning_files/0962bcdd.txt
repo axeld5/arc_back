@@ -1,0 +1,23 @@
+High-level reasoning I’d use, given the I/O pairs:
+
+- Identify the “trigger” cell: In both examples, nothing happens unless there’s a non-zero cell whose immediate left and right neighbors are also non-zero. That triple (left, center, right) acts as a seed. The center’s value is different from its neighbors’ value (e.g., 2 surrounded by 7’s, or 6 surrounded by 8’s).
+
+- Define the pattern to stamp around a seed: Around each such center, the output shows a symmetric 5×5 imprint centered on the seed (i.e., offsets from −2 to +2 in both row and column).
+
+- Decide what value goes where in that 5×5:
+  - On the diagonals (including the center and the four corners), where abs(row_offset) == abs(col_offset), write the center’s value.
+  - On the orthogonal directions (horizontal/vertical within radius 2), where one of the offsets is zero, write the left neighbor’s value (which matches the right neighbor in these seeds).
+  - Everything else in that 5×5 (the “knight-move” positions where both offsets are non-zero and unequal in magnitude) remains unchanged.
+
+- Apply this for every seed independently:
+  - Work from a copy of the grid so multiple seeds don’t interfere mid-iteration.
+  - For each non-zero cell, check that both its immediate left and right neighbors are non-zero (product non-zero). If so, stamp the 5×5 pattern using the rules above, staying within bounds.
+  - The diagonals get the center value; the orthogonals get the left neighbor’s value.
+
+- Edge handling:
+  - Only write within valid indices.
+  - The inputs avoid placing seeds at the extreme columns, so checking left/right neighbors is safe in practice.
+
+- Wrap it in a function that scans the grid once, produces a new grid with the imprints applied, and returns it. The auxiliary function simply calls this updater.
+
+This exactly produces the plus-and-diagonal “star” around each qualifying center, with diagonals in the center’s value and orthogonals in the neighbors’ value, matching the given outputs.

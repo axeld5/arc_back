@@ -1,0 +1,58 @@
+Here’s how I’d solve this from the given I/O pairs.
+
+Observation
+- The nonzero cells form a single rectangular block somewhere within a 21×21 canvas.
+- Within that rectangle, colors appear in large constant runs: horizontally you see long stretches of the same value, with sharp boundaries where the value changes; vertically you see entire bands of rows that are identical.
+- The outputs look like a compressed “signature” of the big rectangle:
+  - Only a few columns are kept, precisely those that capture the left-to-right transitions of colors.
+  - Only a few rows are kept, one per horizontal band (consecutive identical rows are collapsed).
+  - Because the set of kept columns must capture all boundaries that occur anywhere in the rectangle, some rows will show the same color in adjacent kept columns (e.g., 7 7), if that particular row has no boundary at those columns.
+
+Plan
+1) Locate the content: Extract the minimal bounding box that contains all nonzero cells.
+   - Scan the whole 21×21 grid, collect positions of nonzero cells.
+   - Compute min/max row and min/max column among those positions.
+   - Crop the grid to that rectangle. This removes the zero padding and focuses on the relevant area.
+
+2) Decide which columns to keep: keep exactly those column indices that are necessary to represent every left-to-right color transition seen in any row.
+   - For each row in the cropped rectangle, find the indices where the value changes from the previous column (i.e., j where row[j] != row[j-1]).
+   - Also include the first column of the rectangle (so we have a starting reference).
+   - Take the union of all these “change” indices across all rows, and sort them.
+   - Intuition: this gives a minimal set of columns that, when sampled, will reflect all vertical boundaries anywhere in the shape.
+
+3) Sample those columns to form a thin vertical “skeleton.”
+   - For each row of the rectangle, pick the values at the selected column indices.
+   - This yields a compressed width that still encodes every boundary: if a given row doesn’t change at some boundary detected elsewhere, that row will show the same value in adjacent sampled columns (e.g., 7 7).
+
+4) Compress rows (horizontal RLE): remove consecutive duplicate rows.
+   - Many rows are identical within each band (e.g., a block of “3” repeated for many rows).
+   - Keep the first occurrence of each run and skip the rest until the row changes.
+   - This leaves one row per horizontal band.
+
+Why this matches the examples
+- Example 1:
+  - Three horizontal bands are visible: top (8/7), middle (3/4/1), bottom (2/5).
+  - The union of all column-boundaries across these bands produces three key columns.
+  - Sampling those columns in the top band gives [8, 7, 7] (two of the sampled columns fall inside the 7 region for that band), in the middle band [3, 4, 1], and in the bottom band [2, 5, 5].
+  - Collapsing identical rows keeps exactly one per band, yielding the shown 3×3 output.
+
+- Example 2:
+  - Two bands: top (2/8) and below it (1/4).
+  - Only one vertical boundary between left and middle zones, so two columns are kept.
+  - Rows collapse to one per band, giving [2 8] and [1 4].
+
+- Example 3:
+  - Three bands: top (8/2), middle (3), bottom (4/1).
+  - The union of boundaries across rows leads to two columns to sample.
+  - The middle band has no split at those columns, so it shows [3 3].
+  - After collapsing rows, we get [8 2], [3 3], [4 1].
+
+Algorithm sketch
+- Find all nonzero cell coordinates.
+- Compute the minimal bounding rectangle and extract it.
+- For each row, record indices where the value changes from the previous column; include the leftmost column. Union these indices across all rows and sort them.
+- Build a new grid by sampling only those columns for each row.
+- Remove consecutive duplicate rows from this sampled grid.
+- Return the resulting compressed grid.
+
+This procedure exactly reproduces the observed outputs by preserving every vertical transition and every horizontal band while eliminating redundant columns and rows.

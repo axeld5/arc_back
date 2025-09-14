@@ -1,0 +1,13 @@
+Here’s how I would solve it:
+
+- From the examples, the output always consists of the original 3-line block followed immediately by the same block in reverse order. In other words, the transformation is “take the input and append its reverse.”
+
+- Since the input arrives as a single multiline string (with newline characters separating rows), the simplest way to achieve this is to reverse the entire string and then concatenate it to the original. Reversing the full character sequence naturally flips the line order, which matches the observed outputs.
+
+- So the plan is:
+  1) Accept the input as a single string, preserving newlines.
+  2) Compute its reverse (reverse the character sequence).
+  3) Concatenate original + reversed.
+  4) Return that result.
+
+- For clarity and reuse, wrap the reverse-and-append logic in a small helper, and have the main function delegate to it.

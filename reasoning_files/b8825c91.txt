@@ -1,0 +1,33 @@
+Here’s how I would reverse‑engineer the transformation from the given input/output pairs.
+
+1) First, notice the special role of the value 4:
+- The outputs contain no 4s, even when inputs do.
+- In several places a 4 in the input turns into a smaller number (e.g., 4 → 2), which means 4 is not being treated as a numeric value to be preserved or maximized; it’s treated like a “hole” or “background.”
+- So I’d treat every 4 as empty. A convenient way to do this for max-based aggregation is to map 4 → 0 up front, so it never wins a maximum.
+
+2) Next, look for symmetries that explain how the “holes” get filled:
+- Compare input and output at positions (i, j) and (j, i). Often both end up equal in the output to the larger of the two inputs, which points to taking an elementwise maximum with the transpose. This turns the grid into something that’s “symmetrized across the main diagonal” by propagating the larger value of each pair (i, j)/(j, i) to both positions.
+- This step also explains many of the non-4 changes that become mirrored across the diagonal.
+
+3) The transpose symmetry alone doesn’t explain all changes. A second, rotational symmetry is at play:
+- When the transpose max doesn’t account for a changed cell (especially where a 4 vanished), the new value typically matches what you’d get from the same input cell after a 90° counterclockwise rotation.
+- That suggests also taking the elementwise maximum with a 90° CCW rotated copy of the original (with 4s zeroed out).
+- Intuitively: fill holes not just from the mirrored position across the main diagonal, but also from the position you’d get by rotating the board 90° CCW.
+
+4) Finally, align orientation to match the outputs:
+- After combining with the transpose and the 90° CCW rotation, the result is extremely close but consistently “off” by a rotation relative to the target outputs.
+- Rotating the combined result 90° counterclockwise produces an exact match across all the provided examples.
+
+Putting it all together, the procedure is:
+- Treat 4 as background by replacing it with 0.
+- Compute the elementwise maximum of:
+  - the cleaned grid,
+  - its transpose (to enforce diagonal symmetry via maxima),
+  - and its 90° CCW rotation (to inject rotationally corresponding values).
+- Rotate that combined maximum 90° counterclockwise to match the outputs.
+
+Why this works against the examples:
+- It removes all 4s (they never survive the max because they’re mapped to 0).
+- It propagates stronger values along transposed pairs and from the rotated grid into the holes.
+- It preserves values where nothing conflicts (max with itself is itself).
+- The final CCW rotation matches the consistent orientation seen in the outputs.

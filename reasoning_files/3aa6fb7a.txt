@@ -1,0 +1,20 @@
+Here’s how I would solve it:
+
+- Observe the pattern in the examples: the output is identical to the input except that some 1s are added. A 1 appears exactly where a 2×2 block contains three identical non-zero values (here, 8s) and one zero. The 1 fills the lone zero in that 2×2 block. We should not add 1s for blocks that have three zeros and one 8.
+
+- To avoid chain reactions (newly placed 1s affecting further checks), read from the original grid but write to a separate output grid. Initialize the output grid by copying all 8s from the input and setting everything else to 0. This preserves existing 8s and keeps other cells empty unless we decide to place a 1.
+
+- Slide a 2×2 window over all possible positions (rows 0..n-2, cols 0..m-2). For each 2×2 subgrid, collect its four values and count their frequencies (a small histogram is fine). Find the most frequent value and how many times it appears.
+
+- If the most frequent value appears exactly 3 times and that value is not zero, then within that 2×2 subgrid, set any positions that are zero (in the output grid) to 1. This ensures:
+  - We only complete a “three-of-a-kind” of a non-zero value.
+  - We never overwrite an 8.
+  - Overlaps are safe: if a cell is already 1 from a previous window, we leave it as is.
+
+- Return the updated grid after scanning all windows.
+
+Why this matches the examples:
+- In the first input, the 2×2 window at rows 2–3, cols 2–3 has three 8s and a zero; we place a 1 at (2,3). Similarly for the window at rows 4–5, cols 5–6; we place a 1 at (5,5). No other windows satisfy the three-equal-non-zero condition.
+- In the second input, the same rule adds 1s at the exact positions shown, and does not add 1s where a window has three zeros and one 8.
+
+Complexity: linear in the number of cells, since each 2×2 window is checked once.

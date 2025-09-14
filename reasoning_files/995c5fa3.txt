@@ -1,0 +1,36 @@
+Here’s how I would solve it from just the input/output pairs:
+
+1) Understand the shape
+- Each input has 4 rows of 14 values (only 0s and 5s).
+- Each output is a 3x3 grid, where each row is a constant repeated three times (e.g., “2 2 2”, “8 8 8”, etc.).
+- The outputs for different inputs change only when the middle two input rows change. When the first and/or fourth rows vary while the second and third rows stay the same, the output stays the same. So only the 2nd and 3rd input rows matter.
+
+2) Find how the 3 output rows are produced
+- There are 3 output rows, so I look for 3 “positions” or “blocks” along the input rows that can generate them. The clean split that works across all examples is using starting indices 0, 5, and 10 along the row.
+- For each of those starts i ∈ {0, 5, 10}, I found that the value of the corresponding output row depends only on three cells:
+  - third_row[i]
+  - third_row[i + 1]
+  - second_row[i + 1]
+- And critically, the output row’s number (call it x) satisfies a simple linear equation with these three values.
+
+3) Discover the linear relation
+- By trying to fit a linear equation that is stable across all examples, the relation that works is:
+  4*(second_row[i + 1]) + 2*(third_row[i + 1]) + 1*(third_row[i]) + 5*x = 45
+- This matches all given input/output pairs for each of the three positions i = 0, 5, 10.
+- Solving for x gives:
+  x = (45 - third_row[i] - 2*third_row[i + 1] - 4*second_row[i + 1]) / 5
+- Because the inputs are 0 or 5, the numerator is always a multiple of 5, so x is an integer. That’s why integer division is safe.
+
+4) Construct the output
+- For each i in 0, 5, 10:
+  - Read a = third_row[i], b = third_row[i + 1], c = second_row[i + 1].
+  - Compute x from the formula above.
+  - Append the row [x, x, x] to the result.
+- The final result is a 3-row grid of these repeated values, in the order i = 0, then 5, then 10.
+
+That reasoning explains:
+- Why only the 2nd and 3rd input rows are used.
+- Why we stride columns by 5 starting at 0.
+- Which exact cells feed each output row (third[i], third[i+1], second[i+1]).
+- Why the constant 45 appears and why division by 5 gives integers.
+- Why each output row repeats the same value three times.

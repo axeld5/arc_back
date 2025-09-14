@@ -1,0 +1,27 @@
+Here’s how I’d solve it from the given I/O pairs:
+
+1) Spot the pattern
+- In each input, all interesting (non-zero) cells are contained within a tight rectangular region, surrounded by zeros.
+- The output removes all the zero padding: it’s exactly the minimal bounding box that contains every non-zero cell.
+- Comparing the cropped content to the output, each row is horizontally flipped. The row order (top-to-bottom) is preserved; there’s no vertical flip or rotation.
+
+2) Validate with the examples
+- Example 1: Non-zero rows are the four rows in the middle, non-zero columns are the block spanning those 8 columns. Cropping gives a 4x8 subgrid. Each cropped row, when reversed left-to-right, matches the output.
+- Examples 2 and 3 show the same behavior: tight crop around non-zeros, then mirror each row horizontally.
+
+3) Algorithm
+- Identify all row indices that contain at least one non-zero.
+- Identify all column indices that contain at least one non-zero.
+- Take the minimal bounding rectangle defined by:
+  - start_row = first non-empty row index
+  - end_row = last non-empty row index (inclusive)
+  - start_col = first non-empty column index
+  - end_col = last non-empty column index (inclusive)
+- Extract that submatrix.
+- For each extracted row, reverse the order of its elements (mirror horizontally).
+- Return the collection of reversed rows as the final grid.
+
+4) Notes/assumptions
+- This assumes there is at least one non-zero cell (true in the provided examples).
+- If there were none, you could decide to return an empty grid or the original; not needed here.
+- The operation is purely a crop to the tight bounding box followed by a per-row horizontal flip.

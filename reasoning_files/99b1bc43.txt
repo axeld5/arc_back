@@ -1,0 +1,17 @@
+Here’s how I would solve it from the IO pairs:
+
+- The input for each case is a 9x4 grid. The first 4 rows are one layer (call it A), the 5th row is a separator (all 4s, so it’s a delimiter and not used), and the last 4 rows are a second layer (call it B).
+- Layer A contains only 0s and 1s. Layer B contains only 0s and 2s. The outputs are 4x4 grids with only 0s and 3s.
+- Looking cell-by-cell at the outputs, a pattern emerges:
+  - If A has 0 and B has 0 at a position, output is 0.
+  - If A has 1 and B has 0, output is 3.
+  - If A has 0 and B has 2, output is 3.
+  - If A has 1 and B has 2 (sum 3), output is 0.
+- That is exactly the XOR of the two layers, where B’s 2 represents “on” just like A’s 1 does. After XOR, “on” is encoded as 3 and “off” as 0.
+- A straightforward way to compute this:
+  - For each row i in 0..3 and column j in 0..3, add A[i][j] to B[i][j] (B is located at input row i+5 because of the separator row).
+  - Map the sum to the output:
+    - If the sum is 0, keep 0.
+    - If the sum is 1 or 2, set to 3 (exactly one layer is on).
+    - If the sum is 3, set to 0 (both layers are on, XOR off).
+- Return only the first 4 rows (the transformed A layer).

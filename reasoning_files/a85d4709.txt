@@ -1,0 +1,17 @@
+Here’s how I would solve it:
+
+- Look for the invariant across examples. Each input row has exactly one 5 and the other entries are 0. Each output row is a constant row where all three entries are the same number.
+
+- Determine what that number depends on. Comparing inputs to outputs shows it depends only on the position (column) of the 5 in that row:
+  - If the 5 is in the first column, the output row is all 2s.
+  - If the 5 is in the second column, the output row is all 4s.
+  - If the 5 is in the third column, the output row is all 3s.
+
+- Encode that as a simple positional mapping: index 0 -> 2, index 1 -> 4, index 2 -> 3. A compact way is to store these in an array [2, 4, 3] and use the index of the 5 to pick the value.
+
+- For each input row:
+  1) Find the index of the element equal to 5.
+  2) Use the mapping to get the corresponding value.
+  3) Output [value, value, value].
+
+- Apply this transformation independently to each row and return the collection of transformed rows.

@@ -1,0 +1,51 @@
+Here’s how I would solve it from just the I/O pairs:
+
+- Hypothesis: There are large, clean regions made of a few dominant colors, plus a special “rare” color that behaves like noise/placeholders or sparse markers. The task is to find the big structural split in the grid, decide which quadrant looks “most missing,” and then infer the color that should fill that missing area.
+
+- Step 1: Basic stats
+  - Compute height and width.
+  - Count the global frequency of every value in the grid.
+  - Treat the globally least frequent value as a placeholder/noise color. This is the one we should ignore when trying to detect dominant structure.
+
+- Step 2: Per-row and per-column signatures (ignore the placeholder)
+  - For each row:
+    - Count value frequencies excluding the placeholder.
+    - Take the top 1–2 most frequent values in that row and use them as that row’s “signature.” Keep them sorted so [a,b] equals [b,a].
+  - For each column:
+    - Do the same to form a column “signature” of its top 1–2 non-placeholder values.
+
+  Rationale: Using the top two gives robustness when a row/column straddles a boundary or has small amounts of mixing (e.g., a few stray values). The signature captures the dominant palette of that row/column.
+
+- Step 3: Find the big split (row-wise and column-wise)
+  - Scan adjacent row signatures from top to bottom; find the first index where the signature changes. That is the horizontal split (X).
+  - Do the same left to right for column signatures to find the vertical split (Y).
+  - If no change is detected (edge case), fall back to a mid-ish split.
+
+  Rationale: Where adjacent rows (or columns) switch dominant palette is the most likely boundary between large regions.
+
+- Step 4: Form the four quadrants
+  - Using X and Y, define:
+    - TL: rows 0..X, cols 0..Y
+    - TR: rows 0..X, cols Y+1..end
+    - BL: rows X+1..end, cols 0..Y
+    - BR: rows X+1..end, cols Y+1..end
+
+- Step 5: Decide which quadrant is “missing” and which color to use there
+  - For each quadrant:
+    - Count how many placeholders it contains.
+    - Also count frequencies of non-placeholder values within that quadrant; remember the most common one.
+  - Choose the quadrant with the maximum number of placeholders. That’s the one we assume needs filling.
+  - For that selected quadrant, output its most common non-placeholder value as the answer.
+  - If a quadrant contained only placeholders (no non-placeholder values), fall back to a neutral default (e.g., 0).
+
+  Rationale: The quadrant with the most placeholders is the most incomplete region; the best guess for what should fill it is the dominant “real” color already present in that quadrant’s non-placeholder cells.
+
+- Step 6: Return the answer as a 1×1 grid containing that inferred color.
+
+Why this matches the given examples:
+- Example 1: The rare value acts as noise (6s). Row/column signatures split the grid into an area dominated by [4,0] and another by [8,1]. The quadrant with the most 6s gets chosen, and its dominant non-6 value is 8, matching the output.
+- Example 2: The rare value is 1. The grid cleanly separates into regions dominated by 3/2 and 8, the “holey” quadrant has the most 1s, and the dominant non-1 there is 2 ⇒ output 2.
+- Example 3: The rare value is 4 (sparse). The lower band is 6-heavy; the quadrant with the most 4s points there, so the fill color is 6 ⇒ output 6.
+- Example 4: The rare value is 2 (very sparse). The split separates 1/8 and 4 regions; the quadrant with the most 2s yields dominant 4 ⇒ output 4.
+
+In short: treat the rarest value as placeholder, use per-row/column dominant palettes to locate a 2D split, pick the quadrant with the most placeholders, and fill it using that quadrant’s dominant non-placeholder color; return that as a single cell.

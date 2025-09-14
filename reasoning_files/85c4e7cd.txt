@@ -1,0 +1,44 @@
+Here’s how I would solve it after studying the input/output pairs:
+
+1) Hypothesis from examples
+- The grid is partitioned into connected components of equal values (using 4-neighbor connectivity: up, down, left, right).
+- The outputs are not changing shapes; they are re-coloring entire components.
+- The pattern consistently looks like a global “size-rank color swap”: the largest component’s color ends up on the smallest component’s cells, the second-largest color on the second-smallest component’s cells, and so on.
+- This matches all examples:
+  - The outermost border (largest component) in the input becomes the color of the smallest interior block in the output, and the smallest interior block becomes the outermost color.
+  - The intermediate rings also swap according to their sizes.
+
+2) Formalize the rule
+- Find every connected component (4-connected) of same-valued cells.
+- Record for each component:
+  - its color (value),
+  - the list of its cell coordinates,
+  - and its size (number of cells).
+- Sort components by size ascending to get the “smallest-to-largest” order.
+- Independently sort components by size descending to get the “largest-to-smallest” order.
+- Pair them by index: i-th smallest with i-th largest.
+- Recolor every cell in the i-th smallest component to the color of the i-th largest component.
+- Do this for all components so each cell is rewritten exactly once.
+
+3) Ties and determinism
+- If multiple components share the same size, keep a consistent tie-breaker (e.g., the discovery order from a top-left to bottom-right scan combined with BFS/DFS traversal). This makes the sort stable and ensures repeatable outputs.
+
+4) How to implement the component finding
+- Scan the grid row-by-row, column-by-column.
+- Maintain a 2D visited structure to avoid revisiting cells.
+- When you encounter an unvisited cell, run a flood-fill (BFS or DFS) constrained to 4-neighbors and matching the same color to collect all cells in that component, marking them visited.
+- Store “component = { color, cells }”.
+
+5) Producing the output
+- Make a copy of the original grid to write into.
+- After sorting into smallest and largest lists, iterate them in parallel and recolor each small component’s cells with the corresponding large component’s color.
+- Return the recolored grid.
+
+6) Complexity
+- Building components visits each cell once and each edge at most twice, so O(N^2) for an N×N grid.
+- Sorting components is O(K log K) for K components, and K ≤ N^2.
+- Total time is dominated by O(N^2) in typical patterns.
+
+This exact procedure explains every given example:
+- It preserves shapes but permutes colors by reversing the size order of components.
+- The largest border color swaps with the smallest inner block color; intermediate layers swap accordingly.

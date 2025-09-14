@@ -1,0 +1,24 @@
+Here’s how I’d solve it:
+
+- First, look for a simple geometric relationship between the input and output. Comparing the two examples, each output appears to be the input rotated by 180 degrees:
+  - Corners swap: top-left goes to bottom-right, top-right goes to bottom-left, etc.
+  - The middle element (if the grid size is odd in both dimensions) stays the same.
+  - Each row in the output is the reverse of a row from the input, and the order of rows is also reversed.
+
+- Another way to express a 180-degree rotation: reverse the order of the rows (flip vertically), then reverse each row (flip horizontally). Doing both is equivalent to rotating by 180 degrees.
+
+- So the algorithm is:
+  1. Take the grid and reverse the list of rows.
+  2. For each row in this reversed list, reverse the row itself.
+  3. Return the resulting grid.
+
+- This matches both provided I/O pairs exactly:
+  - Example 1: reversing row order then reversing each row produces the given output.
+  - Example 2: same transformation yields the output.
+
+- This approach works for any rectangular grid (not just squares), handles edge cases naturally (empty grid, 1xN, Nx1, 1x1), and runs in linear time in the number of cells.
+
+- Implementation-wise, I’d separate concerns:
+  - A small helper to reverse a single row.
+  - A function that reverses the grid (rows order) and applies the row-reversal helper to each row.
+  - The main solver function just calls that grid-reversal routine.

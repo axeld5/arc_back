@@ -1,0 +1,32 @@
+Here’s how I would solve it:
+
+- Look at the examples and infer the rule: every connected block of 5s is a solid axis-aligned rectangle. Each such rectangle is replaced by a bordered rectangle:
+  - Corners become 1
+  - The border (excluding corners) becomes 4
+  - The interior becomes 2
+  - Everything else stays 0
+
+- So the task reduces to:
+  1) Detect each maximal rectangle of 5s
+  2) For each rectangle, rewrite its contents according to the above rule
+
+- Detect rectangles:
+  - Scan the grid in row-major order (top-left to bottom-right).
+  - When you land on a cell that is 5, treat it as the top-left of a rectangle.
+  - Find the rectangle’s horizontal extent by moving right until you hit a non-5 (this gives end_col).
+  - Then find the vertical extent by moving down from the top-left along the determined rightmost column until you hit a non-5 (this gives end_row).
+  - This assumes blocks are perfect rectangles (which matches the examples). Since we only act when we see a 5 and we will overwrite the rectangle afterward, we won’t double-process the same rectangle.
+
+- Rewrite a rectangle given start_col, start_row, end_col, end_row:
+  - First, fill the whole rectangle with 4 (the border color).
+  - Then, fill the strictly inner area (start+1 to end-1 in both directions) with 2 (the interior color). If width or height is <= 2, this inner fill naturally becomes empty (no-op).
+  - Finally, set the four corners to 1: (top-left, top-right, bottom-left, bottom-right).
+
+- Implementation details I’d keep in mind:
+  - Use a small helper to fill any rectangular area with a value to avoid duplicate loops.
+  - After identifying a rectangle’s bounds, only then modify the grid. This prevents corrupting the detection process.
+  - Grid size is fixed at 10x10 in these examples; scanning with a single index mapped to row/col is fine, but any row/col nested loops work too.
+  - The approach handles multiple disjoint rectangles anywhere on the grid, including ones that share an edge with the grid boundary.
+  - Degenerate cases (e.g., a 1xN or Nx1 rectangle) are handled since the “inner” region fill will simply do nothing when the indices invert.
+
+This procedure reproduces the outputs: each 5-rectangle becomes a 4-bordered box with 1s at the corners and 2s in the interior, preserving the rectangle’s original position and dimensions.

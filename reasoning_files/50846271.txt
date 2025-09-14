@@ -1,0 +1,52 @@
+Here’s how I’d reverse-engineer the rule from the I/O pairs and turn it into a solver.
+
+1) Observe the color roles and what changes
+- Only cells with value 5 ever change, and they change to 8.
+- Cells with value 2 (“red”) never change in the output but clearly “drive” where 8s appear.
+- Everything else (0s, etc.) stays the same.
+- The 8s always appear aligned in straight horizontal/vertical runs, forming plus-shaped “crosses” centered on some grid cell. The length of each arm is consistent within a puzzle but can differ across puzzles.
+
+2) Hypothesize the structure being added
+- The output looks like we’re “painting” green cells (5) to 8 along plus-shaped crosses of fixed half-length L around one or more chosen centers.
+- Those crosses never pass through anything but 2 or 5 in the input; if a cross arm would hit a 0 (or any other value), that center is invalid for that L.
+- The crosses always include at least two red cells on their arms (the “beacons”). That explains why some potential centers are ignored: they don’t “see” enough reds along their horizontal/vertical lines at that radius.
+
+3) Choose the radius L
+- Across the provided tasks, a single L is used per puzzle, but different puzzles sometimes need different L to match the outputs.
+- By inspection, L ∈ {2, 3} is sufficient to match the patterns. Try both and pick the one that leads to the best coverage of reds (see step 6).
+
+4) Enumerate candidate centers for a given L
+For each cell (i, j):
+- Form the horizontal segment from (i, j − L) to (i, j + L) and the vertical segment from (i − L, j) to (i + L, j), clipped to the grid. Combine them into a plus.
+- Check every cell in that plus: all must be either 2 or 5 in the input (no 0s or other values). If not, discard this center.
+- Count how many reds (2s) are in that plus. If fewer than 2, discard this center.
+- Otherwise, record this center with the set of positions it would affect and how many reds it would “cover.”
+
+5) Greedy selection of multiple centers without overlapping crosses
+- We want to choose multiple centers, but the outputs show that the crosses don’t overlap heavily; they’re spaced so that their pluses don’t interfere. A simple way to model this is: once you pick a center, you don’t allow any other center whose Chebyshev distance to it is ≤ L (i.e., whose cross would overlap in the same row/column radius band).
+- Maintain a set of “uncovered” red positions (initially all reds).
+- Repeatedly pick the candidate center that would cover the largest number of currently-uncovered reds (i.e., whose plus contains the most red cells not yet covered by previous choices), subject to the spacing constraint above.
+- Mark the reds covered by that choice as covered, add the center to the chosen list, and continue until no candidate adds any new uncovered reds.
+
+6) Decide the best L for this puzzle
+- Run the candidate generation and greedy selection for L = 2 and for L = 3.
+- For each L, compute how many distinct red cells are covered by the chosen centers.
+- Choose the L that covers the most reds. This matches the observed outputs across puzzles.
+
+7) Paint the output
+- Start from a copy of the input grid.
+- For each chosen center (with the chosen L), iterate the same plus (horizontal and vertical lines). For every position in that plus that is green (5) in the original input, paint it to 8 in the output. Leave reds as 2 and everything else unchanged.
+- This yields exactly the shown 5→8 changes: only along valid pluses, and only greens are painted.
+
+Why this matches the examples
+- You can see the 8s always appear on green cells that are horizontally/vertically aligned with multiple reds, and only along lengths that match a consistent L per puzzle.
+- When there are multiple red clusters, the solver places multiple crosses that don’t crowd each other; the Chebyshev spacing by L explains this.
+- Some puzzles switch between L=2 and L=3. Picking the L that maximizes the number of red cells “covered” by the selected crosses reproduces the observed choice.
+
+Implementation notes I’d follow
+- Precompute the set of red positions.
+- For each L, build candidate centers by checking that their plus uses only {2, 5}, count reds, and store the affected set.
+- Use a greedy loop: each time pick the candidate with the most new red coverage, subject to spacing; update uncovered reds and continue.
+- After choosing L and the centers, paint only 5s to 8 along those pluses.
+
+This reasoning explains the plus-shaped 8s, their lengths, their alignment with reds, the exclusion of obstacles, the multi-center selection with spacing, and the choice of radius per puzzle to maximize red coverage—all consistent with the provided inputs and outputs.

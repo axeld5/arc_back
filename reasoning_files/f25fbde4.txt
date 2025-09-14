@@ -1,0 +1,25 @@
+Here’s how I would solve it based on the IO pairs:
+
+1) Hypothesis from the examples
+- The output is not a 9x9 grid; it’s a cropped and scaled version of the part of the input that contains non-zero cells.
+- Specifically, the output corresponds to the minimal bounding rectangle that contains all non-zero values, scaled up by a factor of 2 in both width and height.
+- The scaling preserves the pattern of zeros and non-zeros by duplicating each column and each row.
+
+2) Determine the crop (bounding box)
+- Find the index of the first row that has any non-zero value.
+- Find the index of the last row that has any non-zero value.
+- Find the first and last columns that have any non-zero value. An easy way is to consider columns as lists (transpose the grid) and check which columns contain a non-zero.
+
+3) Extract and scale horizontally
+- Slice the grid to the rows and columns determined above (inclusive).
+- For each row in this subgrid, duplicate each cell horizontally (i.e., for each cell, emit it twice). This doubles the width.
+
+4) Scale vertically
+- For each horizontally expanded row, duplicate the entire row once more. This doubles the height.
+
+5) Return the scaled subgrid
+- The result is exactly the examples: the cropped non-zero region, with each original cell turned into a 2x2 block via horizontal and vertical duplication.
+
+Why this matches the examples
+- In each example, the output’s dimensions are exactly twice the height and width of the minimal non-zero bounding box.
+- The pattern of 4s and 0s in the output is what you get if you crop to that bounding box and then replicate columns and rows.

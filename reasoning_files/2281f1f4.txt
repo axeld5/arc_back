@@ -1,0 +1,25 @@
+Here’s how I would solve it:
+
+- From the examples, the 2s appear exactly at the intersections of:
+  - Columns where the top row has a 5, and
+  - Rows (excluding the top row) whose rightmost cell is a 5.
+  The last column itself is never changed; any 5s at the right edge remain 5.
+
+- So the plan:
+  1. Compute the last column index.
+  2. Identify all column indices in the top row that contain a 5. These are the “active” columns.
+  3. For each row index from 1 down to the last row:
+     - If the rightmost cell of that row is 5, this row is “active.”
+     - For each column index that is in the active columns and is not the last column:
+       - Set that cell to 2.
+  4. Leave everything else as is, especially the rightmost 5s and any other cells that don’t meet both conditions.
+
+- Implementation details mirroring the code:
+  - Use the grid dimensions to get the last row/column indices (size minus one).
+  - Iterate over every cell with row and column indices, but only apply the change when:
+    - The row index is greater than 0 (skip the top row),
+    - The column index is strictly less than the last column (so we never write into the rightmost column),
+    - The rightmost cell in the current row equals 5, and the top row at this column equals 5.
+  - When those conditions hold, write 2 at that position; otherwise keep the original value.
+  - Return the modified grid.
+  - A thin wrapper function can just call this updater; any extra parameters (like a custom enumerator) are unnecessary for the logic.

@@ -1,0 +1,47 @@
+Here’s how I’d arrive at the solution from the given I/O pairs.
+
+1) Core pattern from the examples
+- The output is always a 10x10 grid predominantly filled with 3.
+- The only non-3 cells are a shape of some “special color” (not 0 or 2) and its mirrored copy.
+- The red cells (value 2) never appear in the output; they act as markers that indicate on which side of the shape to mirror.
+- Background zeros are irrelevant in the output; everything not in the shape or its mirror becomes 3.
+
+2) What exactly is mirrored and where?
+- Identify the special shape: it’s the set of all cells whose color is neither 0 nor 2. There’s only one such color in the examples (e.g., 4, 6, 7, 8).
+- Compute the bounding box of this shape: min_row, max_row, min_col, max_col.
+- Check which side of this bounding box has the most red (2) cells immediately adjacent to it:
+  - Left side: the column immediately left of min_col, across rows min_row..max_row.
+  - Right side: the column immediately right of max_col, across rows min_row..max_row.
+  - Top side: the row immediately above min_row, across cols min_col..max_col.
+  - Bottom side: the row immediately below max_row, across cols min_col..max_col.
+- Choose the side with the highest count of adjacent reds. That side is the reflection direction.
+
+3) Constructing the output
+- Start with an output grid filled entirely with 3 (the “green” background seen in outputs).
+- Copy the original special-colored shape into the same coordinates in the output.
+- Reflect the shape across the chosen side and write the reflected cells in the same special color. This reflection is across the line that sits between the bounding box edge and the adjacent red cells:
+  - If reflecting to the left: mirror each (r, c) horizontally about the vertical line between min_col − 1 and min_col.
+    - New column c' = 2*min_col − 1 − c.
+  - If reflecting to the right: mirror each (r, c) horizontally about the vertical line between max_col and max_col + 1.
+    - New column c' = 2*max_col + 1 − c.
+  - If reflecting upward: mirror each (r, c) vertically about the horizontal line between min_row − 1 and min_row.
+    - New row r' = 2*min_row − 1 − r.
+  - If reflecting downward: mirror each (r, c) vertically about the horizontal line between max_row and max_row + 1.
+    - New row r' = 2*max_row + 1 − r.
+- Keep the other coordinate unchanged in each case (rows for left/right, columns for up/down).
+
+4) Why this matches the examples
+- Example 1 (color 4): Red 2s sit to the immediate right of the 4s; the right-side red count is maximal, so mirror to the right. The mirrored 4s replace where the 2s were and extend further as per symmetry.
+- Example 2 (color 6): Red 2s sit above; the top-side red count is maximal, so mirror upward.
+- Example 3 (color 7): Red 2s sit to the left; mirror to the left.
+- Example 4 (color 8): A single red 2 sits below; bottom-side red count wins, so mirror downward.
+
+5) Implementation details to be careful about
+- Grid size is fixed at 10x10.
+- Colors: background = 0, red markers = 2, fill = 3.
+- The special color is the first non-0, non-2 encountered; collect all of its coordinates to define the region.
+- When counting adjacent reds and when reflecting, guard against edges (don’t access out-of-bounds indices).
+- In ties for the red counts, any consistent choice is acceptable; picking the max over a fixed-order set of directions suffices.
+- Do the fill with 3 first, then paint original shape, then paint the reflected shape.
+
+Following this reasoning reproduces all the given outputs for the inputs.

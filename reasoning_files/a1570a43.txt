@@ -1,0 +1,23 @@
+Here’s how I would solve it from the I/O pairs:
+
+- Observation:
+  - The 3s don’t move. They act as anchors or markers.
+  - The entire pattern of 2s is translated as a rigid shape; there’s no rotation or scaling.
+  - The translation is determined by aligning the top-leftmost 2 with a position offset from the top-leftmost 3 by exactly one cell down and one cell right.
+  - In other words: take the minimal row/col among all 2s and among all 3s; then shift all 2s by (dest_min_row − src_min_row + 1, dest_min_col − src_min_col + 1).
+
+- Plan:
+  1. Scan the grid to collect all coordinates of cells with value 2 and all coordinates with value 3.
+  2. Compute the “top-left” coordinate (minimum row, then minimum column) for the 2s and for the 3s.
+  3. Compute the translation vector as:
+     - row_offset = min_row_3 − min_row_2 + 1
+     - col_offset = min_col_3 − min_col_2 + 1
+  4. Remove all original 2s by setting those cells to 0.
+  5. For each original 2 coordinate, add the offset and place a 2 at the new location, provided it stays within the grid bounds. If any shifted 2 would fall outside the grid, just skip it (effectively cropping).
+  6. Leave all other cells (including 3s) unchanged.
+
+- Why this matches the examples:
+  - The shape of the 2s is preserved exactly, only translated.
+  - The same translation is applied to every 2.
+  - The destination is always one step down and one step right from the top-leftmost 3 relative to the top-leftmost 2.
+  - Outputs show the 2s end up in positions consistent with that fixed offset, and 3s remain in place.

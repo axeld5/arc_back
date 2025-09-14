@@ -1,0 +1,14 @@
+Here’s how I would solve it:
+
+- From the examples, the output is simply the sequence of all non-zero entries from the input grid, read in row-major order (left-to-right within each row, top-to-bottom across rows).
+  - Example 1: [0,0,0; 1,0,0; 0,1,0] → scan in order → keep 1, then 1 → output [1, 1]
+  - Example 2: keep all 2’s encountered → [2, 2, 2]
+  - Example 3: only a single 7 → [7]
+  - Example 4: four 8’s in reading order → [8, 8, 8, 8]
+- Zeros act as “empty” cells and are excluded. Non-zero values are preserved as-is (including duplicates) and in the exact scanning order.
+- The required output format is a single row (a 1D list). So after collecting the non-zero values into a flat list, wrap that list as the single row of the result.
+
+Algorithm:
+- Concatenate all rows of the grid into one list (row-major flatten).
+- Filter out entries equal to zero, keeping everything else.
+- Return the filtered list as the only row of the output.

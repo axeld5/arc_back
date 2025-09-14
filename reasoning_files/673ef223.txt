@@ -1,0 +1,41 @@
+Here’s how I would solve it, based only on the input/output behavior I see:
+
+- Interpret the colors:
+  - 2 = vertical “road” that only appears on the outermost columns.
+  - 8 = “city” cells inside the grid.
+  - 4 = “highway” created to connect a road to a city.
+
+- First, find on each outer border (leftmost and rightmost column) the single longest contiguous vertical segment of road cells (2). For each side, record its start row and length.
+
+- We’ll only operate on the overlapping length between the two longest border segments: minimal_length = min(left_length, right_length). This defines a vertical window on both sides that can be paired row-by-row using the same offset k from each segment’s start.
+
+- Decide which border is the “active” side:
+  - Look at the rows covered by the left border segment window (from its start, for minimal_length rows). If any of those rows contain at least one city (8) anywhere in the row, make the left border the active side.
+  - Otherwise, make the right border the active side.
+  - The other border is the “secondary” side.
+
+- For each offset k in 0..minimal_length-1:
+  - Consider the active_row = active_start + k.
+  - Search that row for the nearest city (8) from the active side inward:
+    - If the active side is the left border, scan columns from 1 up to width-2 (left to right) and take the first city found.
+    - If the active side is the right border, scan columns from width-2 down to 1 (right to left) and take the first city found.
+  - If no city is found in that row, skip this k (and do nothing on either side).
+  - If a city is found at column city_index:
+    - Mark that city cell as a highway (4).
+    - Between the active border and that city (exclusive), fill the row with city (8). Keep the outermost border cell as road (2) on the active side.
+      - If active is left: set col 0 = 2; set cols 1..(city_index-1) = 8.
+      - If active is right: set col (width-1) = 2; set cols (city_index+1)..(width-2) = 8.
+    - Now also modify the paired row on the secondary side: other_row = other_start + k. On this row, fill the entire interior of the row with city (8), leaving only the secondary border cell as road (2).
+      - If the secondary is the right border: set cols 0..(width-2) = 8; set col (width-1) = 2.
+      - If the secondary is the left border: set col 0 = 2; set cols 1..(width-1) = 8.
+
+- Notes and rationale:
+  - Only rows in the overlapping window are considered, and only the rows within that window that already contain at least one city on the chosen active side trigger changes.
+  - On those trigger rows, we connect the road to the nearest city from that side by turning that city into a highway (4) and filling the corridor between border and city with city (8).
+  - Simultaneously, we “mirror” a full interior city band on the other side’s corresponding row, preserving the road on that other border. This matches the examples where only certain rows on the opposite side become fully 8s depending on which active rows had a city.
+  - If the left window has any city among its rows, we always prefer the left as active; otherwise the right becomes active. If neither side’s window rows had cities, nothing would change.
+
+This step-by-step produces exactly the observed behavior:
+- It picks the correct side to initiate connections based on where cities exist in the overlapping window.
+- It connects to the first city from that side, converts it to a highway, fills the corridor with city, and paints the paired row on the opposite side fully as city (except for the border road).
+- Rows without a city in the active window are left unchanged, which explains why not all rows in the opposite border’s segment are filled—only those aligned with an active-row connection.

@@ -1,0 +1,31 @@
+Here’s how I would solve it given the I/O pairs:
+
+- First, notice the output grid is a blown-up version of the input grid using a uniform scale factor k.
+- That scale factor k is not the size of the grid; it’s the number of strictly positive entries in the input (zeros are ignored). Check:
+  - Example 1 has 2 positives → output is 6×6 (3×2 by 3×2).
+  - Example 2 has 3 positives → output is 9×9 (3×3 by 3×3).
+  - Example 3 has 5 positives → output is 15×15 (3×5 by 3×5).
+- The way the grid is blown up is nearest-neighbor replication:
+  - Horizontally: each element in a row is repeated k times.
+  - Vertically: each expanded row is then repeated k times.
+- Zeros remain zeros; positive values are preserved as-is. There is no mixing; it’s pure replication.
+
+Given that, the algorithm is:
+
+1) Compute k as the count of cells greater than 0 across the whole grid.
+
+2) For each input row, build an expanded row by repeating each element k times in sequence. For example, with k=3, [0, 4, 0] becomes [0,0,0, 4,4,4, 0,0,0].
+
+   - Implementation detail: for a row, make a list of segments [element] repeated k times, then concatenate all these segments into one list. One concise way to flatten those segments is to sum the list of lists with an empty list as the start value.
+
+3) For vertical expansion, replicate each expanded row k times and collect them in order.
+
+4) Return the resulting list of rows.
+
+To keep it clean and testable, I’d split it into three helpers:
+
+- One to count positive cells (>0) in the grid.
+- One to expand a single row by repeating each element k times (concatenating the [element]*k chunks into one list).
+- One to build the final grid: compute k, expand each row, then repeat each expanded row k times.
+
+Finally, expose a simple wrapper that applies the transform to the grid.

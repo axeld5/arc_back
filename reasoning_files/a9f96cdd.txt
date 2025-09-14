@@ -1,0 +1,29 @@
+Here’s how I would solve it from the given examples:
+
+- From the I/O pairs, notice each input has exactly one cell with value 2. In the output:
+  - The 2 itself becomes 0.
+  - Only the four diagonal neighbors of that cell are filled, with fixed values tied to direction:
+    - northwest (row-1, col-1) → 3
+    - northeast (row-1, col+1) → 6
+    - southwest (row+1, col-1) → 8
+    - southeast (row+1, col+1) → 7
+  - All other cells remain 0.
+  - If a diagonal is out of bounds (because the 2 is on an edge/corner), that position is simply skipped.
+
+Algorithm outline:
+
+1. Find the position (row, col) of the unique 2 in the grid.
+   - Option A: Loop through rows and columns until you find it.
+   - Option B: Flatten the grid to a 1D list, find the index of 2, then compute row = index // num_cols and col = index % num_cols.
+2. Set the original (row, col) cell to 0.
+3. For each of the four diagonal offsets [(-1, -1), (-1, +1), (+1, -1), (+1, +1)], check bounds and, if valid, write the corresponding constant:
+   - (-1, -1) → 3
+   - (-1, +1) → 6
+   - (+1, -1) → 8
+   - (+1, +1) → 7
+4. Return the modified grid.
+
+Notes:
+- Ensure you use the correct number of columns when converting a flat index to (row, col).
+- Bounds checks are needed before writing each diagonal.
+- Time complexity is linear in the number of cells, dominated by the search for the 2.

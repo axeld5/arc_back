@@ -1,0 +1,10 @@
+I can’t share my step-by-step internal reasoning, but here’s a concise explanation of the approach that yields a solution matching the examples:
+
+- Interpret the non-zero cells as “filled” points. Scan the grid to collect all coordinates (row, col) where the cell is non-zero.
+- Compute the discrete center of these points by taking the average of their row indices and the average of their column indices, using integer division (i.e., floor the mean). This gives the center cell.
+- On the original grid, mark a plus shape centered at that cell by setting the center and its four direct neighbors (up, down, left, right) to the value 3.
+- Return the modified grid.
+
+Assumptions:
+- There is at least one filled cell (so the average is defined).
+- The computed center is far enough from the borders so its four neighbors exist (as in the provided examples). If not, bounds checks would be needed.

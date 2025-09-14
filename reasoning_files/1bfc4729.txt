@@ -1,0 +1,37 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, observe the output structure:
+  - There are horizontal lines filled across the entire row at indices 0, 2, 7, and 9.
+  - There are vertical lines at the first and last columns (indices 0 and 9).
+  - Everything else is zero.
+  - The top half of the grid (rows 0–4) uses one value consistently for its lines, and the bottom half (rows 5–9) uses another value for its lines.
+
+- Next, infer where those two values come from:
+  - In the first example, the only non-zero in the top half is 6, and all top-half lines use 6. The bottom half has a 7, and all bottom-half lines use 7.
+  - In the second example, the top half has a 1, bottom half has a 4, and the same pattern follows.
+  - So for each half, compute one representative value from that half. The examples suggest using the maximum in each half (and this matches both given pairs).
+
+- Generalize the way to compute that representative value:
+  - For each half (first 5 rows and last 5 rows), apply an aggregation across all cells in that half. Using max reproduces the outputs. To keep it flexible, allow the aggregation function to be parameterized (defaulting to max).
+  - A clean way to do that is: take the aggregation across each row in the slice, then aggregate those results again to get a single value for the half. This effectively applies the aggregator over all cells in the slice.
+
+- Build the output grid:
+  - Iterate over a 10x10 range (make the range configurable, but default to 10).
+  - For each cell, decide whether it lies on one of the “frame” lines:
+    - Horizontal lines: row is 0, 2, 7, or 9.
+    - Vertical lines: column is 0 or 9 (a concise test is to check if the column index mod 9 is less than 1, which is true only for 0 and 9).
+  - If a cell is on a frame line:
+    - If the row is in the top half (row index < 5), place the top-half value.
+    - Otherwise, place the bottom-half value.
+  - If it’s not on a frame line, place 0.
+
+- This reproduces:
+  - Full rows at 0 and 2 with the top-half value, and at 7 and 9 with the bottom-half value.
+  - Vertical borders at columns 0 and 9, using the top-half value for rows 0–4 and the bottom-half value for rows 5–9.
+  - Zeros everywhere else.
+
+- Optional flexibility:
+  - Allow the aggregation function to be passed in (default max).
+  - Allow the index range for rows/columns to be passed in (default 0–9).
+
+This reasoning leads directly to a solution that computes the top and bottom half representatives and draws a frame pattern using those values.

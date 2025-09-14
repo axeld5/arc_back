@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+1) Pattern spotting from the I/O
+- Each input is a grid with lots of zeros and repeated small 2x2 blocks of a few numbers.
+- The output is exactly three numbers, in a specific order.
+- The numbers don’t reflect positions or shapes; they reflect how often each value appears.
+- In every case, 0 is clearly the most frequent value. There’s also usually one “dominant” nonzero value that appears more than the others (often 1 or 8).
+- The three outputs match the next three most frequent distinct values after those top two.
+
+For example:
+- In the first input, 0 is most common, 1 is the next most common, and the outputs are 4, 2, 3 — which are the 3rd, 4th, and 5th most frequent values.
+- In the second input, after 0 and 8, the next most frequent labels are 6, 1, 2, which matches the output.
+- The same pattern holds for the other inputs.
+
+2) Hypothesis
+- Flatten the grid.
+- Count how many times each value appears.
+- Sort values by descending frequency.
+- Skip the first two most frequent values (these are almost always 0 and the dominant color).
+- Take the next three values and output them in that frequency order.
+
+3) Tie-breaking
+- If two labels tie in frequency, keep their order stable based on first appearance in the flattened list (this is consistent with how the observed outputs behave and is a natural, deterministic tie-break).
+
+4) Output shape
+- Return the three selected labels as a 3×1 grid (i.e., each number in its own row), matching the output structure in the examples.
+
+That’s the entire logic: count frequencies over the flattened grid, take ranks 3 to 5 by frequency, and return them as a column.

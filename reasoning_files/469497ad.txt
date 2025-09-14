@@ -1,0 +1,48 @@
+Here’s how I would solve it from the I/O pairs:
+
+1) Deduce the scale factor
+- Compare input and output sizes. In each example, the output side length equals input side length times the number of distinct nonzero colors in the input.
+  - Example 1: colors {3,8} → 2; 5x5 → 10x10
+  - Example 2: colors {4,6,7} → 3; 5x5 → 15x15
+  - Example 3: colors {1,3,4,9} → 4; 5x5 → 20x20
+- So, compute the expansion factor as the count of unique values excluding 0.
+
+2) Expand the grid by that factor
+- Perform a nearest-neighbor expansion (replication): each cell in the original becomes a k×k block (k = expansion factor).
+- Implement this as a simple index mapping: expanded[r][c] = original[r//k][c//k].
+
+3) Find the largest monochromatic nonzero square in the expanded grid
+- We need the largest axis-aligned square whose cells are all the same nonzero color.
+- Brute-force is fine on these sizes:
+  - Let R, C be the expanded dimensions.
+  - Iterate candidate square sizes from min(R, C) down to 1.
+  - For each size, slide a window over all top-left positions (row, col).
+  - For a window, check the top-left value; if it’s zero, skip. Otherwise verify all rows in the window are constant and equal to that value (quick row-slice comparisons work well).
+  - As soon as the first valid largest square is found, stop searching.
+
+4) Draw “X” rays of 2s from just outside the square’s corners
+- The outputs show 2s forming up to four diagonal rays that emanate from the four corners of that largest square and go outward until they hit the grid edge or a nonzero cell, painting only over zeros.
+- Exact procedure:
+  - Take the discovered square’s top-left (r0, c0) and its size s.
+  - Consider the four corner-adjacent starting positions: (r0−1, c0−1), (r0−1, c0+s), (r0+s, c0−1), (r0+s, c0+s).
+  - For each starting position that lies inside the grid, walk step-by-step along its diagonal direction:
+    - From (r0−1, c0−1), step up-left.
+    - From (r0−1, c0+s), step up-right.
+    - From (r0+s, c0−1), step down-left.
+    - From (r0+s, c0+s), step down-right.
+  - At each step, if the cell is zero, set it to 2 and continue; if it’s out of bounds or nonzero, stop that ray.
+- This matches the patterns: rays stop when they hit borders or pre-existing colors (e.g., the 3-bands), so only zeros become 2s.
+
+5) Return the modified expanded grid
+- Once the first (largest) square is found and marked, return immediately (no need to check other squares).
+
+Implementation notes I’d follow
+- Compute the unique nonzero count from the flattened grid and use it as the expansion factor.
+- Build the expanded grid via a double list-comprehension using integer division by k to sample original cells.
+- For square validation, compare each row slice to a repeated list of the initial value; short-circuit on the first mismatch.
+- For the diagonal drawing, derive step signs from the offset: for each corner offset (dr, dc), the step is sign(dr), sign(dc), and the while condition enforces in-bounds and “currently zero”.
+
+This sequence reproduces all three outputs:
+- Correct size due to expansion by the number of nonzero colors.
+- The largest uniform block is chosen (4×4 of 8s, 6×6 of 4s, 8×8 of 1s in the examples).
+- The 2s are only on diagonals starting just outside the corners and stop upon hitting edges or existing nonzero cells.

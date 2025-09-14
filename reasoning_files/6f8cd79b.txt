@@ -1,0 +1,34 @@
+Here’s how I would solve it:
+
+1) Observe the pattern
+- The output always has the same shape as the input.
+- All outer-border cells are 8.
+- All interior cells are 0.
+- The original input values don’t matter; only the grid dimensions do.
+
+2) Generalize the rule
+- For any r x c grid, produce an r x c grid where:
+  - First row and last row are all 8.
+  - First and last column of every row are 8.
+  - Everything else (strict interior) is 0.
+
+3) Algorithm outline
+- Read the number of rows and columns from the input grid.
+- Initialize a new grid of the same size filled with 0s.
+- For every cell (row, col), check if it lies on the border:
+  - row == 0 or row == num_rows - 1
+  - or col == 0 or col == num_cols - 1
+- If it’s a border cell, set it to 8; otherwise leave it as 0.
+
+4) Decompose into helper steps (for clarity and reuse)
+- A function to create a grid of given size filled with a given value (here, zeros).
+- A function that iterates over the grid and sets border cells to a given value (here, 8).
+- A small predicate that determines if a cell is on the border based on row/col indices and dimensions.
+
+5) Edge cases
+- Single row or single column: all cells are border, so all become 8.
+- Very small grids (e.g., 1x1, 1xN, Nx1) are naturally handled by the same border logic.
+
+6) Complexity
+- Time: O(rows * cols), scanning each cell once.
+- Space: O(rows * cols) for the output grid.

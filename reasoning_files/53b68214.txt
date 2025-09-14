@@ -1,0 +1,32 @@
+Here’s how I would solve it from the IO pairs:
+
+1) Observe the target canvas size
+- In every example, the output is a square whose size equals the input width. Even when the input has fewer rows (e.g., 5×10 or 6×10), the output is 10×10. So: output height = output width = input width W.
+
+2) Identify that we’re extending a pattern by repeating a translation
+- Example 1 shows a motif of 1s that looks like it continues downward while drifting to the right. The output continues that same motif further down the canvas until we run out of rows/columns.
+- Example 2 shows a vertical line of 3s that’s extended down to fill the whole square.
+- Example 3 shows a motif repeating every 2 rows; the output appends the next repetitions.
+- Conclusion: detect a vertical step t and a horizontal step s that describe how the motif repeats, then replicate the original marks along that (t, s) direction until the square is filled or we run out of bounds.
+
+3) Estimate the translation (t, s) by maximizing self-overlap
+- Let positions be the set of all (row, col) with a nonzero value.
+- For a small search over plausible steps (motivated by the examples having short-range steps), try vertical steps t in {1, 2, 3} and horizontal steps s in {0, 1, 2}.
+- Score each (t, s) by how well it explains the observed pattern: count how many original positions, when shifted by (t, s), land on another original position. Concretely, count the number of (r, c) in positions for which (r + t, c + s) is also in positions, restricting to r + t within the original height.
+- Choose the (t, s) with the highest score. If there’s a tie, prefer larger t (longer vertical stride tends to match the examples), and if still tied, prefer smaller s (less horizontal drift unless necessary).
+
+4) Use the single color present
+- The examples use a single nonzero color per grid. Use the value from the first nonzero cell as the color to paint in the output. If there are no colored cells, return an all-zero W×W grid.
+
+5) Replicate the pattern along the chosen vector
+- Initialize a W×W zero grid for the output.
+- For each original colored cell (r, c), paint that color at (r + k·t, c + k·s) for k = 0, 1, 2, … as long as the new row is less than W and the new column stays within [0, W). This repeats the motif downward (and possibly diagonally) across the square. Truncation at the borders naturally handles partial segments (as seen in example 1 where a triple becomes a double at the right edge).
+
+6) Edge cases
+- If there are no colored cells, just return a W×W zero grid.
+- The overlap scoring only needs to check row bounds explicitly; column bounds are implicitly handled because out-of-range shifts won’t be present in the position set.
+
+This reasoning reproduces:
+- Example 1: best offset is a small downward/right shift; repeating it extends the zig-zag motif until it hits the bottom/right edges, truncating where necessary.
+- Example 2: best offset is pure vertical; repeating it fills the entire column with 3s.
+- Example 3: best offset is (2, 0); repeating it appends the next two rows of the pattern.

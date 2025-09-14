@@ -1,0 +1,38 @@
+Here’s how I’d solve it from the I/O pairs.
+
+1) Infer the rule from the examples
+- Each non-zero region moves straight up without changing its horizontal position or shape.
+- The amount it moves up equals its own vertical height (max_row − min_row + 1).
+- Movement is done per connected component of equal labels using 4-neighborhood (up/down/left/right), not diagonals.
+- Different labels are processed independently; components do not merge, and the outputs shown avoid overlaps.
+- The output is written into a fresh zero-initialized grid; only the lifted components appear there.
+
+You can verify:
+- In example 1: the 4×4 “4” block at rows 11..14 moves up by 4 rows to 7..10; the 4×2 “1” block also moves up 4 rows; the 2×4 “2” block moves up 2 rows.
+- In example 2: the “4” block spans rows 9..14 (height 6) and moves to rows 3..8; the “2” block spans rows 10..14 (height 5) and moves to rows 5..9; the “1” block spans rows 13..14 (height 2) and moves to rows 11..12.
+- In example 3: the single-row “2” block (height 1) moves up 1; the 3-row “4” block moves up 3; the 4-high vertical “1” line moves up 4.
+
+2) Algorithm design
+- Traverse the grid cell-by-cell. When you find a non-zero cell that hasn’t been handled, flood-fill its entire connected component of that label using a stack/DFS (4-directional adjacency).
+- For each component:
+  - Compute min_row and max_row among its cells; the component height is H = max_row − min_row + 1.
+  - For every (row, col) in the component, place its value at (row − H, col) in a new, zero-filled grid.
+- Keep a “processed” set to avoid revisiting cells in already-extracted components.
+- Return the new grid.
+
+3) Implementation details I’d follow
+- Flood-fill: maintain a stack, a visited set local to the component, and expand only to neighbors with the same label and inside bounds.
+- New grid: initialize with zeros; write only the lifted component cells into it.
+- Iterate the original grid in row-major order; after extracting a component, mark all its cells as processed so they aren’t reprocessed.
+- Assumptions consistent with the data:
+  - Lifting by H doesn’t push cells above row 0 (the examples satisfy this).
+  - Lifted components don’t overlap in the target grid (the examples satisfy this).
+- Complexity: O(N) over cells, since each cell is visited a constant number of times.
+
+4) Function structure I’d use
+- A helper to find a connected component of a given label starting from a seed (stack-based DFS).
+- A helper to compute the component’s height and write it lifted into the new grid.
+- A main solve that loops cells, extracts components, and assembles the output grid.
+- A thin wrapper p that calls solve.
+
+This exactly reproduces the observed transformations in all provided I/O pairs.

@@ -1,0 +1,33 @@
+Here’s how I’d solve it from the examples:
+
+- Observe the pattern:
+  - Zeros are just empty space and are ignored when counting.
+  - Each distinct nonzero value is grouped into one contiguous block on a single row in the output.
+  - Each block is right-aligned in its row.
+  - Rows are filled from the bottom upward.
+  - The order of rows (bottom to top) is descending by how many times the value appeared in the input (its frequency).
+  - The number of occurrences of a value equals the length of its right-aligned block.
+
+- Therefore the plan is:
+  1. Extract all nonzero entries from the grid and count how many times each value appears (a frequency map).
+  2. Sort the distinct values by descending frequency.
+  3. Create a new grid of the same dimensions, initialized with zeros.
+  4. For each value in the sorted list (indexed 0, 1, 2, …):
+     - Determine the target row as “bottom row minus the index” (i.e., counting rows from the bottom).
+     - Let c be that value’s frequency.
+     - Fill the last c columns of that target row with the value (this right-aligns the block).
+  5. Leave any remaining rows (if there are more rows than distinct values) as all zeros.
+  6. Edge cases:
+     - If the input is empty or has zero columns, return an empty grid.
+     - This assumes the number of distinct values does not exceed the number of rows, and that no frequency exceeds the number of columns (as in the given examples).
+
+- Functionally, I’d separate this into:
+  - A helper that flattens the grid, ignores zeros, and builds the frequency map.
+  - A helper that returns the list of values sorted by descending frequency.
+  - A helper that, given the sorted values, their counts, and the grid size, constructs the output by writing each block into its designated row, right-aligned.
+  - A wrapper that ties it together and handles empty-grid edge cases.
+
+This exactly reproduces the shown inputs/outputs:
+- Values are placed bottom-up by descending counts.
+- Each row shows one value, repeated by its total count, right-aligned.
+- All other cells remain zero.

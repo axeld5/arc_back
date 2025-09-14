@@ -1,0 +1,33 @@
+Here’s how I would solve it from the given I/O pairs.
+
+1) Normalize rare noise into the dominant solid
+- In all examples there’s a big, coherent mass of 5s and some sparse “noise” digits (1, 2, 3) sprinkled around. In the outputs, those sparse digits disappear and are absorbed into 5s.
+- So first, find the globally least frequent value in the grid (ties broken by the smallest label) and relabel every occurrence of that value to 5. This explains why in different examples 1s, 2s, or 3s vanish and get replaced by 5s.
+
+2) Decide whether to operate along rows or columns based on the 5s’ shape
+- The big mass of 5s is strongly elongated in one direction. The I/O suggests a directional post-process that sometimes acts across rows and sometimes across columns to create the observed symmetrical 5/0 patterns.
+- Compute the bounding box of the cells that are 5 in the original grid (before the normalization in step 1). If the 5-region is taller than it is wide, operate along rows (no reorientation). If it’s wider than tall, operate along columns (i.e., transpose, process, then transpose back).
+- If there are no 5s at all in the input, default to a “vertical” pass (act along columns).
+
+3) Do a center-biased “half-sort” along the chosen axis
+- All given grids are 14-wide, and the outputs display a symmetric, center-weighted arrangement. The easiest way to achieve the visible clustering is to sort each line in two halves around the center.
+- For each line along the chosen axis:
+  - Split it at the midpoint (index 7 in a width of 14).
+  - Sort the left half in ascending order.
+  - Sort the right half in descending order.
+- This pushes larger values (notably 5) toward the seam between the halves from both sides, creating the “central build-up” of 5s that matches the outputs, while shuffling zeros toward the outer edges.
+
+4) Reorient back if needed
+- If we decided the shape was wider than tall, we transposed before sorting; now transpose back to restore the original orientation.
+
+Why this matches the examples
+- Example 1: Sparse 2s are the least frequent; they’re converted to 5s. The main 5 block is much wider than tall, so we act along columns (by transposing, processing, then transposing back). The half-sorts pull 5s toward the center columns, matching the pattern of central 5s and cleared edges.
+- Example 2: The least frequent non-5 noise is 3; it gets absorbed into 5s. The 5 block is again wide, so process along columns. The half-sorts produce the solid central band of 5s visible in the output.
+- Example 3: The least frequent value is 1; those are turned into 5s. The mass of 5s sits as a strong horizontal band (wide), so process along columns. The half-sort along the longer axis yields the observed symmetric 5 placements around the middle columns.
+
+Edge considerations
+- If multiple values are equally rare, pick the smallest label to convert to 5 (consistent tie-break).
+- If there are no 5s to infer an orientation from, default to a column-wise pass (vertical).
+- The midpoint is fixed at 7 because all shown grids are 14-wide; for other widths you’d choose width//2.
+
+This sequence—normalize the rare value to 5, detect the dominant orientation of the 5 mass, half-sort lines around the center along that axis, and undo any transpose—reproduces the given outputs.

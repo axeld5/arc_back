@@ -1,0 +1,9 @@
+Here’s how I’d solve it:
+
+- Inspect the input/output pairs row by row. In both examples, the bottom half of the grid (rows from the midpoint down) is unchanged. The top half of the grid becomes a copy of the bottom half, but taken from the bottom upwards: output row 1 equals input last row, output row 2 equals input second-to-last row, and so on up to the midpoint.
+- This indicates a vertical reflection where the bottom half overwrites the top half. It’s not a vertical flip of the entire grid; only the top half is replaced, leaving the bottom half intact.
+- To implement this, determine the grid height H. For each row index r in the top half (r from 0 up to H//2 - 1), copy the contents of the corresponding row counted from the bottom, which is at index H - 1 - r, into row r.
+- Perform the copy element-wise across all columns so we don’t accidentally alias rows; this also ensures we don’t modify the source rows in the bottom half before they’re used. Iterating only over the top half guarantees all source rows (in the bottom half) remain unchanged during the operation.
+- If the height is odd, the middle row is left as-is (since we only process the first floor(H/2) rows), which is consistent with preserving the bottom half and mirroring it onto the top half.
+
+This procedure exactly reproduces the given outputs for the inputs.

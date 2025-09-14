@@ -1,0 +1,19 @@
+Here’s how I would solve it from the I/O pairs:
+
+- Notice the input has 13 rows and 5 columns. Row 7 (1-based) is all 4s, acting as a separator. The output is 6×5, so it must be computed from the 6 rows above and the 6 rows below that separator.
+
+- The only meaningful values in the two halves are 0 and 2. The output uses only 0 and 3. So we’re mapping pairs of {0,2} to either 0 or 3.
+
+- Compare each cell (r, c) in the top half with the corresponding cell in the bottom half:
+  - Wherever exactly one of them is 2 (the other is 0), the output is 3.
+  - Wherever both are the same (both 0 or both 2), the output is 0.
+
+- Numerically, that rule is “top + bottom == 2 → 3, else 0”, since the only way to sum to 2 with values in {0,2} is one 2 and one 0.
+
+- Algorithm:
+  - Split the grid into top = rows 0..5 and bottom = rows 7..12 (skip the all-4s row).
+  - For each row r in 0..5 and column c in 0..4:
+    - Let t = top[r][c], b = bottom[r][c].
+    - If t + b == 2, set output[r][c] = 3; otherwise set it to 0.
+
+- This matches all provided examples: the 3s appear exactly at positions where the presence of a 2 differs between the top and bottom halves (i.e., XOR on “is 2”), and 0 elsewhere.

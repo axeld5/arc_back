@@ -1,0 +1,27 @@
+Here’s how I would solve it from the I/O pairs:
+
+- First, identify the invariant pattern: every time a 2×2 block of 5s appears, four numbers (1, 2, 3, 4) are placed around it on the diagonals of the 3×3 square that tightly surrounds that 2×2 block.
+  - For a 2×2 of 5s whose top-left cell is at (r, c):
+    - 1 goes at the northwest corner: (r − 1, c − 1)
+    - 2 goes at the northeast corner: (r − 1, c + 2)
+    - 3 goes at the southwest corner: (r + 2, c − 1)
+    - 4 goes at the southeast corner: (r + 2, c + 2)
+
+- This mapping (NW=1, NE=2, SW=3, SE=4) is consistent across all examples, and the placements are exactly one step outside the 2×2 block on each diagonal.
+
+- Because the grid edges may prevent some placements (e.g., a 2×2 of 5s near the top-left corner), each of these four target coordinates must be checked to be in bounds before writing.
+
+- Multiple 2×2 blocks of 5s can exist. We should scan the whole grid for them. The natural way is to iterate r from 0 to num_rows−2 and c from 0 to num_cols−2, and whenever the four cells (r, c), (r, c+1), (r+1, c), (r+1, c+1) are all 5, we perform the four diagonal writes described above (with boundary checks).
+
+- We don’t change any 5s; we only write into the diagonal corner cells. The examples show that writing into zeros is sufficient. If multiple blocks write to the same cell, the examples don’t show conflicts; in any case, later writes can overwrite earlier ones since they would set the same intended numbers for their respective positions.
+
+- To keep the code clear, it helps to split the logic into:
+  - A checker that tests whether a 2×2 starting at (r, c) is all 5s.
+  - A writer that, given (r, c), attempts to place 1, 2, 3, 4 at the four diagonals with proper boundary guards.
+
+- Then, loop over all possible (r, c) starts of 2×2 blocks, detect the 5-blocks, and perform the diagonal placements.
+
+This exactly reproduces the outputs:
+- Single 2×2 block: places 1, 2, 3, 4 on its four diagonals.
+- Multiple blocks: repeats the same placement around each block.
+- Larger grid: same rule applies anywhere the 2×2 of 5s appears, with the same NW/NE/SW/SE mapping.

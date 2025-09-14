@@ -1,0 +1,14 @@
+Here’s how I would solve it.
+
+- First, notice each input is an 8x4 grid that’s really two 4x4 layers stacked vertically:
+  - Top 4 rows: values are 0 or 3.
+  - Bottom 4 rows: values are 0 or 1.
+- The output is a 4x4 grid using only 0 and 2. From the examples, a cell is 2 exactly when the corresponding cell in the top layer is 0 and the corresponding cell in the bottom layer is also 0; otherwise it’s 0.
+  - Example check (first case): at (row 0, col 0), top=0 and bottom=0 → output 2. At (row 0, col 3), top=0 but bottom=1 → output 0. At (row 1, col 1), top=3 (not zero) → output 0. This pattern holds across all provided pairs.
+
+Implementation plan (mirroring the structure of the given solution):
+- Treat the input as a list of 8 rows, each with 4 columns.
+- For each cell (r, c) with r in 0..3 and c in 0..3:
+  - Compare grid[r][c] (top half) and grid[r+4][c] (bottom half).
+  - If both are 0, place 2 in the result at (r, c); otherwise place 0.
+- Build the result as a new 4x4 grid by applying that check at every position.

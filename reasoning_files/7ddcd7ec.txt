@@ -1,0 +1,24 @@
+Here’s how I would solve it from the given I/O patterns:
+
+- Work on a fixed-size 10×10 grid. Start by copying the input grid to an output grid, because we only add new numbers; we don’t remove or move the existing ones.
+
+- Identify which non-zero cells are “sources” that should produce propagation. From the examples, the cells inside a 2×2 block do nothing, but the lone number that sits diagonally from that block creates a long diagonal trail. This suggests the eligibility rule: a non-zero cell is eligible only if all four of its orthogonal neighbors (up, down, left, right) are zero. Diagonal neighbors don’t disqualify it.
+
+- For each eligible cell, look at its four diagonal neighbors (NW, NE, SE, SW). If any diagonal neighbor is non-zero (in the original grid), that establishes a direction to propagate in the opposite diagonal direction away from that neighbor. For example, if NW is non-zero, propagate to the SE; if SW is non-zero, propagate to the NE, and so on.
+
+- Propagation means: starting one step away from the source in that opposite diagonal direction, keep stepping cell by cell in that straight diagonal line and write the source’s value into every reachable in-bounds cell until you leave the grid. Do not stop early if you hit existing numbers; just write along the whole ray to the boundary. Also, check diagonal neighbors and eligibility against the original grid, not the partially updated result, so newly written numbers don’t influence subsequent decisions.
+
+- If an eligible source has multiple non-zero diagonal neighbors, emit a ray for each corresponding opposite direction.
+
+- Implementation outline:
+  - A helper to check if a coordinate is within the grid.
+  - A helper to decide if a cell is eligible (non-zero and all four orthogonal neighbors are zero).
+  - A helper to, for a given eligible cell, scan the four diagonals; for each diagonal that has a non-zero neighbor in the original grid, step outward along the opposite diagonal and write the value into the output grid.
+  - Loop over all cells, and for each eligible one, perform the transfer described above.
+
+This exactly reproduces the behavior in the examples:
+- The isolated 3 at (4,4) sees a non-zero NW neighbor (from the 2×2 block) and emits a SE ray to the edge.
+- The isolated 4 at (1,6) sees a non-zero SW neighbor (the 2×2 block) and emits a NE ray; the isolated 4 at (4,6) sees a non-zero NW neighbor and emits a SE ray.
+- The isolated 7 at (2,6) sees a non-zero SW neighbor and emits a NE ray; the isolated 7 at (5,3) sees a non-zero NE neighbor and emits a SW ray.
+
+All decisions (eligibility and detecting diagonal neighbors) are based on the original grid; all writes go into the copied result grid.

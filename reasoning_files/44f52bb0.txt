@@ -1,0 +1,24 @@
+Here’s how I would solve it:
+
+- Start by scanning the examples for a simple, binary condition that matches the two possible outputs (1 or 7).
+- Compare various features across examples: total counts of 2s/0s, row patterns, column patterns, diagonals, symmetry, etc.
+- Notice a consistent cue: whenever the leftmost column and rightmost column are identical (same values in the same order), the output is 1. Otherwise, the output is 7.
+
+  - Example where it’s 1:
+    - 2 0 2
+      0 2 0
+      2 0 2
+    Left column [2,0,2], right column [2,0,2] → identical → 1.
+  - Example where it’s 7:
+    - 2 2 0
+      0 2 2
+      0 0 0
+    Left column [2,0,0], right column [0,2,0] → different → 7.
+
+- The middle column varies freely and doesn’t affect the output. It’s purely about equality of the first and last columns.
+- The output format in all examples is effectively a 1x1 grid containing either 1 or 7, so we should return [[1]] or [[7]].
+
+Implementation plan:
+- Extract the first column and the last column of the 3x3 grid.
+- If they are exactly equal, return [[1]].
+- Otherwise, return [[7]].

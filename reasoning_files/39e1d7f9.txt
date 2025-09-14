@@ -1,0 +1,32 @@
+Here’s how I would solve it from the I/O pairs.
+
+1) Spot the gridlines
+- In all examples there are entire rows or entire columns filled with the same single value (e.g., 8s or 3s). These act as separators that form a tiling of the canvas into rectangular cells.
+- Among all fully uniform rows and columns, determine which value is used most often as a separator. That will be the “gridline color” for this puzzle instance.
+
+2) Partition the grid into segments
+- Record the indices of all uniform rows and columns of the chosen gridline color.
+- Use those indices to split the grid into a rectangular lattice of segments: ranges between consecutive uniform rows, and between consecutive uniform columns.
+
+3) Reduce each segment to a single representative color
+- For each segment (a rectangle), consider all its pixels and pick the most frequent color, ignoring the gridline color. If a segment contains nothing but gridline color or blanks, it will reduce to 0 (or just remain 0 if that’s the most common non-gridline color).
+- This gives a coarse “segment grid” whose cells are these representative colors.
+
+4) Choose a prototype segment based on neighborhood diversity
+- On this segment grid, look for a nonzero cell that is “informative”: it has the largest number of distinct neighboring colors among its 8 neighbors (the full 8-neighborhood), excluding zeros and excluding its own color.
+- As a tie-breaker, prefer a cell that also has diagonal neighbor contact among those distinct colors.
+- Remember both the location and the color of this chosen prototype, and record the map from relative directions (e.g., up, down, left, right, diagonals) to the neighbor colors it touches.
+
+5) Use the prototype as a stencil to propagate a local pattern
+- For every segment whose representative color matches the prototype’s color, “stamp” the recorded neighbor-color pattern around it: for each direction present in the recorded adjacency map, set the neighbor segment in that direction to that mapped color.
+- Do this on the segment grid only (not yet at pixel level).
+
+6) Expand back to the full grid
+- For each segment rectangle, fill all pixels in that rectangle with the segment grid’s final color for that cell.
+- Finally, reimpose the gridlines: overwrite every uniform row and column identified earlier with the gridline color (to ensure separators are solid and intact).
+
+Why this matches the I/O
+- The uniform rows/columns clearly delineate repeating tiles. The outputs preserve these gridlines exactly, which is why we restore them last.
+- The per-cell majority reduction captures the main color content of each tile while ignoring the separators.
+- The “prototype with maximal diverse neighbors” captures the intended local arrangement that should be replicated wherever that motif color occurs. This explains the consistent, structured relocation or reinforcement of bands (like 6s, 4s, 3s, 2s in the examples) into the correct positions relative to the chosen motif.
+- The final stamping propagates that neighborhood pattern consistently across all matching tiles, and restoring the separators ensures the final canvases match the outputs exactly.

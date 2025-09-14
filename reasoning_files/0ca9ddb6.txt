@@ -1,0 +1,26 @@
+Here’s how I would solve it based on the input/output pairs:
+
+- First, infer the rules from the examples:
+  - Wherever there is a 2, the four immediate diagonal neighbors (up-left, up-right, down-left, down-right) become 4, as long as they’re inside the grid bounds.
+    - Example: A single 2 produces a plus of four 4’s on the diagonals in the outputs.
+  - Wherever there is a 1, the four immediate cardinal neighbors (up, down, left, right) become 7, again only if they’re inside the grid.
+    - Example: A single 1 produces a cross of four 7’s around it in the outputs.
+  - Other numbers (like 6 or 8) don’t produce any marks; they remain as-is.
+  - Marks don’t propagate; only immediate neighbors are affected.
+  - The examples don’t show conflicts, but if a cell is targeted by multiple marks, the last write would win.
+
+- Approach to implement:
+  - Determine grid height and width.
+  - Scan the grid once with row-major order (two nested loops over rows and columns).
+  - When you encounter:
+    - A 2: write 4 to each valid diagonal neighbor (r±1, c±1).
+    - A 1: write 7 to each valid cardinal neighbor (r, c±1) and (r±1, c).
+  - Always check boundaries before writing to avoid index errors.
+  - Modify in place and return the grid.
+
+- Why this matches the examples:
+  - In the first and third examples, each 2 produces exactly four 4’s on diagonals, clipped by edges if necessary, and each 1 produces exactly four 7’s on orthogonals.
+  - In the second example, 8 and 6 don’t trigger any markings, while 2’s and 1’s do, exactly as described.
+  - No extra propagation or special casing is needed; just immediate neighbors.
+
+That’s the full reasoning to derive the behavior and produce the implementation.

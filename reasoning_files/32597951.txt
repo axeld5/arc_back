@@ -1,0 +1,29 @@
+Here’s how I’d reason from the given input/output pairs to a solution:
+
+- First, look for what changes between input and output.
+  - Zeros remain zeros everywhere.
+  - Eights remain eights everywhere.
+  - Ones sometimes become threes, sometimes stay as ones.
+
+- What triggers 1 → 3?
+  - In every example, all the 1s that are inside the area “spanned” by the 8s are converted to 3s.
+  - The 8s don’t necessarily form a filled block; there can be single 8s and rows with runs of 8s. But if you take the tight axis-aligned bounding rectangle that contains every 8, then every 1 within that rectangle is turned into a 3 in the output.
+  - 1s outside that rectangle are untouched.
+
+- Check this hypothesis against each example:
+  - Example 1: The 8s appear from rows 2 to 6 and columns 5 to 9. In the output, exactly the 1s within that rectangle become 3; others remain as is.
+  - Example 2: The 8s occupy rows 7 to 9 and columns 1 to 8. All 1s in that box become 3; zeros and 8s stay; outside is unchanged.
+  - Example 3: The 8s are scattered but confined to a rectangle (rows 3–7, columns 4–8). Only 1s within that rectangle become 3.
+
+- Edge case:
+  - If there are no 8s at all, nothing should change (return the grid as is).
+
+- Algorithm outline:
+  1. Scan the grid to collect all coordinates where the value is 8.
+  2. If none are found, return the grid unchanged.
+  3. Compute the minimal and maximal row and column over those coordinates to get the bounding rectangle.
+  4. Make a copy of the grid.
+  5. For every cell inside that rectangle, if it is a 1, change it to 3. Leave 0s and 8s as they are.
+  6. Return the updated grid.
+
+This exact logic explains all the observed transformations in the provided examples and yields a simple, robust solution.

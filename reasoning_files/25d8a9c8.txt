@@ -1,0 +1,11 @@
+Here’s how I would solve it:
+
+- From the examples, the output is determined row-by-row independently; the position of a row in the grid stays the same.
+- Each input row maps to either [5, 5, 5] or [0, 0, 0].
+- The rows that map to [5, 5, 5] are exactly those where all three entries are the same (e.g., 4 4 4, 6 6 6, 1 1 1).
+- If a row is not uniform (has at least two different values), it maps to [0, 0, 0].
+- The actual value in a uniform row does not matter; any uniform row turns into 5s.
+- So the procedure is:
+  - For each row, check if all elements are equal (e.g., by checking whether the set of the row has size 1).
+  - If yes, output [5, 5, 5] for that row; otherwise, output [0, 0, 0].
+- Apply this transformation to each row and return the new grid.

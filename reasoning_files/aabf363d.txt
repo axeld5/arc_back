@@ -1,0 +1,19 @@
+Here’s how I would solve it:
+
+- Pattern observation:
+  - The non-zero shape keeps exactly the same geometry in the output.
+  - Its color/value is changed to match the number sitting in the bottom-left corner (row 6, col 0) of the input.
+  - That bottom-left “anchor” cell itself is turned into 0 in the output.
+  - All background zeros remain zeros.
+
+- Strategy:
+  - Read the anchor value from the bottom-left cell.
+  - For every cell in the grid:
+    - If it’s zero, keep it zero.
+    - If it’s non-zero, replace it with the anchor value. A concise way to express this in Python is leveraging truthiness: 0 is falsy and any non-zero is truthy, so “value and anchor” yields 0 when value is 0, otherwise yields anchor.
+  - After broadcasting the anchor to all non-zero cells, explicitly set the bottom-left cell to 0 to remove the seed.
+
+- Structure:
+  - A small helper that, given a cell and the anchor, returns the anchor when the cell is non-zero and 0 otherwise.
+  - A function that maps this helper across the whole grid using the extracted anchor, then zeroes out the anchor’s original position.
+  - The solver simply calls that modifier.

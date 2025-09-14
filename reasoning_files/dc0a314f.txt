@@ -1,0 +1,21 @@
+Here’s how I would solve it from just the I/O pairs.
+
+1) Identify the region of interest
+- In every input, the output is a 5×5 block, and the only thing in the inputs that consistently defines a 5×5 rectangle is the field of 3’s.
+- So I interpret the 3’s as a mask: take all coordinates where the grid equals 3, and use their bounding box (min/max row and col) as the crop window for the final result.
+
+2) Make the 3’s inert
+- The 3’s are never present in the outputs, and we don’t want them to influence any aggregation we do. So replace every 3 with 0 before any further computation. This keeps them from “winning” when we take maxima later.
+
+3) Build a symmetrized value field by taking maxima under reflections
+- Looking at the outputs, values inside the 5×5 crop often match large values that are not originally located inside that crop; they “arrive” via symmetry. The patterns show influence from both the main-diagonal reflection and the anti-diagonal reflection.
+- To capture that, first combine the grid with its main-diagonal transpose by taking the element-wise maximum. This produces a matrix that is invariant under main-diagonal reflection and propagates larger values across that symmetry.
+- Then also inject the anti-diagonal symmetry: take the anti-diagonal transpose (equivalently, reflect across the anti-diagonal) of that combined grid and again take the element-wise maximum with the current grid. This spreads dominant values along both diagonal symmetries.
+
+4) Crop to the 3-mask’s bounding box
+- Finally, cut out the subgrid defined by the min/max row and column where the original grid had 3’s. That subgrid is the answer.
+
+Why this matches the examples
+- The 5×5 size matches the 3-mask’s bounding box in all three cases.
+- Since we zeroed the 3’s before combining, no 3’s appear in the output.
+- The use of maxima under both diagonal reflections explains how higher numbers from elsewhere in the grid show up in the cropped area and why certain large values (like 8s and 7s) dominate, while the arrangement aligns with the diagonal symmetries rather than the local contents of just the mask area.

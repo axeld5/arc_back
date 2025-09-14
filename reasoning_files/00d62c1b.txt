@@ -1,0 +1,36 @@
+Here’s how I would solve it:
+
+- First, infer the rule from the I/O pairs:
+  - Inputs contain 0s and 3s.
+  - Outputs preserve all 3s.
+  - Some 0s stay 0, others turn into 4s.
+  - The 0s that remain 0 are those that are connected (via up/down/left/right moves) to the outer border of the grid.
+  - The 0s that become 4 are exactly the “holes” or “lakes” of zeros that are fully enclosed by 3s (i.e., not connected to any border zero).
+  - No diagonals count for connectivity.
+
+- So the task is to fill all enclosed zero regions with 4, leaving the background zeros that touch the border unchanged, and leaving all non-zero cells untouched.
+
+- Algorithm:
+  1. Create a same-sized matrix of booleans (visited) to mark which zero-cells are reachable from the border.
+  2. From every border position (all cells on the top row, bottom row, leftmost column, rightmost column), start a flood fill that:
+     - Only traverses through cells with value 0.
+     - Marks visited cells so we don’t revisit.
+     - Uses 4-directional neighbors (up, down, left, right).
+  3. After marking, any zero that was not visited is an enclosed zero; turn those into 4.
+  4. All other cells (3s, or zeros that were visited) remain as they were.
+
+- Implementation details mapping:
+  - Use a recursive DFS (or BFS) for the flood fill; check bounds, skip non-zero cells, and skip already visited cells.
+  - Run that flood fill from every coordinate on the four edges.
+  - Build the output by scanning each cell:
+    - If the original cell was zero and not visited, output 4.
+    - Otherwise, output the original cell value.
+
+- Why this matches the examples:
+  - Wherever there is a ring of 3s enclosing zeros with no path through zeros to any border, those zeros flip to 4.
+  - Zeros that have any path of zeros to an edge remain 0.
+  - All 3s are unchanged.
+
+- Complexity:
+  - The flood fills mark each zero at most once, so it’s linear in the number of cells.
+  - Memory is linear for the visited matrix.

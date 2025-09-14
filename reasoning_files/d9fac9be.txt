@@ -1,0 +1,13 @@
+Here’s how I would solve it.
+
+- From the I/O pairs, the consistent pattern is: somewhere in the grid there’s a 3×3 patch made entirely of positive numbers where eight of the nine cells are the same value and one cell is different. The expected output is the value at the center of that 3×3 patch. Each dataset appears to contain exactly one such patch.
+
+- So the plan is to scan the grid with a sliding 3×3 window:
+  - For each top-left (row, col) where a 3×3 fits, extract that 3×3 block.
+  - Flatten the nine values and count occurrences (a frequency map is perfect for this).
+  - Two checks determine a match:
+    1) All entries are positive (i.e., the minimum in the block > 0), which filters out any zeros.
+    2) The most frequent number occurs exactly 8 times, meaning the block is “eight-of-a-kind” plus one outlier.
+  - When a block passes these checks, return the value at its center cell (row+1, col+1). The examples show the output is just that single number (wrapped as a 1×1 grid if the surrounding framework expects a grid).
+
+- This process short-circuits on the first match and runs in O(R·C) time over the grid. Using a small helper to slice a 3×3 and another to flatten keeps the logic clear, and a frequency counter (like a multiset) cleanly captures the “eight-of-a-kind” condition.

@@ -1,0 +1,24 @@
+Here’s how I would solve it:
+
+- Look for a consistent rule across the examples. In every case, the output preserves exactly one value from the input and turns every other value into 5.
+- Identify which value is being preserved. It’s the value that appears most often in the entire grid (the mode), not per row or column.
+  - Example 1: 2 is the most frequent; keep 2s, turn everything else to 5.
+  - Example 2: 1 is the most frequent; keep 1s, others become 5.
+  - Example 3: 2 is the most frequent; same rule.
+  - Example 4: 4 is the most frequent; keep 4s, others become 5.
+- Therefore, the transformation is: find the most common element in the grid and replace every element that is not equal to it with 5.
+
+Implementation plan:
+- Flatten the grid into a single list of values and count frequencies to find the most common element. A frequency map (e.g., using a counter) makes this trivial.
+- Once the target (most common element) is known, rebuild the grid with the same shape:
+  - If a cell equals the target, keep it.
+  - Otherwise, set it to 5.
+- This runs in linear time in the number of cells.
+- Tie-breaking isn’t specified by the examples; any consistent choice among tied modes would be acceptable. The provided samples don’t create ties.
+
+Code organization I’d use:
+- A helper that returns the most frequent value in the grid.
+- A helper that takes a grid and a target value and returns a new grid where all non-target entries are replaced by 5.
+- A main solver that composes these: compute the mode, then apply the replacement.
+
+This matches all given input/output pairs and generalizes to any rectangular grid.

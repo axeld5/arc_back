@@ -1,0 +1,36 @@
+Here’s how I’d solve it from the given input/output pairs:
+
+1) First, notice the shape change:
+- Each input is an 8×8 grid.
+- Each output is a 4×4 grid.
+So the 4×4 result must be derived by combining the four 4×4 quadrants of the 8×8.
+
+2) Split the 8×8 into four 4×4 blocks:
+- Top-left (TL): rows 0–3, cols 0–3
+- Top-right (TR): rows 0–3, cols 4–7
+- Bottom-left (BL): rows 4–7, cols 0–3
+- Bottom-right (BR): rows 4–7, cols 4–7
+
+3) For each cell position (i, j) in the 4×4 output, look at the corresponding cells from the four quadrants:
+- TL[i][j], TR[i][j], BL[i][j], BR[i][j]
+The output at (i, j) is always one of these values (or 0), and zeros in the inputs behave like “empty/no value.”
+
+4) Determine the priority among the four candidates:
+- By checking positions where more than one quadrant has a nonzero value but the output picks a specific one, you can infer a consistent overlay order.
+- Repeatedly cross-checking the provided examples shows:
+  - If TR has a nonzero value, the output takes that over the others.
+  - If TR is zero but BL is nonzero, it takes BL.
+  - If both TR and BL are zero but BR is nonzero, it takes BR.
+  - Otherwise, it falls back to TL (or zero if TL is also zero).
+
+In other words, at each (i, j), pick the first nonzero among [TR, BL, BR, TL]. This ordering reproduces all given outputs.
+
+5) Algorithm summary:
+- Initialize an empty 4×4 result.
+- For i in 0..3:
+  - For j in 0..3:
+    - Look up the four source values at (i, j) from TR, BL, BR, TL.
+    - Set result[i][j] to the first nonzero in the order TR → BL → BR → TL (or 0 if all are zero).
+- Return the 4×4 result.
+
+This is effectively an overlay/merge of the four quadrants with a fixed precedence: top-right on top, then bottom-left, then bottom-right, then top-left.

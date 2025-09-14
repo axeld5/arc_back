@@ -1,0 +1,33 @@
+Here’s how I would solve it from the I/O pairs:
+
+- What’s invariant across all examples:
+  - The 8s never move.
+  - The cluster of 2s moves as a rigid shape.
+  - The 2s are translated just enough to become immediately adjacent to the 8s along any axis where the two clusters are disjoint, while preserving overlap along any axis where they already overlap.
+  - All other cells become 0.
+
+- So the task reduces to: find both clusters (2s and 8s), compute their bounding boxes, compute the minimal axis-aligned translation vector to bring the 2s’ bounding box flush against the 8s’ bounding box (without overlap), and rebuild the grid with 8s fixed and 2s placed at their shifted coordinates.
+
+- Concretely:
+  1. Scan the grid and collect coordinates of all cells equal to 2 and all cells equal to 8.
+  2. If either set is empty, don’t shift anything.
+  3. Compute for each set its bounding box: min/max row and min/max column.
+  4. Compute the shift needed along each axis:
+     - Columns:
+       - If the 2-box is entirely left of the 8-box, shift the 2s right so that right(2) = left(8) − 1.
+       - Else if the 8-box is entirely left of the 2-box, shift the 2s left so that left(2) = right(8) + 1.
+       - Else (they overlap horizontally), no horizontal shift.
+     - Rows:
+       - If the 2-box is entirely above the 8-box, shift the 2s down so that bottom(2) = top(8) − 1.
+       - Else if the 8-box is entirely above the 2-box, shift the 2s up so that top(2) = bottom(8) + 1.
+       - Else (they overlap vertically), no vertical shift.
+  5. Rebuild the output grid:
+     - Keep every 8 exactly where it was.
+     - For each position in the output, place a 2 if its inverse-shifted coordinate is in the original 2-set (this preserves the shape and applies the translation).
+     - Otherwise place 0.
+
+- Notes on implementation details to make this clean and robust:
+  - Use sets of coordinates for O(1) membership when rebuilding the grid.
+  - When computing the shift, treat each axis independently using the bounding boxes, exactly as described above.
+  - When filling the output, prefer inverse mapping (check if (row − row_shift, col − col_shift) was a 2) so you never miss any translated 2 and avoid double-writing.
+  - Preserve grid dimensions exactly as input.

@@ -1,0 +1,27 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- What the outputs show:
+  - Non-zero colored regions become “hollowed out” to just their perimeter.
+  - Interior pixels of a solid block are removed (set to 0).
+  - The perimeter includes any pixel that touches the background (0) or the edge of the grid.
+  - Colors are preserved on the kept pixels; zeros remain zero.
+
+- Rule inferred:
+  - Keep a non-zero pixel if and only if it is exposed to the background — meaning at least one of its four orthogonal neighbors (up, down, left, right) is either outside the grid (edge) or is 0.
+  - Otherwise, the pixel is interior and should be set to 0.
+
+- Algorithm:
+  1. Determine the grid dimensions (rows, cols).
+  2. For every cell (i, j):
+     - If the cell is 0, write 0 to the output.
+     - If the cell is non-zero, check its four neighbors: (i−1, j), (i+1, j), (i, j−1), (i, j+1).
+       - If any neighbor is out of bounds or equals 0, keep the original value at (i, j) in the output.
+       - Otherwise, write 0 (the cell is interior).
+  3. Return the newly built grid.
+
+- Notes:
+  - Use 4-connectivity (no diagonals) for exposure.
+  - This is effectively extracting the 4-connected boundary of each colored region.
+  - Time complexity is linear in the number of cells.
+
+This exactly matches the examples: the top rows of each block are kept, inner rows keep only the leftmost/rightmost columns, and bottom rows are kept; thin structures or shapes at the border remain fully where they touch background/edges.

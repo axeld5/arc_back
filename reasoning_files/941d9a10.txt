@@ -1,0 +1,30 @@
+Here’s how I would solve it, based on the input/output pairs:
+
+- The grid is 10x10, with 0 representing empty cells and 5 representing walls. The outputs replace certain connected empty regions with labels 1, 2, and 3.
+- The transformation is clearly a flood-fill over 4-connected neighbors (up, down, left, right). You can tell it’s 4-connected because the fill never crosses diagonals and respects straight walls of 5s.
+
+From the examples:
+- Label 1 always occupies the top-left open region. In all outputs, the contiguous area reachable from (0, 0) without crossing 5s is filled with 1s.
+- Label 2 always fills the central region enclosed by the 5 “grid” lines. In the examples, the 5s form horizontal lines and vertical lines that carve the board into blocks; the middle block (around the center of the grid) becomes 2s. Seeding a single center cell might sometimes sit on a wall, so use a 2x2 cluster of seeds centered in the grid to guarantee you land inside that central chamber regardless of how the walls align.
+- Label 3 always fills the bottom-right open region. In all outputs, the contiguous empty area reachable from (size-1, size-1) gets filled with 3s.
+
+So the plan:
+1. Implement a standard recursive (or stack-based) flood fill that:
+   - Returns immediately if out of bounds.
+   - Returns if the current cell is non-zero (i.e., either wall 5 or already labeled).
+   - Otherwise, writes the label into the cell and recurses to its four neighbors.
+2. Fix the grid size at 10 (as per the given data).
+3. Perform three fill passes in this order:
+   - Seed (0, 0) with label 1 to fill the top-left reachable region.
+   - Seed the four center-adjacent cells with label 2 to ensure we capture the middle chamber even if one of the exact center cells is a wall. For size 10, these four seeds are the 2x2 block at rows 4 and 5, columns 4 and 5.
+     - A compact way to generate those four coordinates is to iterate index = 0..3 and compute:
+       - row = size//2 - 1 + (index % 2)
+       - col = size//2 - 1 + (index // 2)
+   - Seed (size-1, size-1) with label 3 to fill the bottom-right reachable region.
+
+This exactly matches the observed outputs:
+- The 1 flood from the top-left stops at 5 walls and matches the 1s in the top-left zones.
+- The 2 flood from the 2x2 center seeds expands into the central compartment enclosed by the 5 lines.
+- The 3 flood from the bottom-right fills the bottom-right compartment only.
+
+The function returns the mutated grid after these fills.

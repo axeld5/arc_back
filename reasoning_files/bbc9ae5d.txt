@@ -1,0 +1,39 @@
+Here’s how I’d reverse-engineer the transformation from the I/O pairs and build a solver.
+
+1) Understand the shape of the output
+- Each input is a single row with some leading non-zero values followed by zeros.
+- The output is a multi-row grid where:
+  - The first row is identical to the input.
+  - Each subsequent row adds one more instance of the non-zero value to the right, forming a growing prefix.
+  - The number of rows equals half the number of columns (integer division).
+
+From the examples:
+- 6 columns → 3 rows
+- 8 columns → 4 rows
+- 10 columns → 5 rows
+
+So the first step is to expand the input into a grid by repeating the original row columns/2 times.
+
+2) Identify what value spreads
+- Only the first non-zero value matters. Zeros stay as zeros; no other values appear in the examples.
+- So scan row-major for the first non-zero; that’s the “token” we’ll propagate.
+
+3) Where does the propagation start?
+- The output shows that the non-zero token appears in the same columns as in the input in every row, and from each of those positions it extends diagonally down-right.
+- This suggests: in the expanded grid, take every coordinate that already contains the token (i.e., in each row, all columns where the input had the token), and from each such coordinate, paint along the main diagonal down-right.
+
+4) How to paint the diagonals
+- For each start coordinate (r, c) where the cell equals the token, set (r + k, c + k) = token while it stays inside bounds.
+- We can loop k from 0 up to a sufficiently large constant and rely on bounds checks to stop; any constant larger than the maximum possible grid dimension is fine.
+
+5) Pipeline
+- Duplicate each original row N/2 times to form the expanded grid.
+- Determine the first non-zero token from the original grid.
+- Collect all coordinates in the expanded grid that equal the token (these are the repeated original token positions in every row).
+- For each such coordinate, write the token down the main diagonal until the boundary.
+- Return the expanded grid.
+
+Why this matches the samples
+- Repeating the row creates a stack where each row starts with the same non-zero pattern.
+- Starting diagonals from every token cell causes overlapping diagonals that accumulate one additional token per row to the right, exactly producing the staircase/prefix growth seen in the outputs.
+- The row count being half the column count aligns with the height of the staircase in every example.

@@ -1,0 +1,27 @@
+Goal inferred from the I/O pairs:
+- The grid contains “solid” cells (positive numbers like 1, 4, 8) and “empty” cells (0).
+- In the output, solids are preserved unchanged.
+- Empty cells become:
+  - 3 if they are connected (via 4-directional adjacency) to the boundary of the grid.
+  - 2 if they are enclosed (i.e., not connected to the boundary).
+- This is a classic “fill holes” operation: mark outside background differently from interior cavities.
+
+High-level solution strategy:
+1. Treat any cell with value < 1 as empty; everything else is solid.
+2. Multi-source flood fill from all empty cells on the grid boundary to mark the “outside” region.
+   - Use a stack/queue (iterative DFS/BFS) to avoid recursion limits.
+   - Only move in 4 directions (up, down, left, right).
+   - When visiting an empty cell, mark it as 3 to denote outside background.
+3. After the flood fill, any remaining empty cells (still < 1) are interior holes; mark them as 2.
+4. Return the modified grid.
+
+Key details to match the outputs:
+- Initialize the frontier with all boundary coordinates whose value is < 1 (top row, bottom row, leftmost column, rightmost column).
+- During flood fill, only traverse neighbors that are in-bounds and < 1.
+- Mark as you go to avoid revisiting (set to 3 when visited).
+- After the flood fill, a full pass converts any lingering < 1 cells to 2.
+- Handle empty input gracefully (return as-is).
+
+Complexity:
+- Time: O(rows * cols), as each cell is processed at most a constant number of times.
+- Space: O(rows * cols) in worst case for the flood-fill frontier.

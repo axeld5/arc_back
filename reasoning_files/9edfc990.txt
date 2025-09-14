@@ -1,0 +1,50 @@
+Here’s how I’d reason my way to a solution just from the I/O pairs.
+
+1) What changes between input and output?
+- All nonzero, non-1 values are preserved.
+- Some zeros turn into 1s, but never into any other number.
+- When zeros turn into 1s, they flip in whole blobs: every zero in a 4-connected region flips together, or not at all.
+- Whether a zero-blob flips depends on whether that blob touches at least one cell with value 1 (using 4-directional adjacency). If it does, the entire blob becomes 1s; if it doesn’t, it remains 0.
+- Diagonal touching does not cause flipping, so adjacency is 4-neighbor (up, down, left, right), not 8.
+
+2) What does that imply algorithmically?
+- We need to find connected components of zeros using 4-neighbor connectivity.
+- For each zero-component, we need to know if it has at least one border cell that is adjacent (in 4 directions) to a 1 somewhere in the grid.
+- Exactly those components that touch a 1 should be converted to 1s everywhere.
+
+3) Two-phase approach to avoid accidental cascading:
+- If we start turning zeros to ones while we’re still deciding, we could accidentally change the neighborhood for other zeros. So first identify all zero-components, then decide which ones to flip, and only then perform the flipping. This ensures correctness and matches the all-or-nothing flipping seen in the outputs.
+
+4) Concrete plan
+- Phase A: Label zero-components.
+  - Create a same-sized matrix initialized to “unlabeled” (e.g., -1).
+  - Traverse every cell. When you find a zero that’s not yet labeled, start a flood fill (BFS/DFS) from it:
+    - Use a queue/stack to explore 4 neighbors.
+    - Mark each discovered zero with the current component id.
+    - Record the list of cells in this component for later flipping.
+  - Increment the component id each time you start a new flood fill.
+
+- Phase B: Determine which components touch a 1.
+  - Traverse the grid again. For each cell whose value is exactly 1:
+    - Look at its 4 neighbors. If a neighbor is a zero, read its component id from the label matrix and add that id to a set of “to-flip” components.
+  - Using a set prevents duplicate work when multiple 1s touch the same zero-component.
+
+- Phase C: Flip the chosen components.
+  - For each component id in the “to-flip” set, iterate all cells stored for that component and set their values to 1 in the original grid.
+
+5) Why this matches the I/O:
+- Only zeros in components adjacent to at least one 1 become 1s, and they flip as whole components, which matches the examples.
+- Zeros not touching any 1 remain 0.
+- Everything else stays unchanged.
+- Using 4-neighbor connectivity explains cases where diagonal contact does not cause flipping.
+
+6) Complexity and details:
+- Each cell is visited O(1) times across the phases, so time is O(n^2) for an n×n grid; space is O(n^2) for labels and component storage.
+- BFS vs DFS doesn’t matter; order of exploration doesn’t affect the result.
+- Doing the flipping after all decisions avoids interference between phases.
+
+That’s the whole reasoning to arrive at a solution that:
+- Finds all 4-connected zero regions,
+- Identifies those adjacent to any 1,
+- Fills exactly those regions with 1s,
+- Leaves all other values unchanged.

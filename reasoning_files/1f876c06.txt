@@ -1,0 +1,30 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observation from examples:
+  - The grid is sparse with zeros as empty cells.
+  - Each non-zero value appears exactly twice in the input. In the output, that value is drawn along a perfect 45-degree diagonal that connects those two occurrences, including both endpoints.
+  - The diagonal can slope down-right or down-left depending on the relative positions.
+  - All other cells remain as they were (zeros stay zero unless they lie on one of these diagonals).
+
+- Plan:
+  1. Read the grid and record, for each non-zero value, the list of its coordinates (row, col). From the examples, each value will have exactly two coordinates: a start and an end.
+  2. Work on a copy of the original grid so we only add values along diagonals and don’t lose original non-zero entries.
+  3. For each distinct value:
+     - Extract its two points: (r1, c1) and (r2, c2).
+     - Determine the step direction along rows and columns:
+       - row_step = +1 if r2 > r1, else -1
+       - col_step = +1 if c2 > c1, else -1
+     - The number of steps is abs(r2 - r1). (By construction, abs(r2 - r1) == abs(c2 - c1) for a 45-degree line.)
+     - Iterate s from 0 to that number of steps (inclusive), and at each step set:
+       - r = r1 + s * row_step
+       - c = c1 + s * col_step
+       - Write the value at (r, c) in the result grid.
+  4. Return the result grid.
+
+- Notes/assumptions:
+  - We ignore zeros when collecting endpoints.
+  - We assume each non-zero value appears exactly twice and those two points form a valid 45-degree diagonal (as shown in the examples).
+  - If diagonals cross, later writes can overwrite earlier ones; the examples don’t present conflicts between identical values, and different values occupy different diagonals.
+  - Time complexity is linear in the grid size plus the total diagonal lengths.
+
+- The helper p just delegates to this solver with the given grid.

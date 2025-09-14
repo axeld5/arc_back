@@ -1,0 +1,44 @@
+Here’s how I’d solve it from the IO pairs:
+
+- What’s consistent across inputs:
+  - All nonzero cells are the same color (3).
+  - These 3s form square blocks: sometimes 1x1, sometimes 2x2 (and we should be ready for 3x3).
+  - The outputs place 8s in square blocks whose sizes match the size of the 3-blocks, and they appear “outside” a pair of diagonally positioned 3-blocks.
+  - At the borders, the intended 8-blocks may go partially out of bounds; only the in-bounds cells get filled.
+
+- The core pattern:
+  - Find two identical square blocks of 3s (same size s) where the second block is exactly s rows and s columns away either down-right (r+s, c+s) or down-left (r+s, c−s) from the first block’s top-left.
+  - When such a diagonal pair exists, draw two 8-blocks of the same size s “outside” the pair along the perpendicular diagonal:
+    - If the pair is down-right: place 8-blocks at top-right above the first and bottom-left below the second:
+      - At rows r−s, cols c+2s
+      - At rows r+2s, cols c−s
+    - If the pair is down-left: mirror it:
+      - At rows r−s, cols c−2s
+      - At rows r+2s, cols c+s
+  - If any of those target positions are partially outside the grid, clip to the grid and fill only valid cells.
+
+- How to robustly detect the square blocks:
+  - Work with s in descending order, e.g., s ∈ {3, 2, 1}. This ensures larger blocks are handled before their sub-blocks.
+  - At each cell (r, c), test if an s-by-s region entirely of 3s starts there.
+  - To avoid double-processing the same structure, only consider a block as a “canonical” representative if there is no identical s-block whose top-left is directly above or directly to the left (i.e., this is the top-leftmost of its cluster).
+  - Additionally, for s = 1, skip any single cell that is actually part of a 2x2 block of 3s; the 2x2 pass will handle that case and we won’t create spurious 8s from the subcells.
+
+- Filling 8s:
+  - Use a helper that fills an s-by-s patch with 8s at a given top-left anchor, but checks bounds so we don’t write outside the 10x10.
+
+- Why this matches the examples:
+  - Example 1: two 1x1 blocks on a down-right diagonal: we place two 1x1 8s at (r−1, c+2) and (r+2, c−1). Similarly for the other diagonal pair.
+  - Example 2: two 2x2 blocks on a down-left diagonal: we place two 2x2 8s at the mirrored outside corners. One of them partially overflows the left edge, so only the in-bounds column gets filled, matching the thin vertical pair of 8s.
+  - Example 3: two 1x1 blocks on a down-right diagonal: we place two 1x1 8s in the computed positions.
+
+- Implementation outline:
+  - Copy the input to output.
+  - Define a function that checks whether an s-by-s region of 3s exists at (r, c).
+  - Define a function that fills an s-by-s region with 8s at (r, c), skipping out-of-bounds cells.
+  - For s in 3, 2, 1:
+    - Scan all (r, c). If there’s an s-block at (r, c), it is top-leftmost (no s-block above/left), and (for s=1) it is not the top-left of a 2x2:
+      - If there’s a paired s-block at (r+s, c+s), place the two 8-blocks at (r−s, c+2s) and (r+2s, c−s).
+      - Else if there’s a paired s-block at (r+s, c−s), place the two 8-blocks at (r−s, c−2s) and (r+2s, c+s).
+  - Return the filled grid.
+
+This logic reproduces all the given outputs, handles multiple sizes without double-counting, and naturally clips at borders.

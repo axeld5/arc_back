@@ -1,0 +1,42 @@
+Here’s how I would reason from the I/O pairs to a solver.
+
+1) Find the “reference” row
+- In every example there is exactly one row that is fully populated (no zeros). That row encodes the complete horizontal pattern for the entire grid.
+- So first scan rows to find the first row whose entries are all non-zero. If none exists, nothing can be inferred, so return an all-zero grid.
+
+2) Split the columns into two groups using the reference row
+- The fully populated reference row alternates between two colors/labels across columns. The other rows show only a small “seed” of those two colors on the left and zeros elsewhere; the outputs extend those seeds across the entire width using the reference row’s alternation.
+- To turn that into a precise rule: pick one “anchor” column in the reference row (the first non-zero column is fine) and note its color. Then collect the set of column indices whose color in the reference row equals that anchor color. Call this set the match group. All other columns form the non-match group.
+- This creates a column partition: match_columns vs non_match_columns.
+
+3) For each non-empty row, determine which of its values correspond to which group
+- Each non-empty row has one or two non-zero colors. Those colors need to be assigned to the two column groups determined by the reference row.
+- Walk across the row; for each non-zero entry:
+  - If it appears in a match column, assign that color to the “match” class.
+  - If it appears in a non-match column, assign that color to the “non-match” class.
+- Stop once both classes have been identified. If only one color is present in the row, use it for both classes as a fallback (so the row becomes uniform according to the reference partition).
+
+4) Fill the output row using the class mapping
+- Build an output grid initialized to zeros.
+- For each row that contains any non-zero:
+  - Place the color mapped to the match class into all match columns.
+  - Place the color mapped to the non-match class into all non-match columns.
+- For rows that are entirely zero in the input, leave them as zeros.
+
+5) Why this matches the examples
+- The fully defined row provides the exact per-column “mask” of which class each column belongs to.
+- The partially defined rows show which color should occupy each class based on their leftmost known cells.
+- Replicating by class across all columns reproduces the observed outputs:
+  - Example 1: reference row is fully filled; partially filled rows with [8,8,4,0,0,0,0,0] and [1,1,6,0,0,0,0,0] expand to repeat [A,A,B,A,A,B,A,A] where A/B are determined from the first three cells and the reference mask.
+  - All other examples follow the same “two-class by columns” extension.
+
+6) Edge cases and guards
+- If there is no fully filled row, return zeros (no pattern to propagate).
+- If a row has no non-zero cells, keep it zero.
+- If a row has only one non-zero color observed, use it for both classes to avoid gaps.
+
+This yields a simple pipeline:
+- Identify the fully filled row.
+- Choose an anchor column and derive the set of “matching” columns.
+- For each row with data, deduce which color is “match” vs “non-match” from the observed cells.
+- Fill the row by applying the per-column class.

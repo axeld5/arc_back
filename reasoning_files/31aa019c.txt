@@ -1,0 +1,33 @@
+Here’s how I would solve it from the I/O patterns:
+
+- Notice the outputs are almost entirely zeros, except for a single 3x3 block. The center cell of that block equals some value from the input, and all eight surrounding cells are 2s. That suggests we’re “highlighting” one specific cell from the input and marking its Moore neighborhood (the 8 adjacent cells).
+
+- Which input cell is chosen? Comparing examples:
+  - Example 1 centers on a 4.
+  - Example 2 centers on a 6.
+  - Example 3 centers on a 3.
+  Each of these values appears to be rare in its grid. This points to selecting the least frequent value in the entire 10x10 input.
+
+- Tie-breaking: When multiple values share the minimum frequency, the examples are consistent with picking the numerically smallest among those least frequent values. After choosing the value, we need a deterministic position to place the block: the first time that value appears scanning row by row, left to right.
+
+- Construction of the output:
+  - Start with a 10x10 grid of zeros.
+  - Put the chosen value at its (row, col) location.
+  - Set all eight neighboring cells (row±1, col±1, excluding the center itself) to 2, staying within bounds.
+
+- Edge cases:
+  - If somehow the target value isn’t found (shouldn’t happen if it came from the grid), just return all zeros.
+  - Always guard the neighbor writes with bounds checks (0 ≤ row, col < 10).
+
+Algorithm outline:
+1) Flatten the grid and count frequencies of each number.
+2) Select the value(s) with the smallest frequency; break ties by smallest numeric value.
+3) Scan the grid in row-major order to find the first (row, col) where that value occurs.
+4) Create a zeroed 10x10 output.
+5) Write the value at (row, col).
+6) For each of the eight neighbor offsets, if within bounds, write 2.
+
+This exactly reproduces the shown outputs:
+- Example 1: least frequent is 4; first at (6,1); center is 4, neighbors are 2.
+- Example 2: least frequent is 6; first at (2,7); center 6, neighbors 2.
+- Example 3: least frequent is 3; first at (8,6); center 3, neighbors 2.

@@ -1,0 +1,28 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- What the outputs keep:
+  - They only show the smallest rectangular crop that contains all non-1 values from the input.
+  - Everything outside that minimal bounding box is discarded.
+
+- What the outputs change inside that crop:
+  - Any 1s that happen to be inside the crop are turned into 0s.
+  - All other values (2, 3, 5, 6, …) are left unchanged.
+
+- How to detect the crop:
+  - Scan the grid to find all cells whose value is not 1.
+  - Track the minimum and maximum row index and the minimum and maximum column index over those cells.
+  - Those four numbers define the bounding rectangle to extract.
+
+- How to build the result:
+  - Take each row from min_row to max_row and slice each of those rows from min_col to max_col.
+  - While copying the slice, transform each element by subtracting 1 only if it equals 1; otherwise keep it as is. (Using the fact that a boolean test “cell == 1” can be treated as 1 when true and 0 when false makes this a one-liner per cell.)
+
+- Sanity check against the examples:
+  - Example 1: the non-1s lie in a 3×3 box; cropping yields that box and the 1s inside it become 0s, matching the output.
+  - Example 2: the non-1s form a 2×3 box; cropping and converting interior 1s to 0s matches the output.
+  - Example 3: the non-1s form a 3×2 box with no 1s inside; cropping keeps the numbers unchanged, matching the output.
+
+That’s the whole procedure:
+1) find the tight bounding box of all non-1 cells,
+2) slice that box out,
+3) within it, turn 1s into 0s, leave everything else as is.

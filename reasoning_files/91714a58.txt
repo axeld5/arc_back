@@ -1,0 +1,37 @@
+Here’s how I’d solve it from the examples.
+
+1) Infer the task from the I/O pairs
+- Each output keeps only a single axis-aligned rectangle filled with a single nonzero value from the input; everything else is zeroed.
+- In the first example, the output is a 4×3 block of 2’s (area 12).
+- In the second, it’s a 2×7 block of 6’s (area 14).
+- In the third, it’s a 3×3 block of 7’s (area 9).
+- All kept rectangles:
+  - are homogeneous (every cell the same nonzero value),
+  - have both height and width at least 2,
+  - have area between 9 and 16 inclusive,
+  - and appear to be the largest area rectangle satisfying those constraints.
+- If no such rectangle exists, the output is all zeros.
+
+2) Define the constraints explicitly
+- Rectangle height ∈ [2, 8], width ∈ [2, 8].
+- Rectangle area ∈ [9, 16].
+- Rectangle value ≠ 0 (zeros are never selected).
+- Choose the rectangle with the largest area; if there are ties, keep the first one found (the examples don’t force a specific tie-breaker, but a consistent first-found rule is fine).
+
+3) Brute-force search strategy (grid is only 16×16, so brute force is fast)
+- For every possible rectangle height in [2..8]:
+  - For every possible rectangle width in [2..8]:
+    - Compute area; if not in [9..16], skip.
+    - Slide this rectangle over all valid top-left positions in the grid (rows 0..R−height, cols 0..C−width).
+      - Read the value at the top-left cell; if it’s zero, skip (since we only want nonzero rectangles).
+      - Check whether every cell in this rectangle equals that value.
+      - If yes and the area is larger than the current best, remember this rectangle: store its top-left, size, and value, and update the best area.
+
+4) Build the output
+- If no rectangle was found, return an all-zero grid of the same size.
+- Otherwise, create an all-zero grid and fill in the cells of the best rectangle with its value.
+
+5) Notes
+- The homogeneity check is a simple nested loop over the rectangle’s cells.
+- Keeping an “is area valid” guard early avoids unnecessary scanning for sizes we won’t accept.
+- This approach exactly explains why the outputs show the largest homogeneous rectangle (subject to the 2..8 side limits and 9..16 area bound) and nothing else.

@@ -1,0 +1,40 @@
+Here’s how I would solve it from just the I/O pairs:
+
+- The outputs look like an extrapolation of a short color sequence that is already present in both a single row and a single column of the input. In the result, that sequence is repeated across the entire “most informative” row and down the entire “most informative” column, while all other cells remain zero.
+
+- So first, find where the pattern is most clearly stated:
+  - Count non-zeros per row and per column.
+  - Pick the row with the most non-zeros (the pivot row) and the column with the most non-zeros (the pivot column).
+  - Let L be the length of the underlying pattern. A robust estimate is the maximum of the non-zero counts of the pivot row and pivot column.
+
+- Identify the span where the pattern is actually present:
+  - In the pivot row, find the leftmost and rightmost columns that are non-zero; that gives a contiguous span on the row where the sequence is visible.
+  - In the pivot column, find the topmost and bottommost rows that are non-zero; that gives the span on the column where its sequence is visible.
+
+- Extract the core sequence from the column:
+  - Take the values in the pivot column between its top and bottom bounds (inclusive). That is the base sequence we will repeat. It is typically the same multiset as on the pivot row, possibly rotated or reversed.
+
+- Align the row and column versions of the pattern:
+  - We want the pivot row’s observed non-zero segment to match some rotation of the column sequence. The leftmost non-zero in the pivot row is the anchor.
+  - Try all rotations of the column sequence to see if any rotation matches the values on the pivot row across its non-zero span. If one matches, record the rotation offset.
+  - If no forward rotation matches, try the reversed column sequence in the same way (this handles cases where the row shows the reverse direction compared to the column).
+  - If neither forward nor reverse produces a match (edge case/noise), fall back to an offset that simply anchors the leftmost row position to index 0 of the sequence.
+
+- Build the solution grid:
+  - Start with all zeros.
+  - Fill the entire pivot column by repeating the column sequence cyclically from the top bound downward. For a row r, use index (r − top_bound) mod L.
+  - For the pivot row, repeat the correctly oriented sequence (forward or reversed) across all columns, using the determined rotation offset so that the non-zero span matches what was observed. For a column c, use index (offset + c) mod L.
+
+- Consistency at the intersection:
+  - Because the offset/orientation were chosen to match the observed overlap, the value at the pivot row/column intersection will be consistent automatically.
+
+- Leave all other cells as zero.
+
+Why this matches the examples:
+- Example 1: The pivot column’s span gives [8,3,2] and the pivot row shows [8,3,2] in the same order; repeat [8,3,2] down the column and across the row.
+- Example 2: The pivot column’s span gives [4,8,3,2] but the pivot row shows the reversed order [2,3,8,4]; detect that reverse alignment, compute the rotation that makes the leftmost cell match, then repeat that reversed sequence across the row while repeating the original down the column.
+
+Edge-handling decisions:
+- Use the max of the row/column non-zero counts as the pattern length.
+- Define spans using first/last non-zero indices (so gaps don’t break the inferred extent).
+- If alignment fails in both orientations, pick a default offset anchored to the left bound so we still produce a coherent repetition.

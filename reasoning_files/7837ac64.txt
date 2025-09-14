@@ -1,0 +1,40 @@
+Here’s how I’d reason my way to a solver from the given input/output pairs:
+
+- First, notice each big grid is mostly a single repeating color (the “background”), with sparse other numbers forming a coarse lattice of “interesting” rows and columns. The outputs are tiny grids whose sizes correspond to how many of these interesting rows/columns exist minus one, and whose entries come from values sitting at intersections of those rows/columns—only when that value is consistent.
+
+- So the task is essentially:
+  - Identify the dominant non-zero color (the background).
+  - Find all positions that are neither zero nor background; those are the “signal” cells that indicate the grid structure.
+  - Extract the unique row indices and column indices that contain those signal cells, sort them, and use them as boundaries of a coarse grid.
+  - For each adjacent pair of interesting rows and adjacent pair of interesting columns, probe the four corner cells defined by those two rows and two columns. If the four corners all have the same non-background, non-zero value, emit that value in the corresponding output cell; otherwise emit 0.
+
+Step-by-step plan:
+
+1) Determine the background color:
+   - Flatten all non-zero values in the grid and count their frequencies.
+   - The most frequent non-zero value is the background. This handles cases where 0 is just “empty” and the true background is a different number (as seen in the examples).
+
+2) Collect “signal” coordinates:
+   - Iterate over the grid and record coordinates of cells that are not zero and not the background. These are the meaningful markers that define the structure.
+
+3) Derive the coarse lattice:
+   - From the collected coordinates, take the set of unique row indices and the set of unique column indices; sort both. These sorted indices are the “grid lines” that partition the original grid.
+
+4) Build the output:
+   - The output grid has size (number of unique rows − 1) by (number of unique columns − 1).
+   - For each output position (r, c), look at the 2×2 “corner” cells in the original grid at:
+     - (rows[r], cols[c]),
+     - (rows[r], cols[c+1]),
+     - (rows[r+1], cols[c]),
+     - (rows[r+1], cols[c+1]).
+   - If all four corners have exactly the same value, and that value is neither zero nor the background, place that value in the output at (r, c). Otherwise, place 0.
+
+Why this fits the examples:
+- In each provided case, the big grid is dominated by one color (4, 3, 1, 8 respectively). Sparse non-background numbers occur along specific rows and columns; their unique indices define a small lattice (producing 3×3 outputs).
+- The non-zero entries in the outputs appear exactly where the four corresponding corners in the original grid agree on the same non-background value; otherwise outputs are 0.
+- This explains why different examples yield different patterns (e.g., diagonal blocks of numbers or only certain cells populated), and why the background varies (not always 0).
+
+This approach is robust to:
+- Different background colors (not necessarily 0).
+- Multiple distinct signal values.
+- Mixed placement where some lattice cells are ambiguous (corners don’t agree), which correctly results in 0 in the output.

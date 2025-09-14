@@ -1,0 +1,19 @@
+High-level approach I’d use to match those I/O pairs:
+
+- Interpret the zeros as a masked-out rectangular region we need to reconstruct, and the nonzero cells as samples from an underlying small repeating pattern (a tile) that repeats across the whole grid.
+
+- Locate the missing rectangle:
+  - Collect all positions where the grid has 0.
+  - Compute the bounding box of these zeros: min/max row and min/max column. That gives the top-left corner and the subgrid size (height = width), which is what we need to output once reconstructed.
+
+- Infer the smallest repeating tile:
+  - Hypothesize a small periodic tile (e.g., size 2, then 3).
+  - For each nonzero cell in the grid, map it to a tile coordinate using (row mod tile_size, col mod tile_size).
+  - Build a mapping from each tile coordinate to its observed value, checking for conflicts. If any tile coordinate is observed with two different values, that tile size is invalid; try the next size.
+  - Choose the smallest size that produces a consistent mapping.
+
+- Reconstruct the missing rectangle from the tile:
+  - For each cell inside the zero bounding box, compute its corresponding tile coordinate using the same modulo logic, but based on the absolute grid coordinates of that cell.
+  - Fill the subgrid cell with the mapped value from the inferred tile (or 0 if that tile position was never observed, though in these examples the tile is fully determined).
+
+- Return the reconstructed subgrid (the content that should replace the zeros), which matches the given outputs in the examples.

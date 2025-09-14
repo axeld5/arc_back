@@ -1,0 +1,20 @@
+Here’s how I’d solve it from the given input/output pairs:
+
+- Pattern spotting from examples:
+  - There’s a single nonzero color that appears exactly 4 times in the whole grid.
+  - Those four instances act as the corners of an axis-aligned rectangle.
+  - The output is the interior of that rectangle (cropped), excluding the border cells where the corner color lies.
+  - Inside that cropped region, every nonzero cell is recolored to the corner color; zeros stay zero.
+
+- Algorithm outline:
+  1) Scan the entire grid, count occurrences of each value, and identify the unique color that appears exactly 4 times. If no such color exists, just return the input grid.
+  2) Gather the coordinates of those 4 cells and compute the bounding box: min/max row and min/max column.
+  3) Crop the grid to the strict interior of that bounding box (exclude the min/max rows and columns).
+  4) For each cell in this interior crop:
+     - If it’s zero (background), keep it zero.
+     - If it’s nonzero, change it to the corner color.
+  5) Return this cropped and recolored interior as the final output.
+
+- Notes:
+  - This matches all examples: the corner color is always the one with frequency 4; the output size equals the interior of the rectangle; and only nonzero interior elements are recolored.
+  - Runtime is linear in the number of cells.

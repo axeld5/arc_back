@@ -1,0 +1,28 @@
+Here’s how I’d solve it:
+
+- First, look at the examples to infer the rule.
+  - The output’s width is exactly double the input’s width.
+  - The output’s height is exactly double the input’s height.
+  - For each output row, the left half matches the input row, and the right half is that row reversed. So the output is horizontally symmetric.
+  - The bottom half of the output is the top half in reverse row order. So the output is vertically symmetric too.
+  - Therefore, the input is the top-left quadrant of a fully symmetric grid. We need to mirror horizontally to complete each row, then mirror vertically to complete the full grid.
+
+- Plan:
+  1. Horizontal mirroring of the half-width:
+     - For each input row r, build a new row: r followed by reverse(r). This doubles the width and enforces left-right symmetry.
+  2. Vertical mirroring of the half-height:
+     - After step 1, we have the top half of the final grid (full width).
+     - Create the bottom half by taking these rows in reverse order and appending them below the top half. This doubles the height and enforces top-bottom symmetry.
+
+- Implementation structure:
+  - A helper that takes the input grid and returns a new list of rows where each row is extended by its reverse (horizontal mirror).
+  - Another helper that takes those rows and returns them followed by the same list in reverse order (vertical mirror).
+  - The main function just composes these two steps.
+
+- Why this matches the examples:
+  - In every example, each output row is the input row mirrored left-right.
+  - The sequence of rows in the output is the top half followed by the reverse of those rows, matching the vertical symmetry.
+
+- Complexity and generality:
+  - Time and space are linear in the number of cells.
+  - Works for any rectangular grid and any cell values.

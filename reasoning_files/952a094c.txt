@@ -1,0 +1,42 @@
+Here’s how I would solve it:
+
+- From the examples, the nonzero cells form a hollow rectangular frame. Inside that frame, there are four “special” colored cells positioned one step in from each corner of the frame (offset by +1 from the top/left bounds and −1 from the bottom/right bounds).
+- In the outputs, the frame itself stays unchanged. The four special interior cells get moved to four positions just outside the frame, one step beyond the opposite corners. Concretely:
+  - The interior cell near the top-left corner moves to the exterior position beyond the bottom-right corner.
+  - The interior cell near the top-right corner moves to the exterior position beyond the bottom-left corner.
+  - The interior cell near the bottom-left corner moves to the exterior position beyond the top-right corner.
+  - The interior cell near the bottom-right corner moves to the exterior position beyond the top-left corner.
+- So the transformation is a set of four swaps between “inner-corner-adjacent” cells and their “outer-corner-adjacent” counterparts across the bounding box.
+
+To implement this:
+
+1) Identify the bounding box of the non-empty region.
+- Find the first and last row indices that contain any nonzero.
+- Do the same for columns. An easy way to reuse the row logic for columns is to transpose the grid and again find first/last non-empty rows on that transposed grid.
+
+2) Compute the eight coordinates involved:
+- Inner positions (one step in from each corner of the bounding box):
+  - (top+1, left+1)
+  - (top+1, right−1)
+  - (bottom−1, left+1)
+  - (bottom−1, right−1)
+- Outer positions (one step out from each corner of the bounding box):
+  - (bottom+1, right+1)
+  - (bottom+1, left−1)
+  - (top−1, right+1)
+  - (top−1, left−1)
+
+3) Pair them as diagonal counterparts and swap:
+- Swap (top+1, left+1) with (bottom+1, right+1)
+- Swap (top+1, right−1) with (bottom+1, left−1)
+- Swap (bottom−1, left+1) with (top−1, right+1)
+- Swap (bottom−1, right−1) with (top−1, left−1)
+
+4) Leave everything else unchanged and return the modified grid.
+
+Utilities used:
+- A function to find the first and last non-empty row by scanning for any nonzero per row.
+- Reuse that on the transposed grid to get first/last non-empty column.
+- A small swap helper to exchange two cells.
+
+This exactly matches the examples: the four interior markers are relocated to the symmetric exterior positions while the frame stays the same.

@@ -1,0 +1,30 @@
+Here’s how I would solve it, given only the input/output pairs.
+
+- Notice each task has two “background” colors that dominate the grid. Everything else is sparse accent colors appearing as isolated specks. The outputs show those two background colors partially replaced along diagonals by two chosen accent colors, seemingly “emanating” from the isolated specks. So the problem looks like: detect two dominant colors, pick two accent colors (one for each dominant), then draw diagonal rays from the accent “seed” pixels, recoloring any background pixels encountered along those rays with the assigned accent color.
+
+- Step 1: Identify the two dominant colors
+  - Flatten the grid and find the two most frequent values; call them A and B. These are the background colors to be replaced.
+
+- Step 2: Find the “seed” pixels that trigger drawing
+  - Iterate all cells. If the cell’s value is not one of A or B, consider it as a candidate only if it is an isolated speck: none of its 8 neighbors share its value. This avoids treating multi-pixel patches or noise as seeds.
+  - For each such isolated seed, examine its 8 neighbors and count how many are A and how many are B. If neither A nor B appears around it, ignore this seed (it doesn’t inform which background it belongs to).
+  - Assign this seed to the background color that is more prevalent among its neighbors (break ties arbitrarily). Record:
+    - which background (A or B) it supports,
+    - the seed’s color,
+    - and the strength of that support (how many neighbors it had of that background color).
+
+- Step 3: Choose which two accent colors to use, one to replace A and one to replace B
+  - For all seeds assigned to A, count how many times each seed color appears; do the same for seeds assigned to B. Also keep a weighted score per seed color using the support strength (the neighbor count) as a weight.
+  - Choose one color for A and a distinct one for B that maximizes total support: first maximize by the number of seeds that support that pairing, and then break ties by the sum of support strengths. This gives a robust pairing A→colorX, B→colorY that best matches how the seeds cluster around the two backgrounds.
+
+- Step 4: Paint along diagonals from every seed
+  - Work on a copy of the grid.
+  - For each seed (regardless of its own color), cast rays in all four diagonal directions: NW, NE, SW, SE. Walk step by step until leaving the grid.
+  - Whenever the ray passes over a cell that currently has value A or B, recolor it to the selected accent for that background (A→colorX, B→colorY). Keep walking; do not stop at non-background cells—only recolor background cells you encounter.
+  - Doing this from all seeds creates multiple diagonal strokes that may overlap; later strokes simply overwrite with the same intended colors because all background assignments are consistent.
+
+- Step 5: Return the painted grid
+  - The result matches the outputs: the two backgrounds are partially replaced along diagonals by two chosen accent colors, with the directions and extents determined by rays emanating from the isolated seeds, and the mapping from each background to its accent chosen to align with the local neighborhood evidence around the seeds.
+
+Why this matches the examples:
+- In the examples, the two most common values are indeed the big background fields (e.g., {2, 8} or {1, 3} or {1, 6}). Sparse singleton values (e.g., 1 and 4 in the first, 2 and 8 in the second, 3 and 8 in the third) act as seeds. The algorithm assigns one accent to each background based on which seeds sit in which background’s neighborhood, then draws rays diagonally from those seed positions, recoloring only the background values encountered along those diagonals. The resulting diagonal patterns and chosen accents match the shown outputs.

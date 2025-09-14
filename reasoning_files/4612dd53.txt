@@ -1,0 +1,38 @@
+Here’s how I’d solve it from the examples.
+
+1) Read the pattern:
+- The input contains 0s and 1s.
+- The output preserves all 1s, and adds 2s along the perimeter of the tightest axis-aligned rectangle that contains all the 1s.
+- Sometimes, there’s also a line of 2s drawn inside that rectangle, either horizontal or vertical, seemingly aligned with where interior 1s cluster. That line never overwrites 1s, only fills 0s.
+
+2) High-level plan:
+- Collect coordinates of all cells that are 1.
+- Compute the bounding rectangle: min/max row and min/max column over those coordinates.
+- Copy the grid for output.
+- Draw the rectangle’s border with 2s, but only where the cell is 0 (leave 1s unchanged).
+- Determine whether to draw an internal line:
+  - Consider only 1s strictly inside the rectangle (not on its border).
+  - If there are at least two interior 1s, decide whether to draw a horizontal or vertical line by seeing which row or column is most represented among these interior 1s.
+  - If the most common row has frequency ≥ 2 and at least as large as the most common column, draw a horizontal line of 2s across that row inside the rectangle (excluding the border). Otherwise, if the most common column has frequency ≥ 2, draw a vertical line of 2s inside the rectangle.
+  - When drawing this internal line, only turn 0s into 2s; do not overwrite any 1s.
+
+3) Details to match the examples:
+- Perimeter drawing:
+  - Fill top and bottom edges from min_col to max_col, and left and right edges from min_row to max_row.
+  - Only set to 2 if the current cell is 0.
+- Internal line selection:
+  - Build frequency counts for interior 1s by row and by column.
+  - Choose the axis with the higher (or tied, row-preferred) frequency, but only if that frequency is at least 2.
+  - Horizontal line: fill columns from min_col + 1 to max_col − 1 at the chosen row.
+  - Vertical line: fill rows from min_row + 1 to max_row − 1 at the chosen column.
+  - Again, only fill 0s; leave 1s untouched.
+
+4) Why this matches the given I/O:
+- Every output shows a rectangle boundary of 2s tightly around all 1s, respecting gaps elsewhere.
+- In examples where there is a clear internal alignment of 1s, an extra internal line of 2s appears along that dominant row or column; when there isn’t enough interior evidence (fewer than two interior 1s), no internal line is drawn.
+- Borders and internal lines never overwrite 1s; they only turn 0s into 2s.
+
+5) Edge behavior:
+- If there are no 1s, there’s no rectangle to draw (not present in samples, but implied).
+- If there are interior 1s but they don’t repeat on the same row/column (frequency < 2), skip the internal line.
+- Ties between row and column frequencies are broken in favor of a horizontal line.

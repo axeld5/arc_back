@@ -1,0 +1,39 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- Observation from the examples:
+  - Cells with value 2 represent “occupied” cells.
+  - The output introduces 3s only around pairs of adjacent 2s, not around isolated 2s.
+  - The 3s form a one-cell-thick “halo” around a 1×2 domino of 2s.
+  - This applies both to horizontal and vertical dominoes.
+  - The 2s themselves must remain 2s; only non-2 cells in the halo become 3s.
+  - The halo is the bounding box of the domino, expanded by one cell in every direction, clipped to grid bounds.
+
+- Translate that into exact marking rules:
+  - For a horizontal pair at positions (row, col) and (row, col+1):
+    - Mark all non-2 cells in rows [row-1..row+1] and columns [col-1..col+2] as 3.
+    - This creates a 3 (rows) by 4 (cols) halo around the two horizontally adjacent 2s.
+  - For a vertical pair at positions (row, col) and (row+1, col):
+    - Symmetric rule: mark all non-2 cells in rows [row-1..row+2] and columns [col-1..col+1] as 3.
+    - That’s the rotated version: 4 (rows) by 3 (cols) halo.
+
+- Implementation approach:
+  - Write a routine that, given a grid and a position, first checks for a horizontal pair (cell and its right neighbor are both 2). If yes, apply the marking over the 3×4 region described, clipping indices to the grid bounds, and never overwriting 2s.
+  - Sweep the grid left-to-right, top-to-bottom, checking each (row, col) up to width-2 so the right neighbor exists.
+  - To handle vertical pairs without duplicating logic, reuse the same horizontal logic by transposing the grid:
+    - First pass: process the grid as-is to handle horizontal 1×2s.
+    - Second pass: transpose the grid, run the same processing (which now catches vertical pairs as horizontal in the transposed view), then transpose back.
+  - Transpose is standard: swap rows and columns.
+
+- Boundary and idempotence details:
+  - When marking, clamp row range to [0, height-1] and column range to [0, width-1].
+  - Only set cells to 3 if they aren’t already 2; existing 3s can be left as 3 (re-marking is harmless).
+  - Multiple overlapping halos are fine; they’ll just produce more 3s.
+
+- Why this matches the examples:
+  - In the first example, there’s a vertical pair of 2s; after the transpose trick, the logic produces the 4×3 halo centered around that vertical domino, matching the 3s you see.
+  - In the second example, you can see 3s around every horizontal 2–2 pair directly after the first pass, and around vertical 2–2 pairs after the transpose pass. Single isolated 2s do not create any 3s, which matches the outputs.
+
+This leads directly to:
+- A scan that looks for horizontal 2–2s and marks a padded rectangle.
+- A transpose–repeat to handle vertical 2–2s with the same routine.
+- Returning the final grid after the second transpose.

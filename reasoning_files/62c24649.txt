@@ -1,0 +1,24 @@
+Here’s how I would solve it from the examples.
+
+1) Pattern spotting from the I/O
+- The output has twice the width and twice the height of the input.
+- Look at any input row and its corresponding output row: the output row is the original row followed by that same row reversed. So each row is mirrored horizontally around the center.
+- Look at the set of rows: the bottom half of the output is the top half in reverse order. So the whole grid is mirrored vertically as well.
+
+2) Constructing the transformation
+- First, build a horizontally symmetric version of the grid:
+  - For each row, create a new row by concatenating the row with its reversed version.
+- Then, build a vertically symmetric grid from those rows:
+  - Take the list of horizontally mirrored rows and concatenate it with that list in reverse order.
+
+3) Why this matches the samples
+- Top-left quadrant: the original grid.
+- Top-right: horizontal mirror of the original.
+- Bottom-left: vertical mirror of the original.
+- Bottom-right: mirror in both directions.
+- This exactly matches all the provided I/O pairs.
+
+4) Final plan
+- Map “reflect a row by appending its reverse” over all rows to get the top half.
+- Append the reversed list of those rows to get the bottom half.
+- Return the resulting 2D array.

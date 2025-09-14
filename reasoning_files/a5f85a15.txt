@@ -1,0 +1,16 @@
+Here’s how I would solve it:
+
+- From the examples, there’s exactly one “ink” color in each input that is not 0 (background) and not 4 (yellow). Call this K. The outputs only keep that color’s pixels and discard everything else.
+- The positions of K’s pixels are preserved, but their color depends on the column index:
+  - If the column index is even (0-based), the pixel stays K.
+  - If the column index is odd, the pixel becomes yellow (4).
+- All other cells become 0, including any pre-existing yellows in the input (since the outputs only show transformed K-pixels).
+- If the grid has no nonzero, non-yellow colors at all, the result is an all-zero grid.
+
+Algorithm:
+1. Let H, W be the grid size.
+2. Collect all colors present excluding 0 and 4. If none, return an H×W grid of zeros.
+3. Take the single color K from that set.
+4. Create an H×W grid initialized to 0.
+5. For each cell (r, c): if the input cell equals K, then write K if c is even, else write 4. Leave all other cells as 0.
+6. Return the result.

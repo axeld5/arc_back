@@ -1,0 +1,38 @@
+Here’s how I’d reason from the given input/output pairs to a solution:
+
+1) What’s invariant in the outputs?
+- Some entire columns (or rows) stay exactly as they are, copied verbatim into the output.
+- Those “fixed” stripes are uniform, non-zero, and extend the full height (or full width if we’re looking at rows).
+- Everything else gets moved next to these fixed stripes, but only if it’s the same color/value as that stripe.
+
+2) Decide whether to work with columns or rows
+- First, check if the grid has at least one complete, non-zero, uniform column. If so, all logic is applied column-wise.
+- If not, do the exact same logic but row-wise. A clean way to do that is to transpose the grid, run the column logic, and transpose back.
+
+3) Identify the “anchors” to preserve
+- Scan all columns and mark those that are complete (every cell in the column equals the same non-zero value).
+- These “complete” columns are copied unchanged to the output.
+- All other positions default to zero in the output initially.
+
+4) Reattach non-anchor pixels to the nearest matching anchor
+- For every non-zero cell that is not in a preserved column:
+  - Find all preserved columns whose uniform value equals this cell’s value (same color).
+  - If none exist, skip this cell (it stays zero in the output).
+  - If they exist, choose the preserved column that is horizontally closest to the cell’s original column (minimize absolute distance). This makes scattered pixels gravitate toward the nearest matching “pillar.”
+  - Place the cell in the same row, adjacent to that preserved column: if the original cell was to the left of the anchor, put it immediately to the left of the anchor; if it was to the right, put it immediately to the right. This preserves the side of approach and ensures the reattached pixels hug the pillar.
+
+5) If there were no complete columns to begin with
+- Do the exact same procedure but on rows. The simplest way is to transpose, perform the column-based procedure above, then transpose the result back.
+
+6) Why this matches the examples
+- In examples with full columns present (e.g., a full column of 4s and a full column of 3s), those columns remain. Other 3s and 4s slide horizontally to sit just next to the nearest appropriate full column on the correct side.
+- In examples with no full columns but full rows (e.g., a full row of 2s or 8s), we transpose and then do the same: keep the full row, and bring matching scattered cells to the row just above or below it (depending on which side they come from), then transpose back.
+
+7) Implementation outline
+- Write a helper to detect whether any column is a complete non-zero uniform column.
+- If yes: build the output by:
+  - Copying complete columns verbatim.
+  - For every other non-zero cell, find the nearest preserved column with the same color and place the cell adjacent to it on the approach side.
+- If no: transpose, do the same, transpose back.
+
+This logic explains why only certain columns/rows are preserved unchanged, and why off-stripe pixels of the same color end up immediately adjacent to those stripes on the side they came from, producing exactly the patterns shown in the outputs.

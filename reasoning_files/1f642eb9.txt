@@ -1,0 +1,32 @@
+Here’s how I would solve it from the I/O examples:
+
+1) Infer the invariant: the 8s always form a solid axis-aligned rectangle. In the outputs, that rectangle stays in the same place, but some of its cells get overwritten by other digits (e.g., 9, 6, 4, 2, 7, 3, 1).
+
+2) Observe the transformation of every nonzero, non-8 digit:
+- It is not removed from its original location (the digit still appears there in the output).
+- A copy of it is “stamped” onto the 8-rectangle at the closest point obtained by independently clamping its row into the rectangle’s row range and its column into the rectangle’s column range.
+- In other words, for a value at (r, c), with rectangle rows [top..bottom] and columns [left..right], its target is:
+  - bounded_row = clamp(r, top, bottom)
+  - bounded_col = clamp(c, left, right)
+
+3) How to get the rectangle:
+- Scan all cells equal to 8, collect their coordinates.
+- top is the minimum row among those 8s; bottom is the maximum row.
+- left is the minimum column; right is the maximum column.
+
+4) How to apply the stamping:
+- Start with a copy of the original grid so originals remain.
+- For every cell with value v where v != 0 and v != 8, compute its clamped target inside the 8-rectangle and write v there in the copy.
+- This can overwrite 8s (as seen in the outputs).
+- If multiple values clamp to the same cell, the later one in row-major order wins (matches the shown outputs).
+
+5) Implementation outline:
+- A helper to find the rectangle bounds by scanning for 8s and taking min/max row/col.
+- A helper to clone the grid and, for each nonzero non-8, clamp row/col into the bounds and assign the value at that bounded position.
+- The main function calls the bounds finder, then applies the stamping, and returns the resulting grid.
+
+This exactly reproduces the examples:
+- Far-away digits are duplicated onto the nearest edge or corner of the 8-rectangle.
+- Digits directly above/below/left/right of the rectangle clamp onto its edge.
+- Digits already aligned in one axis clamp only along the other axis.
+- Original non-8 digits remain where they were; 8s can be overwritten at the stamped locations.

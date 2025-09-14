@@ -1,0 +1,38 @@
+Here’s how I’d solve it from the examples.
+
+1) Infer the structure
+- Each input is an odd-sized square grid.
+- The middle row and the middle column form a cross of a single value that splits the grid into four equal quadrants.
+- Three quadrants are uniform (all one value). One quadrant is “odd” because it contains at least two different values (e.g., a single anomaly).
+- The required output is exactly that odd quadrant, at its original resolution (i.e., the k×k block, not resized).
+
+2) Determine the quadrant size and positions
+- Let n be the grid size. The middle row and column are at index m = (n − 1) // 2.
+- Each quadrant is a k×k block with k = m.
+- The four quadrants are:
+  - Top-left: rows [0..k-1], cols [0..k-1]
+  - Top-right: rows [0..k-1], cols [m+1..m+k]
+  - Bottom-left: rows [m+1..m+k], cols [0..k-1]
+  - Bottom-right: rows [m+1..m+k], cols [m+1..m+k]
+- These are the four k×k regions excluding the central cross.
+
+3) How to detect the “odd” quadrant
+- For each quadrant, gather all its values and check if it is uniform (all identical).
+- The first quadrant that is not uniform is the target; return that k×k block as the answer.
+- This fits all shown examples:
+  - Example 1: only the bottom-left 2×2 has a 4 mixed with 8s → return it.
+  - Example 2: only the top-right 3×3 has a 1 mixed with 4s → return it.
+  - Example 3: only the top-left 5×5 has an 8 mixed with 3s → return it.
+
+4) Handle the smallest odd case (n = 3)
+- Then k = 1 and each quadrant is a single corner cell.
+- There is no “non-uniform” 1×1 block by definition, so we instead compare the four corner values directly.
+- If exactly one corner value is unique among the four, that single value (as a 1×1 grid) is the answer.
+
+5) Implementation outline
+- Write a helper to slice out a k×k subgrid from a given start row/col.
+- Write a helper to flatten a grid to check if all values are the same (e.g., via set size).
+- If k == 1, handle the corner-uniqueness case.
+- Otherwise, iterate over the four quadrant start positions (top-left, top-right, bottom-left, bottom-right), extract the subgrid, and return the first one whose values are not all identical.
+
+This reasoning produces exactly the behavior seen in the provided inputs/outputs.

@@ -1,0 +1,24 @@
+Here’s how I would solve it:
+
+- From the examples, the only value that “does something” is 2. Wherever a 2 appears in the input, every cell in its 8-neighborhood (including diagonals) becomes 1 in the output.
+- The cells that are 2 remain 2 in the output.
+- Cells not adjacent (in the 8 directions) to any 2 remain whatever they were.
+- If multiple 2s affect the same neighbor, it’s still just 1 (the effect is idempotent).
+- There’s no propagation: newly created 1s do not create further 1s. Only original 2s cause changes.
+
+To implement this cleanly:
+
+1) Make a full copy of the input grid to serve as the output grid. This prevents cascading effects and ensures we only react to original 2s.
+
+2) Scan every cell in the original grid. When you see a 2:
+   - Iterate all 8 neighboring offsets (delta_row, delta_col) in {-1, 0, 1} excluding (0, 0).
+   - Compute neighbor coordinates and check bounds so you don’t go outside the grid.
+   - In the output grid, set that neighbor to 1 unless that neighbor is itself a 2 (we must not overwrite a 2).
+
+3) Return the modified copy.
+
+Key details that match the examples:
+- Diagonals count as neighbors.
+- Edges/corners are handled by bounds checks (no wrapping).
+- Only 2s generate influence; other numbers have no effect.
+- Original 2s are preserved; all influenced neighbors are forced to 1, regardless of their prior value, except when that neighbor is a 2.

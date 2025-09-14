@@ -1,0 +1,39 @@
+Here’s how I would solve it after studying the input/output pairs:
+
+1) Spot the invariant and the trigger
+- Each input contains exactly one “special” non-zero number that is not 4 (like 2, 6, 9). Zeros are background, 4s are filler.
+- The transformation only reacts to the first such number encountered scanning row by row, left to right.
+- We must ignore 4 as a trigger, because 4 is used as a filler in the output.
+
+2) What changes happen around the special number
+- The special number does not stay in place; it appears one row below in the exact same column.
+- Above (and including) the original row of the special number, the grid is overwritten into a striped pattern of 4s on every other column.
+
+3) Precisely define the stripe pattern
+- The stripes are “column parity–aligned” with the special number’s column:
+  - If the special number is in an even-indexed column, then columns 0, 2, 4, … become 4s.
+  - If it is in an odd-indexed column, then columns 1, 3, 5, … become 4s.
+- This filling happens for every row from the top (row 0) down through the row where the special number was found (inclusive).
+- This overwrite can replace the original special number itself with a 4 in that row (as seen in the examples).
+
+4) What remains unchanged
+- Rows strictly below the special number’s original row remain unchanged, except for the single placement of the special number one row down in its column.
+- All other cells stay as they were (mostly zeros in the examples).
+
+5) Algorithm from the above rules
+- Iterate the grid row-major (row by row, left to right) to find the first cell whose value is non-zero and not equal to 4. Record its row r, column c, and value v.
+- Place v into the cell directly below: at (r+1, c). (The examples guarantee there is a row below.)
+- For every row i from 0 to r inclusive:
+  - Overwrite all columns whose index has the same parity as c (i.e., j % 2 == c % 2) with 4.
+- Return immediately after doing this single transformation (only the first qualifying number is handled).
+
+6) Why this matches the given examples
+- Example 1: special value 2 at (0,1). Put 2 at (1,1). Fill rows 0..0 on columns 1,3,… with 4 → first row becomes 0 4 0; second row has 2 in the same column.
+- Example 2: special value 6 at (2,2). Put 6 at (3,2). Fill rows 0..2 on even columns 0,2,4 with 4 → top 3 rows become [4,0,4,0,4]. Row 3 gets the 6 at column 2.
+- Example 3: special value 9 at (4,2). Put 9 at (5,2). Fill rows 0..4 on even columns with 4 → top 5 rows become the alternating 4s pattern. Row 5 gets the 9 at column 2.
+
+7) Implementation notes I’d follow
+- The scan stops at the first match to avoid multiple transformations.
+- Exclude zeros and 4s when searching.
+- To fill stripes efficiently, for each row 0..r, set every other column starting at c (step 2) to 4.
+- Mutate the grid in place and return it.

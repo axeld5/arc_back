@@ -1,0 +1,54 @@
+Here’s how I would solve it from the I/O pairs:
+
+- What the task is doing
+  - The grid is 13x13 with 0 as background. Some small multi-cell clusters contain a “marker” color (2 = red, 3 = green) sitting inside a tiny motif made of some other color(s) like 1, 4, or 8. Elsewhere in the same grid, there are isolated single red or green cells. The output shows that those isolated markers should be “completed” into full motifs by copying the shape of a learned example.
+  - Green-marked motifs are copied as-is (same orientation). Red-marked motifs are mirrored horizontally when replicated at isolated red cells.
+  - The fill color used to complete the motif is the dominant (most frequent) non-marker color within the example motif.
+
+- How to learn the motif(s) from the input
+  - Treat any non-black (non-zero) pixels as candidate parts of shapes. Use 8-connectivity (neighbors in all 8 directions) to find connected components.
+  - For each component:
+    - If it is a single cell:
+      - If it’s red (2) or green (3), record it as an “isolated marker” we’ll need to fill later. Otherwise ignore.
+    - If it has more than one cell:
+      - Only consider components whose bounding box fits within 3x3 (i.e., max_row - min_row ≤ 2 and max_col - min_col ≤ 2). Outputs show motifs are very small; larger blobs are irrelevant to this task.
+      - Check if the component contains a red or a green cell. If not, ignore it.
+      - Determine the “marker color” of the component: red if there is any red; otherwise green if there is any green.
+      - Among the cells in this component that are not red/green (i.e., the motif’s body/fill), compute the most common value. That becomes the fill color we will use when replicating this motif.
+      - Record the motif pattern as a set of relative positions inside its 3x3 bounding box, and also record the relative position of the marker cell inside that bounding box. This gives us:
+        - The shape: which offsets are part of the motif.
+        - The anchor: where the marker sits within the shape.
+        - The fill color: the dominant non-marker value.
+      - Keep one learned motif per marker color (red and green). If multiple examples exist, any one suffices for these cases.
+
+- How to apply motifs to isolated markers
+  - For each isolated green cell:
+    - Align the learned green motif so that the marker position inside the motif coincides with the location of the isolated green cell.
+    - For each relative position in the motif shape, compute the absolute target cell.
+    - Write the marker color (3) at the marker’s own position; write the fill color at all the other motif positions.
+    - Stay within grid bounds; ignore positions that fall outside.
+  - For each isolated red cell:
+    - Do the same as above, but first horizontally flip the motif within its 3x3 frame before placing it. That is, mirror the column indices around the center of a 3-wide window so that the motif is reflected left-right.
+    - Again, write the marker color (2) at the anchor position and the fill color elsewhere within the shape; clip to bounds.
+
+- Important details that match the examples
+  - Use 8-connectivity to gather components; motifs often touch diagonally.
+  - Only motifs that include a marker (2 or 3) are learned; clusters with no marker are ignored.
+  - Isolated single non-marker cells are irrelevant.
+  - The fill color comes from the majority of the other values present in the learned component (e.g., 1s, 4s, 8s).
+  - Green patterns are copied in the same orientation; red patterns are horizontally mirrored.
+  - The small-size filter (3x3) ensures we capture tight motifs and ignore larger structures.
+  - When applying a motif, the anchor (marker) position is respected: the isolated marker remains the marker color; surrounding cells are filled with the learned fill color, producing the completed motif at that location.
+
+- Execution outline
+  - Scan the grid, BFS/queue each unvisited non-black cell to form components.
+  - Classify components into isolated markers vs. candidate motifs.
+  - For candidate motifs, compute bounding box, learn shape, anchor offset, and fill color; store per marker color.
+  - Collect positions of isolated markers per color.
+  - For each isolated marker, place the learned motif at that position (mirroring for red), writing into a copy of the grid.
+  - Return the modified grid.
+
+This reproduces the observed transformations:
+- In the first and second tasks, the single red/green cells are expanded into the same small shapes seen elsewhere; red versions are mirrored horizontally.
+- In the third task, the presence of 3 with 8s yields a green motif with fill 8, and a 2 with 4 yields a red motif with fill 4; isolated instances are completed accordingly, with red mirrored.
+- In the fourth task, multiple motifs (with 4s, 1s, etc.) are learned and then stamped around isolated reds/greens in the specified way.

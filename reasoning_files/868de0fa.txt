@@ -1,0 +1,53 @@
+Here’s how I would solve it from the I/O pairs:
+
+1) What’s changing?
+- Only some connected regions get recolored, not all.
+- The recolored regions are always perfect filled squares (no holes), sometimes of 1s, sometimes of 0s.
+- The color used depends on the side length parity:
+  - Odd-sized squares become 7.
+  - Even-sized squares become 2.
+- Examples:
+  - A 1x1 isolated cell (a square) turns into 7.
+  - A 2x2 block turns into 2.
+  - A 3x3 block turns into 7.
+- Non-square regions or squares that aren’t fully filled (i.e., have holes) stay unchanged.
+
+2) How to detect those regions robustly?
+- Treat the grid as a collection of connected components under 4-neighborhood connectivity (up, down, left, right).
+- For each unvisited cell, run a flood fill (BFS/DFS) that gathers all cells in the same component of the same value.
+- While collecting the component, record all member coordinates.
+
+3) How to decide whether a component is a “solid square”?
+- Compute the component’s bounding box:
+  - min_row, max_row, min_col, max_col
+  - row_span = max_row - min_row + 1
+  - col_span = max_col - min_col + 1
+- The component is a solid square iff:
+  - row_span == col_span (square bounding box), and
+  - row_span * col_span == number_of_cells_in_component (completely filled; no holes or missing cells inside the bounding box).
+- If that test fails, leave the component unchanged.
+
+4) How to recolor?
+- If it’s a solid square:
+  - If side length is even, recolor to 2.
+  - If side length is odd, recolor to 7.
+- Otherwise, do nothing.
+
+5) Implementation details I’d use:
+- Iterate all cells in row-major order.
+- Maintain a visited matrix to avoid reprocessing cells or double-counting components.
+- For each unvisited cell, run a BFS that:
+  - Starts from (r, c), remembers the original value v = grid[r][c],
+  - Adds neighboring cells with the same value v,
+  - Collects all (row, col) pairs in a list.
+- After BFS ends, compute the bounding box and test the “solid square” condition.
+- If it passes, iterate the collected list and set each cell to 2 or 7 depending on parity.
+- Proceed until all cells are visited.
+
+6) Notes aligning with the examples:
+- This applies to both foreground and background: square islands of 0s or 1s get recolored.
+- 1x1 components (isolated pixels) are odd squares and become 7.
+- Large background oceans of 0s fail the solid-square test (the area isn’t equal to bounding box area), so they remain unchanged.
+- The use of 4-connectivity (not diagonal) matches the shapes in the I/O.
+
+That’s the full reasoning: identify 4-connected components, test whether each is a perfectly filled square via its bounding box area, then recolor squares by parity (odd → 7, even → 2), and leave the rest as-is.

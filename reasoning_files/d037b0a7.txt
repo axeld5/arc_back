@@ -1,0 +1,27 @@
+Here’s how I’d solve it from the examples:
+
+- Look at each column independently.
+- In a given column, scan from the top row downward to find the first non-zero entry. If the entire column is zeros, do nothing to that column.
+- Once you find the first non-zero value at row r, fill every cell from that row r down to the bottom of the grid in that same column with that value. Leave any cells above r unchanged.
+
+Why this matches the examples:
+- Example 1:
+  - Col 0: first non-zero is 3 at row 2 → fill rows 2..2 with 3 (no visible change above).
+  - Col 1: first non-zero is 4 at row 1 → fill rows 1..2 with 4 → middle becomes 4, bottom becomes 4.
+  - Col 2: first non-zero is 6 at row 0 → fill rows 0..2 with 6 → entire column becomes 6.
+- Example 2:
+  - Col 0: first non-zero is 7 at row 1 → fill rows 1..2 with 7.
+  - Col 1: first non-zero is 2 at row 0 → fill rows 0..2 with 2.
+  - Col 2: first non-zero is 8 at row 1 → fill rows 1..2 with 8.
+- Example 3:
+  - Col 0: first non-zero is 4 at row 0 → fill rows 0..2 with 4.
+  - Col 1: first non-zero is 2 at row 1 → fill rows 1..2 with 2.
+  - Col 2: all zeros → leave unchanged.
+
+Algorithm steps:
+1. For each column index (0 to 2), initialize a marker as “not found.”
+2. Scan rows from 0 to 2; when you see the first non-zero, record its value v and the row r, then stop scanning.
+3. If a value was found, overwrite that column’s cells from row r through the last row with v.
+4. Return the modified grid.
+
+Optionally, keep the iteration order flexible by accepting an iterator for traversing indices (defaulting to standard top-to-bottom order), so the same logic can be reused if a different scan direction is desired.

@@ -1,0 +1,31 @@
+Here’s how I’d reason it out from the examples:
+
+- What changes: Only some 5s become 2s. Zeros and border 5s stay the same.
+- Where it changes: The 5s that turn into 2s are exactly the “interior” cells of a solid region of 5s. In a block of 5s, any cell that is not on the edge becomes 2. Another way to say it: a cell becomes 2 if it is 5 and its four orthogonal neighbors (up, down, left, right) are also 5.
+- What it does not consider: Diagonals are irrelevant. Edges of the grid can’t be interior because they’re missing neighbors.
+
+Algorithm:
+1. For each cell (row, col) in the 10x10 grid:
+   - If the current cell is not 5, keep it unchanged.
+   - If it is 5, check its four orthogonal neighbors:
+     - First ensure all four neighbors exist (so we don’t go out of bounds).
+     - Then ensure all four neighbors are also 5.
+   - If both checks pass, mark this cell as 2; otherwise keep it as is.
+2. Build a new grid from these decisions so that checks are always done against the original values (no in-place mutation that could affect later checks).
+
+Key helper idea:
+- A small validator that returns true if and only if:
+  - grid[row][col] is 5, and
+  - all four orthogonal neighbors exist within bounds and equal 5.
+
+Why this matches the examples:
+- In the 5x5 block, the inner 3x3 cells have all four neighbors as 5, so they become 2; the outer ring remains 5.
+- In the 4x3 rectangle on the right, only the cells that have up/down/left/right as 5 (the interior core) become 2.
+- Zeros and any 5s on edges or thin regions stay unchanged.
+
+Complexity:
+- Constant grid size (10x10), so O(1) overall; conceptually O(N*M) with O(1) work per cell.
+
+This reasoning leads directly to:
+- A neighbor-check function for “is this 5-cell strictly inside a 5-region?”, and
+- A pass over the grid producing a new grid with 2s at those interior positions and original values elsewhere.

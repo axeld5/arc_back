@@ -1,0 +1,34 @@
+Here’s how I would solve it from the I/O patterns.
+
+1) Identify the “pivot” row
+- Scan the grid row by row.
+- A row is a pivot if its first cell (column 0) is 2.
+- For each pivot row, measure how many consecutive 2s appear starting at column 0. This is the segment length L. To match the examples and keep the construction bounded, cap this count by the number of rows (not columns).
+
+2) Understand the shape to draw
+- The pivot row stays unchanged (it keeps its left-anchored block of 2s).
+- Above the pivot row, we draw a left-justified triangle of 3s that grows by one cell per row the farther up we go.
+- Below the pivot row, we draw a left-justified triangle of 1s that shrinks by one cell per row the farther down we go.
+- In other words, for any other row r:
+  - Compute k = L + (pivot_row_index − r).
+  - If r < pivot_row_index, k is larger than L (growing upwards): fill the first k cells with 3.
+  - If r > pivot_row_index, k is smaller than L (shrinking downwards): fill the first k cells with 1.
+  - If k ≤ 0, do nothing on that row.
+  - If r == pivot_row_index, do nothing (leave the 2s as-is).
+
+3) Apply it to every pivot row
+- Iterate all rows; whenever the first cell is 2, compute that row’s L and then apply the above transformation to every row relative to this pivot.
+- If there are multiple pivot rows, you repeat this process for each. Overwrites are fine; examples don’t conflict.
+
+4) Why this matches the examples
+- The output shows:
+  - A left-justified block of 2s on the pivot row equals the measured L.
+  - Rows above have 3s with lengths L + distance_above, producing the “wedge” that grows toward the top.
+  - Rows below have 1s with lengths L − distance_below until it reaches zero, producing a tapering wedge downward.
+- The largest width of the wedge is limited by the number of rows (since L is capped by that), so we never need to worry about exceeding the demonstrated grids’ widths in the examples.
+
+5) Implementation notes (implied by the I/O)
+- Measuring L: advance a pointer from column 0 while the cell is 2, but don’t advance beyond the number of rows.
+- For each other row r, compute k as above and overwrite the first k cells with 3 (if r is above) or 1 (if r is below).
+- Skip writing on the pivot row.
+- Iteration can be parameterized by an abstract “range” generator if needed (e.g., to allow normal or reversed scanning), but normal top-to-bottom is fine.

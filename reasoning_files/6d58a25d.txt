@@ -1,0 +1,53 @@
+Here’s how I’d reason my way to a solver from the given input/output pairs.
+
+1) What’s invariant and what changes
+- Each grid is 20x20, with 0 as empty and exactly two non‑zero values.
+- One of the two values forms a compact, symmetric cluster that stays exactly the same in the output.
+- The other value “fills” long vertical stripes in specific columns in the output, without altering the compact cluster.
+
+2) Identify the “trigger” shape
+- The compact cluster that remains unchanged always uses exactly 10 cells of the same value.
+- Its cells lie on 4 consecutive rows with row counts 1, 3, 4, 2.
+- The columns are symmetric around a central column c and follow a fixed offset pattern per row:
+  - Top row (r): exactly at column c.
+  - Next row (r+1): at c-1, c, c+1.
+  - Next row (r+2): at c-2, c-1, c+1, c+2. Notice the hole at c (no center).
+  - Bottom row (r+3): at c-3 and c+3 (extremes only).
+- So, scan all non‑zero values; for each value, collect all its positions. If a value appears exactly 10 times, check whether its rows are 4 consecutive integers and its per‑row column sets match the offsets above relative to some center column c. The first value that matches is the “target” (the one forming the structure). Record the top row r and the center column c.
+
+3) Decide which value is the “filler”
+- Among the non‑zero values, the one that is not the target is the filler (the one that will be extended vertically).
+
+4) Which columns get filled
+- From the recognized pattern and the actual cells present in the grid, collect the columns that truly contain target cells at the expected coordinates:
+  - Row r: column c
+  - Row r+1: columns c-1, c, c+1
+  - Row r+2: columns c-2, c-1, c+1, c+2
+  - Row r+3: columns c-3, c+3
+- For each such column, remember the minimum row index where the target appears in that column (the topmost target cell in that column within the pattern).
+
+5) When to apply the “fall/fill” effect
+- We only fill a column if there is already at least one filler cell in that column at or below the minimum target row for that column. This mirrors what the examples show: only columns “touched” by the filler below the pattern are turned into full vertical filler stripes.
+
+6) How to fill a qualifying column
+- For each qualifying column:
+  - Start from the bottom row and move upward.
+  - Write the filler value into each cell until you reach the first target cell in that column.
+  - Stop at the target cell; do not overwrite any target cells (the compact shape must remain intact).
+- This produces the vertical stripes seen in the outputs: a solid stack of the filler from the bottom up to just beneath the topmost target cell in that column. Columns that don’t meet the “has filler below” condition are left unchanged.
+
+7) Fallback
+- If no value forms the 10‑cell, 4‑row pattern, return the grid unchanged.
+
+Why this matches the examples
+- In each example, the denser cluster (7s/9s/4s) has exactly 10 cells and fits the 1‑3‑4‑2, symmetric, 4‑row consecutive pattern. That cluster stays unchanged.
+- The other number (2/8/3) becomes vertical bands under precisely those columns in which the pattern has cells and which already had that filler somewhere at or below the topmost pattern row in that column.
+- The result is the exact vertical stripes shown, stopping right at the first target cell, preserving the shape.
+
+Data structures and flow
+- Build a map from value → list of positions.
+- For each candidate value, validate the 10‑cell, 4‑row, symmetric pattern and get (target, top row r, center c).
+- Choose the other non‑zero value as filler.
+- From the recognized pattern, collect participating columns and the minimal row per column where the target appears.
+- For each such column that contains at least one filler at or below that minimal row, fill from bottom up with the filler until the first target cell is reached.
+- Return the modified grid.

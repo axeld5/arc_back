@@ -1,0 +1,30 @@
+Here’s how I would solve it, given just the I/O pairs:
+
+1) Spot the “anchor” value
+- In each example, the output keeps only one positive symbol and zeros; the positive symbol differs per example (8, then 3, then 4).
+- That symbol is the least frequent positive number in the whole grid:
+  - First grid: only positive is 8, so pick 8.
+  - Second grid: both 2 and 3 appear, 3 is rarer, so pick 3.
+  - Third grid: both 1 and 4 appear, 4 is rarer, so pick 4.
+- So the first step is: count all values, ignore non-positives, and choose the positive with the smallest frequency. That’s our target.
+
+2) Keep only relevant rows
+- In the outputs, only rows that actually contain the target value are retained; rows without it are discarded.
+- So filter the grid to rows that include the target.
+
+3) Crop columns to the horizontal span of the target
+- In the retained rows, the outputs only include a contiguous set of columns that covers all occurrences of the target across those rows.
+- Concretely: scan the retained rows, collect all column indices where the target appears, take the minimum and maximum of those indices, and crop each retained row to that inclusive range.
+
+4) Return the cropped subgrid
+- The result is the set of retained rows, each sliced from the leftmost to the rightmost target occurrence across all retained rows.
+
+Rationale checks against the examples:
+- First example: target=8, keep rows containing 8, find global leftmost/rightmost 8 positions in those rows, slice horizontally. Matches the shown output.
+- Second example: target=3 (rarer than 2), do the same, yielding only 3s and 0s in the cropped region. Matches.
+- Third example: target=4 (rarer than 1), same procedure. Matches.
+
+Notes and edge cases:
+- If there’s only one positive value, it’s selected.
+- If multiple positives exist, pick the least frequent; ties can be resolved by the default ordering of the frequency listing.
+- Rows are filtered by presence of the target; there’s no vertical bounding box beyond that filter. Horizontal cropping is from min to max target column across all kept rows.

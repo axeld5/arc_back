@@ -1,0 +1,14 @@
+Here’s how I’d solve it from the IO pairs:
+
+- The grid is 10x10. Scan it row by row, left to right, to find the first “seed” cell whose value is non-zero and not a multiple of 5. Record its value, row index, and column index, then stop scanning; we only act on the first such seed.
+
+- From that seed’s column to the right, fill every other column (i.e., columns with the same parity as the seed column) with the seed value. For each of those columns, overwrite all cells from the top row down to and including the seed’s row. In the shown tasks the seed is on the last row, so this produces full vertical stripes of the seed value across the whole grid at those columns. Columns to the left of the seed remain unchanged.
+
+- For the alternating columns (the ones with opposite parity to the seed column), starting at the column immediately to the right of the seed, place 5s only on the border rows, alternating top and bottom as you move right. Start by placing a 5 in the top row for the first such column, then flip to the bottom row for the next, then top again, and so on. No other cells in those columns are changed.
+
+- Once this is done for the first found seed, return the grid.
+
+This exactly reproduces:
+- vertical stripes of the seed value on every other column starting at the seed column,
+- 5s on the intervening columns, alternating between the top and bottom rows,
+- no changes to columns to the left of the seed or to any non-border cells in the “5” columns.

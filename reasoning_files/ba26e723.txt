@@ -1,0 +1,13 @@
+Here’s how I would solve it:
+
+- Treat each input as a matrix: rows are given lines, columns are the space-separated entries.
+- Compare input vs output column by column. The only changes are that some 4s become 6s; 0s remain 0, and 6 only appears where a 4 used to be.
+- Identify which columns change: in every example, the changed columns are exactly those with index multiple of 3 (0-based): 0, 3, 6, 9, 12, …
+- Within those columns, every 4 is turned into 6 across all rows. Columns not at these positions remain unchanged.
+- Therefore, the rule is: for each column whose index is 0 mod 3, replace all occurrences of 4 in that column with 6.
+- Implementation plan:
+  - Iterate column indices starting at 0 with step 3.
+  - For each such column, scan each row; if the cell equals 4, set it to 6.
+  - Return the modified matrix.
+
+This matches all given input/output pairs and is minimal: only specific columns are touched, and only the value 4 is replaced with 6.

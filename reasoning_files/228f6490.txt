@@ -1,0 +1,39 @@
+Here’s how I would solve it from just looking at the input/output pairs:
+
+- Interpret color 5 as “frame/box gray” and 0 as “background/black.” The pictures contain one or more rectangular gray frames. Inside each frame there is a silhouette drawn in black (0) that we’re supposed to fill with the color of some sprite that exists elsewhere in the image.
+
+- Step 1: Find all gray frames.
+  - Flood-fill each 4-connected component of color 5.
+  - For each such component, take its axis-aligned bounding rectangle.
+  - Define the “interior” of the frame as all cells strictly inside that bounding rectangle (exclude the border). This heuristically captures hollow frames even if the 5-border isn’t perfectly solid.
+  - Record, for each frame, the set of interior coordinates.
+
+- Step 2: Extract the silhouettes inside frames.
+  - For each frame’s interior, collect the cells that are black (value 0). That set of cells is the silhouette we want to fill for that frame.
+  - Keep only non-empty silhouettes.
+
+- Step 3: Identify candidate sprites outside any frame area.
+  - Build the set of all cells covered by any frame’s bounding rectangle (both border and interior). We’ll later avoid touching anything inside these rectangles.
+  - Scan the whole grid and collect 4-connected components whose color is neither 5 nor 0, and whose cells are entirely outside all frame rectangles.
+  - Each such component is a “sprite candidate,” with a color and a set of cells. Record its size (number of cells).
+
+- Step 4: Filter to sprites that uniquely determine a color.
+  - Count how many times each non-gray, non-black color appears anywhere in the input.
+  - Keep only those sprite components whose size equals the total count of that color. This ensures the color occurs exactly in that one component (no duplicates of the same color elsewhere), which makes matching by size unambiguous.
+
+- Step 5: Match silhouettes to sprites by area and move them.
+  - For each silhouette (the black cells inside a frame), compute its size.
+  - If there is at least one sprite with the exact same size, pick one and:
+    - Paint all silhouette cells with the sprite’s color (thus “placing” the sprite into the frame).
+    - Erase the original sprite by setting all its cells to background 0.
+  - Leave everything else unchanged.
+
+- Implementation details that matter:
+  - Use 4-connectivity for all components.
+  - Treat “inside any frame” as the entire bounding rectangle (not just the gray pixels) so we don’t mistakenly grab any interior content as sprites.
+  - The order of matching doesn’t matter if sizes are unique; any consistent choice (e.g., LIFO) works.
+
+This explains why in the examples:
+- The black silhouettes inside the gray frames are replaced by the colors and shapes of equally-sized external sprites.
+- The original sprite locations get zeroed out.
+- All other pixels (including the gray frames and other non-involved pixels) remain unchanged.

@@ -1,0 +1,39 @@
+Here’s how I’d reverse-engineer a solution from the examples and arrive at the approach that matches the given behavior:
+
+- Observations from the I/O pairs:
+  - The grid contains exactly one 3 (the mover) and one 4 (the target); all other cells are 0.
+  - The 4 never moves.
+  - The 3 moves at most one step closer to the 4 along the row axis and at most one step closer along the column axis, potentially moving diagonally.
+  - Crucially, the 3 only moves along an axis if it is at least two cells away from the 4 along that axis. If the 3 is already at the same index or adjacent (distance 0 or 1) on that axis, it does not move along that axis.
+    - Example: if 3 is at column 0 and 4 at column 2, 3 moves to column 1.
+    - If 3 is at column 1 and 4 at column 2, 3 stays at column 1.
+  - After moving, the old position of 3 becomes 0, and the new position is set to 3.
+
+- High-level algorithm:
+  1. Find the positions (row, col) of the 3 and the 4 in the grid.
+     - Since searching a 2D array row by row is a bit clunky, flattening the grid to a single list and using a direct index lookup is simpler. Once we have the linear indices of 3 and 4, we can convert them back to (row, col) using the number of columns.
+  2. For each axis (row and column) independently, compute the 3’s next coordinate relative to the 4’s coordinate:
+     - If the current index is less than (target index − 1), increment by 1 (move down/right).
+     - If the current index is greater than (target index + 1), decrement by 1 (move up/left).
+     - Otherwise, keep it unchanged (already aligned or adjacent).
+     - This rule encodes the “only move if distance ≥ 2” behavior seen in the examples.
+  3. Update the grid:
+     - Set the old cell of the 3 to 0.
+     - Set the computed new cell to 3.
+     - Leave the 4 where it is.
+
+- Practical details to implement this cleanly:
+  - Determine the number of columns from the first row.
+  - Flatten the grid into a single list to quickly locate the linear indices of 3 and 4.
+  - Convert a linear index to (row, col) using division and modulus by the number of columns.
+  - Use a small helper that, given a current index and a target index for one axis, applies the “move if distance ≥ 2 by one step toward the target; else stay” rule.
+  - Apply that helper to both the row and the column of the 3 relative to the 4.
+  - Write the updated 3 position back into the grid after clearing the old position.
+
+- Why this matches all examples:
+  - When 3 and 4 are far apart on both axes, 3 moves one step diagonally closer (both row and column adjust by ±1).
+  - When aligned on one axis but two or more apart on the other, 3 moves exactly one step along that axis, leaving the aligned axis unchanged.
+  - When already adjacent along an axis, 3 does not move along that axis, preventing it from stepping into the 4’s cell.
+  - The 4 remains untouched in every case.
+
+This reasoning leads directly to a compact solution that flattens the grid to find positions, computes new coordinates using the “distance ≥ 2” rule per axis, and then updates the grid accordingly.

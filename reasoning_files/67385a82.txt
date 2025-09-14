@@ -1,0 +1,37 @@
+Here’s how I would solve it, based purely on the given input/output pairs:
+
+1) What changes and what doesn’t
+- Zeros never change.
+- Only cells with value 3 are candidates to change.
+- Some 3s turn into 8s; others remain 3.
+
+2) When does a 3 become an 8?
+- A 3 becomes an 8 if it has at least one neighboring 3 directly above, below, left, or right.
+- Diagonals don’t count. For example, a 3 that is only diagonally adjacent to another 3 stays 3, as seen in the samples.
+- Isolated 3s (no orthogonal 3 neighbors) remain 3.
+
+3) Important detail: check neighbors from the original grid
+- The decision for each cell must be based on the original values, not on any changes made during the pass. Otherwise, a 3 could incorrectly flip to 8 because a neighbor just changed to 8.
+- Therefore, make a copy of the grid to write results into, while reading neighbors from the original grid.
+
+4) Algorithm outline
+- Determine the number of rows and columns.
+- Create a separate result grid initialized as a copy of the original grid.
+- For each cell:
+  - If it’s not 3, skip it.
+  - If it is 3, check up to four orthogonal neighbors (up, down, left, right), taking care to stay within bounds.
+  - If any such neighbor in the original grid is 3, set this cell to 8 in the result grid; otherwise leave it as 3.
+- Return the result grid.
+
+5) Structure the solution with small helpers
+- A helper to clone the grid (row-by-row shallow copy) so writes don’t affect reads.
+- A helper to test whether a neighbor coordinate is in bounds.
+- A helper that, given a (row, col) of a 3, scans its four orthogonal directions; if any neighbor is 3, mark this cell as 8 in the result grid.
+- A main function that iterates all cells, calls the helper for each 3, and returns the final grid.
+
+This logic exactly matches the transformations shown:
+- Any 3 that is part of a horizontal or vertical cluster gets turned into 8.
+- Any 3 that is alone (no orthogonal 3 neighbors) stays 3.
+- Zeros remain zeros.
+- Diagonal-only adjacency does not trigger a change.
+- The decision is consistent across the grid because it’s based on the original state, not on intermediate updates.

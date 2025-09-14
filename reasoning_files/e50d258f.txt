@@ -1,0 +1,45 @@
+Here’s how I would solve it, given only the I/O pairs and the goal of reproducing those outputs:
+
+- First, notice what the outputs look like relative to the inputs:
+  - They are axis-aligned rectangular cutouts from the original 10x10 grid.
+  - They contain only non-zero values (0s form the background).
+  - In the first example there are clearly two disjoint non-zero rectangles; the output picks the right-hand one because it contains more 2s than the left one. That strongly suggests the selection criterion is “choose the non-zero rectangle with the most 2s.”
+
+- So the task reduces to:
+  - Partition the grid into disjoint maximal rectangles of non-zero cells (0 splits areas).
+  - For each such rectangle, count how many cells equal 2.
+  - Return the rectangle with the highest count of 2s. If there’s a tie, just keep the first found in scan order.
+
+- How to find those rectangles reliably:
+  - Scan the grid row by row, column by column.
+  - A cell is the top-left corner of a non-zero rectangle if:
+    - The cell itself is non-zero, and
+    - The cell above is either out of bounds or zero, and
+    - The cell to the left is either out of bounds or zero.
+  - Once a top-left corner is found:
+    - Determine the rectangle’s width by moving right from that cell until you hit a zero or the grid boundary.
+    - Determine the rectangle’s height by moving down from that cell until you hit a zero or the grid boundary.
+    - This works because in the examples the non-zero blocks are solid (no holes) and bounded by zeros, so the maximal rectangle is defined by continuous non-zero cells along the first row and first column from the corner.
+
+- Extract and score:
+  - Slice out that submatrix using the computed height and width.
+  - Count 2s by summing, for each row, how many entries equal 2.
+  - Track the best rectangle seen so far by comparing this count to the current maximum.
+  - Update the best rectangle when you see a strictly larger count of 2s. This naturally gives a stable tie-breaker: earlier rectangles in scan order win ties.
+
+- Practical notes mirrored in the examples and solution:
+  - Treat any non-zero value as part of a rectangle (1, 2, 8 all count as “filled”; only 0 is background).
+  - Use simple slicing to extract the subrectangle once you know start_row, start_col, height, and width.
+  - Default grid size is 10, but the approach works generically.
+  - Complexity is fine for 10x10: scanning all cells and, for each top-left, linear probes to compute width/height, then counting 2s within that rectangle.
+
+- Why this matches the given I/O:
+  - Example 1 has two candidate rectangles; the right rectangle contains three 2s while the left has one, so the right rectangle is chosen (exactly the output shown).
+  - Example 2’s output is the 3x3 non-zero rectangle with the highest concentration of 2s among the candidates.
+  - Example 3’s output is the large 6x4 non-zero block in the top-left; it has the most 2s compared to other blocks.
+
+This reasoning leads directly to a solution that:
+- Iterates the grid to detect top-left corners of non-zero rectangles.
+- Expands right and down to get maximal rectangle dimensions.
+- Extracts the submatrix and counts 2s.
+- Keeps the rectangle with the maximum number of 2s and returns it.

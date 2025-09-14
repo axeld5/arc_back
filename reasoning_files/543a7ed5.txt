@@ -1,0 +1,42 @@
+Here’s how I’d solve it from the I/O pairs:
+
+1) Infer the rules from the examples
+- 6 marks “objects.” Multiple separate clusters of 6s can exist.
+- For each cluster of 6s, draw a one-cell-thick frame of 3s around the axis-aligned bounding rectangle of that cluster.
+- Also, within that bounding rectangle, any cell that is not part of the 6-cluster becomes 4 (i.e., “hollow” interior).
+- Existing 6s remain 6; background 8s remain unless turned into 3s or 4s.
+- Frames should respect grid bounds (no out-of-bounds writes).
+- When multiple clusters exist, frames/hollows from different clusters can touch; use de-duplication to avoid double-writing. If a position is both marked as frame and hollow due to overlap logic, hollow should win (examples don’t create that, but it’s a safe rule).
+
+2) Identify connected clusters of 6s
+- Scan the grid; whenever you find a 6 you haven’t processed, run a flood fill (BFS or DFS) with 4-directional adjacency (up, down, left, right) to collect all coordinates in that cluster.
+- Track visited positions so each 6 is assigned to exactly one cluster.
+
+3) For each cluster, compute geometric data
+- From the collected coordinates, compute min_row, max_row, min_col, max_col: the bounding rectangle of that cluster.
+
+4) Mark hollow interior (4s)
+- Iterate all cells inside the bounding rectangle (inclusive).
+- If a cell is not in the cluster (i.e., not a 6 of this cluster), add it to a “hollow” set.
+
+5) Mark surrounding frame (3s)
+- Compute the one-cell-thick border just outside the rectangle:
+  - Horizontal edges: the row just above min_row and the row just below max_row, across columns from min_col−1 to max_col+1.
+  - Vertical edges: the column just left of min_col and the column just right of max_col, across rows from min_row−1 to max_row+1.
+- For every such candidate coordinate, check it’s within grid bounds before adding it to a “frame” set.
+
+6) Apply all marks to produce the output grid
+- Start from a copy of the original grid.
+- Set all positions in the frame set to 3.
+- Then set all positions in the hollow set to 4 (so interior 4s overwrite any 3s if there’s accidental overlap).
+- 6s remain 6 because neither the hollow nor the frame sets include cluster positions.
+
+7) Complexity and robustness
+- Each cell is visited O(1) times overall: flood fill plus constant work per cluster, so total O(R×C).
+- Using sets for frame and hollow positions naturally handles overlaps across multiple clusters without duplication.
+- Bounds checks prevent writing outside the grid.
+
+This exactly reproduces the behaviors in the given examples:
+- Each connected 6 block gets a tight rectangular frame of 3s around it.
+- The interior of that rectangle that isn’t occupied by 6 is filled with 4s.
+- Background elsewhere stays 8.

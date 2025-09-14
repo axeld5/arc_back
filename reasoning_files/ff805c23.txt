@@ -1,0 +1,19 @@
+Here’s how I’d solve it from the IO pairs.
+
+Observations
+- In every input, the only color that never appears in the output is 1. The 1s form a single tight rectangle (in these examples it’s 5x5), and the output’s size always matches that rectangle exactly.
+- The output is not a transformation of the 1s themselves. Instead, it’s a crop taken from somewhere else in the big grid (it contains other colors like 3, 6, or 5, and zeros), but with the same dimensions as the 1-rectangle.
+- Looking at where that crop seems to come from, it aligns with “mirroring” the 1-rectangle across the grid: if you reflect the entire grid horizontally or vertically, and then take the same row/column index range as the 1-rectangle used in the original grid, you get exactly the 5x5 pattern seen in the outputs.
+- Among the two reflections (left-right flip vs top-bottom flip), only one of the candidate crops is “clean” (i.e., it doesn’t contain any 1s). The output consistently chooses a reflected crop that avoids 1s.
+
+Rule
+- Find the bounding box of all cells with value 1. That defines the subgrid window we care about.
+- Create two candidates by reflecting the whole grid:
+  - Horizontal reflection (reverse each row), then crop the same bounding-box coordinates.
+  - Vertical reflection (reverse the order of rows), then crop the same bounding-box coordinates.
+- Prefer the candidate that contains no 1s. If the horizontal-reflection crop still contains a 1, use the vertical-reflection crop; otherwise use the horizontal one.
+
+Why this matches the examples
+- The 1s mark a window we must not include in the output; the task is to fetch the “corresponding” window elsewhere in the grid that preserves global structure (hence reflect across an axis of the whole grid, not around the box).
+- Using the same index ranges after flipping the whole grid is a simple way to get the mirrored position.
+- The “choose the candidate without 1s” resolves which axis to reflect across, and it matches all given outputs.

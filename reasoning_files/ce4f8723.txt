@@ -1,0 +1,19 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- Treat the input as a 9×4 grid. The first 4 rows are one 4×4 block of 0/1 values. Row 5 is always all 4s and never affects the output. The last 4 rows are another 4×4 block of 0/2 values.
+- The output is a 4×4 grid where each cell is either 3 or 0. That suggests we’re producing a boolean mask and then mapping true → 3 and false → 0.
+- By inspecting the examples:
+  - If a cell in the top 4×4 block is non-zero (i.e., 1), the corresponding output cell is 3 regardless of anything else.
+  - Even when the top cell is 0, the output is still 3 whenever the corresponding cell in the lower 4×4 block (the one after the all-4s separator) is non-zero (i.e., 2).
+  - The row of 4s in the middle is just a separator and should be ignored.
+- So for each cell (r, c) in the output (r, c in 0..3):
+  - Look at the top cell at (r, c).
+  - Also look at the cell five rows below it at (r+5, c) in the bottom block.
+  - If either of those two cells is non-zero, put 3 in the output; otherwise put 0.
+- Structurally, I’d implement it as:
+  - A small helper that returns true if grid[r][c] is non-zero or grid[r+5][c] is non-zero.
+  - A row function that maps a given r over c=0..3 and turns that boolean into 3 or 0.
+  - Apply that over r=0..3 to build the 4×4 result.
+
+This rule exactly reproduces all provided outputs:
+output[r][c] = 3 if (top[r][c] != 0) or (bottom[r][c] != 0), where bottom[r][c] is taken from input row r+5 (ignoring the all-4s separator row).

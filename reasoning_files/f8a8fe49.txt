@@ -1,0 +1,34 @@
+Here’s how I’d reason from the examples to a solution:
+
+1) High-level pattern
+- The 2s form two dominant, parallel “rails” (either two rows or two columns).
+- Every 5 behaves like a ball that bounces across the nearest rail to the symmetric location on the other side, staying in the same column (if rails are horizontal) or same row (if rails are vertical).
+- If the symmetric landing spot isn’t empty (occupied by 2 or 5), the ball keeps moving outward in the reflected direction until it finds the first empty cell.
+- Everything else remains unchanged.
+- If the “rails” are vertical instead of horizontal, it’s the exact same logic but along columns; you can handle that by transposing, applying the horizontal logic, then transposing back.
+
+2) Determine orientation (horizontal vs vertical)
+- Count how many 2s appear in each row and each column.
+- If the maximum count in rows is at least the maximum count in columns, treat the rails as horizontal; otherwise treat them as vertical. In the vertical case, transpose the grid, run the horizontal logic, and transpose the result back.
+
+3) Find the two rails
+- In the chosen orientation (post-transpose if needed), count 2s per row.
+- Pick the two rows with the largest number of 2s. Sort their indices so you have the top rail index and the bottom rail index.
+
+4) Reflect each 5 across the nearest rail
+- Scan every cell in the working orientation.
+- For each 5 at (r, c), compute which rail is closer by vertical distance: choose the closest of the two rail rows.
+- Compute the reflected row across that chosen rail: r_reflected = 2*rail - r. This is a precise mirror across that rail.
+- If the reflected position (r_reflected, c) is out of bounds, skip placing; otherwise, if that cell is occupied (nonzero), keep stepping further away from the rail in the reflected direction (increment row index if r_reflected is below the rail, decrement if above) until you either find an empty cell or run off the grid.
+- When you find an empty cell, place a 5 there.
+- Clear the original 5’s position so the ball actually moves.
+
+5) Finish up
+- If you transposed for vertical handling, transpose back to restore original orientation.
+- Return the modified grid.
+
+Why this fits the examples:
+- In the first and third examples, the two densest lines of 2s are horizontal. The 5s are mirrored vertically across the nearer rail (row) into symmetric rows; where a landing spot is blocked, the 5 slides further outward.
+- In the second example, the densest structure is vertical (two columns of 2s). Transposing turns this into the same horizontal-rails problem; reflecting across the nearest rail produces left/right mirroring in the original orientation. Blocks cause further outward sliding until an empty cell is found.
+
+This approach matches all shown I/O: detect dominant rails, reflect each 5 across the nearest rail, resolve collisions by scanning outward, and handle vertical cases via transpose.

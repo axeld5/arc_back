@@ -1,0 +1,30 @@
+Here’s how I would solve it from the given I/O patterns:
+
+- Identify the “anchor” cells: all positions that contain the value 2. These anchors will determine the directions along which we’ll propagate a pattern.
+
+- Decide which color to paint with. From the examples, the painted color is the rare colored cluster near the 2s (not counting 2s themselves). To formalize this:
+  - Consider the whole grid but treat 2s as if they were 0 when counting frequencies. This prevents 2 from being picked and makes sure 0 (the background) dominates.
+  - Pick the least frequent color under that rule. That ends up being the small cluster next to the 2s (e.g., 4, 3, 6, 7 in the examples).
+
+- Build the “seed pattern” to replicate. Take the union of:
+  - all anchor positions (the 2s), and
+  - all positions that already have the chosen least-frequent color (again, interpreting 2 as 0 during the selection).
+  This seed is the small blob consisting of the 2s and the rare color around them.
+
+- Choose a reference corner for the seed: the upper-leftmost coordinate among the seed positions (minimum row, then minimum column). This acts like an origin for computing directions.
+
+- Derive propagation directions from the anchors. For each anchor (a 2 cell), compute a direction vector pointing away from that reference corner:
+  - For each coordinate, take the offset from the reference, double it, then subtract 1. That yields odd, non-zero steps in row and column. This matches the diagonal-slanted growth you see in the outputs.
+  - From each such vector, generate a ray of multiples k·vector for k = 0..8 (enough to cover a 9×9 board). Collect all these displacement vectors.
+
+- Replicate the seed along every generated displacement. For each displacement vector and each cell in the seed pattern:
+  - Translate the seed cell by the displacement.
+  - If the translated position is inside the grid, paint it with the chosen least-frequent color.
+  - This stamps the entire seed repeatedly along the rays defined by the anchors, filling in diagonals that match the observed outputs.
+
+- Produce the final grid. The background remains where nothing is stamped, and everything stamped becomes the chosen color. The value 2 itself is not preserved; it’s just used to drive directions and included in the seed shape being replicated, but all painted cells take on the chosen least-frequent color.
+
+Why this matches the examples:
+- The least-frequent color near the 2s (4, 3, 6, or 7) is selected, not 0.
+- The union of that color with the 2s defines a small seed shape around the top-leftmost point of that seed.
+- The odd-step direction vectors from each 2 create slanted/diagonal rays; stamping the seed along those rays fills out the diagonal bands of the selected color exactly like the outputs.

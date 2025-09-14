@@ -1,0 +1,13 @@
+Here’s how I would solve it:
+
+- Look for the invariant across all examples. In every input/output pair, the only change is that every 6 becomes a 2. All 7s stay 7, positions and dimensions are unchanged, and there are no other values to handle.
+- So the rule is: replace every occurrence of 6 with 2, leave everything else as-is.
+
+Algorithm:
+- For a single row, transform each element: if the element is 6, output 2; otherwise output the original element.
+- For the whole grid, apply that row-wise transformation to each row and return the transformed grid.
+
+This matches all provided examples:
+- 6 → 2
+- 7 → 7
+- No changes in layout or size.

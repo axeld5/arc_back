@@ -1,0 +1,33 @@
+Here’s how I would solve it.
+
+1) Read the pattern from the examples
+- Changes happen only within each row; nothing propagates vertically.
+- Nonzero cells never change; they act as “anchors.”
+- Zeros to the right of an anchor get filled with that anchor’s color until another nonzero cell is hit.
+- Each time you encounter a nonzero cell while scanning left-to-right, you toggle whether you’re currently “painting” or not.
+- When you toggle on, you use the value of the nonzero you just saw as the active color. When you toggle off, painting stops (active color becomes 0).
+- Zeros before the first nonzero in a row remain 0 (because painting hasn’t started).
+- If you toggle on and never hit another nonzero, you keep painting that color to the end of the row.
+- Rows are independent; the painting state does not carry over from one row to the next.
+
+2) Translate that into a per-row scan with a state machine
+- Maintain a single variable per row: active_color (0 means “off”; any nonzero is the current painting color).
+- Scan each row left-to-right:
+  - If the cell is nonzero v:
+    - If active_color is 0 (off), turn it on with color v.
+    - Else (active_color is nonzero), turn it off (set to 0).
+    - Do not overwrite the nonzero cell itself.
+  - If the cell is zero:
+    - Write the current active_color into the cell (this will be 0 if off, or the painting color if on).
+
+3) Apply row by row
+- For each row, initialize active_color to 0 (off).
+- Process the row with the above rules.
+- Move to the next row and reset active_color to 0 again.
+
+4) Why this reproduces the I/O exactly
+- In the first example, rows with two 3’s become: start painting at the first 3 (fill all zeros after it with 3), then stop painting at the second 3 (so trailing zeros remain 0).
+- In the mixed-color examples, the color that fills a span is the value of the nonzero that toggled painting on. The next nonzero simply toggles painting off; the cell itself remains unchanged because only zeros are overwritten.
+- Everywhere, vertical relationships are ignored, matching the outputs.
+
+This reasoning yields a simple implementation: a row-wise left-to-right pass with a toggle-able active color that writes into zeros and leaves nonzeros untouched, with the toggle behavior driven by encountering nonzero cells.

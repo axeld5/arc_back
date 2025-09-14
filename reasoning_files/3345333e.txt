@@ -1,0 +1,30 @@
+Here’s how I’d solve it from the given I/O pairs:
+
+- Background color is 0. First, find whether any non-background color forms a single solid, axis-aligned, filled rectangle (no holes). To do that:
+  - For each color, collect all its row indices and column indices.
+  - Compute its bounding box [rmin..rmax] × [cmin..cmax].
+  - Check that the area of the box equals the number of pixels of that color and that every cell inside the box is that color. If those checks pass, we’ve identified a filled rectangle “mask.”
+
+- If no such rectangle exists, return the grid unchanged. If it does:
+  - Remove the rectangle by setting every cell in its bounding box to background.
+  - Record which rows were part of this rectangle. We don’t want these rows to influence where the symmetry axis is computed.
+
+- Estimate a vertical symmetry axis from the remaining content:
+  - For each row not touched by the rectangle, if it contains any colored cells, take the leftmost and rightmost colored column, and compute that row’s center as (left + right) / 2.
+  - Use the median of these per-row centers as the global vertical axis. If there are no such rows (no colored content outside the rectangle), default the axis to the horizontal center of the grid.
+
+- Mirror the remaining colored pixels horizontally across that axis to “complete” the other side, but only add color where the destination cell is empty:
+  - For each colored cell at column c, its mirror column is round(2*axis − c).
+  - If the mirrored column is within bounds and currently background, copy the color there.
+  - Never overwrite existing colored cells; this is a fill to enforce symmetry, not a replacement.
+
+- Rationale with the examples:
+  - In the first example, the block of 1’s is a solid rectangle embedded among 6’s; we remove the 1-rectangle, compute the dominant vertical axis from the remaining rows, then mirror the 6’s to fill the now-empty space, yielding the shown output.
+  - In the second example, the 3’s form the removable rectangle. After clearing it, we compute the axis from the 2-structure and mirror 2’s into the cleared region, again matching the provided output.
+
+- Key details:
+  - Only the first detected filled rectangle is removed (consistent with scanning order).
+  - Rows that belonged to the rectangle are excluded from axis estimation to avoid bias from the cleared zone.
+  - Using the median of row centers makes the axis robust to outliers and partial rows.
+  - Mirroring uses rounding so half-integer axes are handled properly.
+  - Mirroring is additive: it doesn’t overwrite existing non-background cells.

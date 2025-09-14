@@ -1,0 +1,29 @@
+Here’s how I would solve it from the I/O alone:
+
+1) Spot the shape: Each input is a 3x3 matrix; each output is a 6x6 matrix. So the output looks like a 2x2 tiling of four 3x3 blocks.
+
+2) Identify the four quadrants:
+- Top-left quadrant matches the original input.
+- Top-right quadrant, when you compare row by row, matches the input rotated 90 degrees clockwise. For instance, in the first example, the first output row’s right half [0, 8, 8] is exactly the first row of the 90°-rotated version.
+- Bottom-right quadrant matches the input rotated 180 degrees.
+- Bottom-left quadrant matches the input rotated 270 degrees (or 90° counterclockwise).
+
+3) Confirm with multiple examples: Check a few rows across the provided examples to ensure that pattern holds consistently. It does: top half is [original | 90°], bottom half is [270° | 180°], with “|” meaning horizontal concatenation of rows.
+
+4) Plan the construction:
+- Write a helper that rotates a matrix 90 degrees clockwise. The standard trick: reverse the rows, then transpose (i.e., turn columns into rows). In Python terms, that’s the classic “reverse-then-zip” approach; make sure to materialize rows as lists.
+- Obtain the other rotations by applying that helper repeatedly: 180° is rotating 90° twice, and 270° is rotating 90° thrice (or once on the 180°).
+- Build the final 6x6 result row-wise:
+  - For each row index i in the original, append a row formed by concatenating original[i] with r90[i].
+  - Then, for each row index i, append a row formed by concatenating r270[i] with r180[i].
+
+5) Implementation notes:
+- The rotation helper should return a new matrix of lists (not tuples) so downstream concatenation is straightforward.
+- Concatenation is done at the row level (list concatenation), producing 6 elements per output row, and stacking those rows yields 6 rows total.
+
+This reproduces all given outputs:
+- Top-left: original
+- Top-right: 90° clockwise rotation
+- Bottom-left: 270° clockwise rotation
+- Bottom-right: 180° rotation
+assembled by concatenating corresponding rows from each pair of quadrants.

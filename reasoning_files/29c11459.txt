@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+- Look at the examples: only the rows that already contain colored values at the far left and far right get transformed. Rows that are all zeros remain unchanged.
+- In a transformed row:
+  - The left half becomes the leftmost value of the row.
+  - The right half becomes the rightmost value of the row.
+  - The exact middle cell becomes 5 (acting like a divider or “center mark”).
+- This implies:
+  - The grid has an odd number of columns so there’s a single middle column.
+  - For each row, if there’s any nonzero value, treat that row as active. Use the two edge cells as the source colors to propagate inward.
+- Algorithm per row:
+  1. Compute the center column index as the middle of the row (for odd width, that’s (width−1)//2).
+  2. If the row has any nonzero entries, then:
+     - For i from 0 up to (but not including) the center index:
+       - Set the i-th cell (from the left) to the row’s leftmost cell value.
+       - Set the symmetric cell from the right (width−1−i) to the row’s rightmost cell value.
+     - After filling both sides, set the middle cell to 5.
+  3. If the row has no nonzero entries, leave it as is.
+- This exactly reproduces:
+  - Left side filled with the left edge color.
+  - Right side filled with the right edge color.
+  - Middle column set to 5.
+  - All-zero rows untouched.
+
+Assumptions and notes:
+- The number of columns is odd (as in the examples), ensuring a single center.
+- The meaningful information for each active row is entirely in its first and last entries; everything in between is overwritten.
+- If an edge is zero, the corresponding side will be filled with zeros (consistent with the operation definition).

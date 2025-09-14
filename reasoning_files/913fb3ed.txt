@@ -1,0 +1,26 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- Pattern discovery:
+  - Only three nonzero seed values appear: 8, 3, and 2.
+  - Around each such seed, the output paints a 3x3 neighborhood centered on the seed, but leaves the center cell unchanged.
+  - The painted color depends on the seed:
+    - 8 paints 4s around it.
+    - 3 paints 6s around it.
+    - 2 paints 1s around it.
+  - The neighborhood is 8-connected (includes diagonals).
+  - The painting respects grid boundaries (no wrapping).
+  - The original seed cells remain as they were in the input.
+  - When multiple seeds exist, the final picture is the superposition of all their painted neighborhoods. Overlaps would be resolved by the order you apply them; the examples don’t force a special rule, so a simple left-to-right, top-to-bottom pass is fine.
+
+- Algorithm:
+  - Build a mapping from seed value to painted value: 8→4, 3→6, 2→1.
+  - Work on a copy of the input grid so seeds don’t get “contaminated” by changes you make (no cascading from newly written values).
+  - Iterate all cells. For each nonzero cell (a seed), iterate its 8 neighbors using relative offsets in {-1, 0, 1}×{-1, 0, 1} excluding the (0,0) center.
+  - For each neighbor within bounds, write the mapped color into the output grid at that neighbor position.
+  - Do not change the center cell (the seed itself).
+  - Return the modified copy as the result.
+
+- Notes:
+  - This exactly reproduces the rings around 8/3/2 seen in the outputs.
+  - Edge seeds correctly produce partial rings due to bounds checks.
+  - If two rings overlap, later writes overwrite earlier ones, which is acceptable given the examples.

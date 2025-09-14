@@ -1,0 +1,34 @@
+Here’s how I would solve it from the IO pairs.
+
+1) Spot the governing pattern
+- In each input there is exactly one color that appears only once (a “singleton” pixel): 1 in the first example, 3 in the second, 2 in the third.
+- The output keeps the original grid intact, but “projects” that singleton’s color along straight lines if certain adjacent cells around the singleton are empty.
+- The projection rule: look at the four cardinal neighbors of the singleton (right, down, left, up). For any direction where the immediate neighbor is either outside the grid or zero, project the singleton color along the opposite direction, filling only zero cells, all the way to the border. Do not overwrite existing non-zeros.
+
+Why “opposite” direction? Check the examples:
+- Example 1: The singleton 1 has a zero to its left, so we project to the right. That fills the zeros to the right of the singleton (skipping over existing 2s) until the edge.
+- Example 2: The singleton 3 has a zero directly below it, so we project upward (opposite) in its column, filling zeros until we hit non-zeros (we don’t overwrite them) or the top edge.
+- Example 3: The singleton 2 has a zero above it, so we project downward (opposite), filling the column below through zeros all the way to the bottom.
+
+2) Detailed algorithm
+- Make a copy of the grid to write the result into; use the original grid only for checks, so decisions aren’t affected by what you paint.
+- Count occurrences of each non-zero value.
+- Find the position and value of the unique color (the one with count = 1). If there are multiple such values, pick the first encountered in row-major order (the examples have exactly one).
+- Consider the four directions: right, down, left, up (dx,dy in [(0,1), (1,0), (0,-1), (-1,0)]).
+  - For each direction, look at the cell immediately adjacent to the singleton.
+  - If that neighbor is out of bounds or zero, then “shoot a ray” in the opposite direction from the singleton (i.e., step with (-dx, -dy) repeatedly until you leave the grid).
+  - For each cell along that ray, if the original grid has a zero there, paint it with the singleton’s color in the result. If it’s non-zero, leave it as-is but keep walking; you don’t stop at non-zeros, you just refrain from overwriting them.
+- Return the painted copy.
+
+3) Notes and edge cases
+- “Out of bounds neighbor” counts the same as “zero neighbor” to trigger the opposite projection.
+- You always project along the entire ray to the edge of the grid; you do not stop when encountering a non-zero (you just skip writing at those coordinates).
+- The original singleton pixel remains where it is; you never erase anything non-zero.
+
+4) Complexity
+- Counting is O(R*C), and each of the four projections is O(R + C) in the worst case, so overall linear in the grid size.
+
+This reasoning exactly reproduces the behavior in all sample IOs:
+- Example 1: left neighbor is zero → paint zeros to the right in that row.
+- Example 2: below neighbor is zero → paint zeros upward in that column.
+- Example 3: above neighbor is zero → paint zeros downward in that column.

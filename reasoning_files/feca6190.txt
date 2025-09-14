@@ -1,0 +1,50 @@
+Here’s how I would solve it from the given I/O pairs:
+
+1) Infer the output size
+- The output is always a square matrix.
+- Its side length N is 5 times the number of non-zero entries in the input row.
+  - Examples:
+    - [1, 0, 7, 0, 0] has 2 non-zeros → N = 10
+    - [0, 0, 2, 0, 0] has 1 non-zero → N = 5
+    - [4, 0, 6, 0, 8] has 3 non-zeros → N = 15
+
+2) Infer which input values get placed
+- Only the first row of the input matters (the examples show a single row).
+- Zeros in the input don’t show up in the output (placing zeros has no visible effect).
+- Each non-zero input value is repeated along a specific anti-diagonal of the output.
+
+3) Infer the anti-diagonal geometry
+- For an input value at position c (0-based index in the input row), its values appear along the anti-diagonal that:
+  - Starts at row r = c, column col = N - 1 (top-right of the matrix at that row),
+  - Ends at row r = N - 1, column col = c (bottom row).
+- As row increases by 1, column decreases by 1 (that’s an anti-diagonal).
+- Formula for the column index on that anti-diagonal:
+  - For row r ≥ c: col = N - 1 + c - r
+- This guarantees:
+  - The first appearance of the c-th value is at (r, col) = (c, N - 1).
+  - The last is at (r, col) = (N - 1, c).
+  - Different c’s map to different, parallel anti-diagonals, so they don’t overlap.
+
+4) Algorithm outline
+- Extract the first row of the input.
+- Count its non-zero entries; set N = count * 5.
+- Create an N×N matrix initialized with zeros.
+- For each index c and value v in the first row:
+  - For r from c to N - 1:
+    - Set output[r][N - 1 + c - r] = v
+- Return the filled matrix.
+
+5) Quick checks with the examples
+- [0, 0, 2, 0, 0], N=5:
+  - c=2, v=2 placed at (2,4), (3,3), (4,2), matching the sample.
+- [1, 0, 7, 0, 0], N=10:
+  - c=0, v=1 along (0,9)…(9,0)
+  - c=2, v=7 along (2,9)…(9,2)
+  - Matches the 10×10 output.
+- [4, 0, 6, 0, 8], N=15:
+  - Diagonals for c=0 (4), c=2 (6), c=4 (8) as shown in the sample.
+
+This reasoning leads directly to:
+- A helper to build an N×N zero matrix,
+- A routine that fills the anti-diagonals using col = N - 1 + c - r for r ≥ c,
+- A main function that reads the first row, computes N from the non-zero count, constructs the matrix, fills it, and returns it.

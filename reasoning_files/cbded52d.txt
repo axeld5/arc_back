@@ -1,0 +1,47 @@
+Here’s how I would solve it based on the input/output patterns:
+
+Observations from the examples
+- The grids are mostly filled with a dominant “background” value, with a few other colors/numbers sprinkled in.
+- The non-background colors appear as isolated single cells (no same-colored neighbors in the four cardinal directions).
+- These isolated cells tend to come in pairs aligned either horizontally (same row) or vertically (same column).
+- The output differs from the input by placing an extra cell of the same color at the midpoint of the straight segment between aligned isolated cells.
+- When a pair is horizontal, the new cell appears at the column-wise center in the same row; when vertical, at the row-wise center in the same column.
+- If the segment length is even, the integer division midpoint choice matches the outputs (floor midpoint). If odd, it lands exactly in the center.
+- If there are multiple aligned pairs, multiple midpoints get filled. If multiple pairs imply the same midpoint, the final value there is effectively the last applied—examples suggest values are consistent so conflicts don’t matter.
+
+Algorithm
+1) Identify the background value:
+   - Count frequencies of all values in the grid; the most frequent one is treated as background. This conveniently filters out the “sea” and focuses on the rare “tokens.”
+
+2) Find isolated tokens:
+   - Scan all cells and collect those whose value is not the background and is non-negative.
+   - A token is “isolated” if none of its four orthogonal neighbors has the same value.
+
+3) Pair tokens along straight lines:
+   - Consider every pair of isolated tokens.
+   - If the pair shares the same row or the same column, treat that as a valid line segment.
+
+4) Compute the midpoint of each segment:
+   - Enumerate the cells along the aligned segment between the two tokens (inclusive).
+   - Compute the center by taking the min and max indices along the varying axis and using integer midpoint: min + (max - min) // 2.
+   - For horizontal segments: same row, center column changes.
+   - For vertical segments: same column, center row changes.
+
+5) Write the new centers:
+   - For each valid aligned pair, set the computed center cell to the color of the token.
+   - If multiple pairs map to the same center, allow later writes to overwrite earlier ones. In the given tasks this is either harmless (same color) or acceptable.
+
+Why this matches the examples
+- Example 1: Two 4’s on the top row produce a center 4 in that row; two 2’s on a lower row produce a center 2 in that row. The outputs show exactly these midpoints being filled.
+- Example 2: A pair of 7’s aligned vertically produces a center 7 at the vertical midpoint; a row with 3’s at both ends produces a center 3 horizontally. The outputs reflect those midpoints.
+- Example 3: Two 3’s aligned horizontally produce a center 3 in that row, matching the output.
+
+Implementation notes I would follow
+- Use a frequency counter to get the most common value.
+- A helper to test isolation with four-neighborhood checks.
+- A helper to enumerate the cells along a straight horizontal/vertical segment for clarity, though computing midpoint can be done directly from endpoints.
+- A midpoint helper that takes min and max along each axis and returns the integer center.
+- Store planned center writes in a dictionary keyed by coordinates to handle multiple contributing pairs cleanly, then apply them to the grid.
+- Bound checks are trivial for midpoint coordinates but can be retained for safety.
+
+This approach reproduces the transformations shown: detect isolated, aligned tokens and stamp their integer midpoint with their color.

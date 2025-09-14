@@ -1,0 +1,11 @@
+Here’s how I would solve it:
+
+- From the examples, each input is a 3x7 grid of integers. The 4th column is always 5 and doesn’t influence the output, so it can be ignored.
+- The output is a 3x3 grid. Each output row is derived from the corresponding input row.
+- Looking at the mapping column-wise:
+  - The output’s first column depends only on input columns 1 and 5 of the same row.
+  - The output’s second column depends on input columns 2 and 6.
+  - The output’s third column depends on input columns 3 and 7.
+- For each of these pairs, the output is 2 if both inputs are 1; otherwise it’s 0. That is, it’s effectively a logical AND between the paired bits, scaled by 2.
+- So for each row, take the first three entries and the last three entries, pair them positionally, and produce 2 when both are 1, else 0.
+- Apply this row-wise to the three rows of the grid to form the resulting 3x3 output.

@@ -1,0 +1,40 @@
+Here’s how I would solve it from the given input/output pairs.
+
+Observations from the examples:
+- The output keeps exactly one non-zero color (3 in the first, 2 in the second) and removes the other non-zero colors (8 or 1) unless they sit “inside” areas defined by the kept color.
+- Zeros remain as background.
+- The non-zero color that survives is the most frequent non-zero value in the input.
+- The kept color appears to “fill in” certain cells of the second-most frequent non-zero color, but only when those cells are located within the rectangular extents of connected blobs of the dominant color.
+- Any isolated single pixels of the kept color (no non-zero neighbors) get removed.
+
+From that, the plan:
+
+1) Identify the dominant and second-most dominant non-zero values
+- Count frequencies of all non-zero values in the grid.
+- Pick the most common as the main color to keep, and the second-most common as the only candidate for conversion.
+- Ignore zero in the counts since it’s the background.
+
+2) Find connected components (4-neighborhood) of the dominant color and record their bounding boxes
+- Traverse the grid and, whenever you find an unvisited cell of the dominant color, perform a DFS/BFS (4-directional adjacency) to mark the entire region.
+- While exploring a region, track the min/max row and column to get the region’s axis-aligned bounding box.
+- Store all bounding boxes for all regions of the dominant color.
+
+3) Build the initial output
+- Start with an all-zero grid.
+- For every cell in the input:
+  - If it’s the dominant color, copy it directly to the output.
+  - Else if it’s the second-most common color, check if its coordinates lie inside any of the dominant-color region bounding boxes. If yes, convert it to the dominant color in the output; otherwise leave it zero.
+- All other values (including zeros and any other non-zero colors) become zero in the output.
+
+4) Clean up isolated singletons of the dominant color
+- A final pass removes any dominant-color pixel that has no non-zero neighbors in its 8-neighborhood (i.e., all eight surrounding cells are zero in the current output).
+- This eliminates stray single pixels that don’t belong to any area.
+
+5) Return the cleaned output
+- This matches the examples: only the most common color remains, optionally expanded by “filling” second-most color cells that sit within the rectangular bounds of dominant-color components, and isolated singletons are removed.
+
+Implementation notes consistent with this reasoning:
+- Use a counter to get the top two non-zero values.
+- Use a stack/queue for DFS/BFS to extract each dominant-color region and compute bounding boxes.
+- Use 4-connectivity for region detection, and 8-connectivity for the isolation check.
+- Time complexity is linear in the number of cells.

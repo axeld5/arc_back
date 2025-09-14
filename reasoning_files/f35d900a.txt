@@ -1,0 +1,35 @@
+Here’s how I’d reason my way to a solution that reproduces those outputs from the inputs:
+
+1) Identify the nonzero blobs
+- Treat any nonzero cells as belonging to components.
+- Use 4-connectivity (up, down, left, right) to group same-colored cells into connected components.
+- For each component, store:
+  - its color (the nonzero value),
+  - the set of its coordinates.
+
+2) Draw a one-cell “halo” rectangle around each component, in the other color
+- For each component, compute its tight axis-aligned bounding box: min_row..max_row and min_col..max_col of the component’s cells.
+- Inflate that box by 1 in all directions (min_row-1, max_row+1, min_col-1, max_col+1).
+- Take only the border of this inflated rectangle (top edge, bottom edge, left edge, right edge), clip to the grid bounds, and paint those border cells with “the other nonzero color present in the whole grid” (i.e., different from the component’s own color).
+- Leave the interior of the inflated rectangle unchanged (only draw the border).
+- This matches the patterns where a ‘2’ gets surrounded by ‘3’s and a ‘3’ gets surrounded by ‘2’s; similarly for pairs like (1,8) or (2,4). In all given examples there are exactly two nonzero colors, so “the other color” is unambiguous.
+
+3) Add a parity-based decoration with 5s along the outer rectangle of all blobs
+- Consider the union of all original component cells (ignore the halos drawn in step 2).
+- Compute the tight bounding box that encloses this union: min_r..max_r and min_c..max_c.
+- Consider the border cells of this global bounding box (top, bottom, left, right).
+- Exclude any cells on that border that are part of the original components.
+- For each remaining border cell, compute its Manhattan distance to the nearest original component cell.
+- If that distance is even, paint that border cell with 5.
+- This produces the alternating 5s seen on the global perimeter in the outputs (e.g., the symmetric 5 placements around the cluster rectangles), without affecting interior cells.
+
+4) Everything else remains unchanged
+- Start from a copy of the original grid.
+- Apply the halos (step 2).
+- Then apply the parity-5 decoration (step 3).
+- Return the result.
+
+Why this fits the examples
+- Each nonzero dot produces a padded rectangular frame in the other color; when there are two colors present, these frames alternate between the two colors exactly as seen.
+- The 5s appear only on the outer perimeter of the bounding box of all original blobs, at positions whose nearest-manifold distance to a blob is even, producing the specific spaced pattern in the outputs.
+- Frames are clipped at the grid borders if the inflated rectangle crosses the grid edge, consistent with the truncations visible in the outputs.

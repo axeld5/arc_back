@@ -1,0 +1,33 @@
+Here’s how I’d solve it, based on the I/O pairs:
+
+- What the transformation does:
+  - The output is the same as the input except that one axis-aligned rectangular region of zeros is replaced by 6s.
+  - That region is the largest rectangle (by area) that contains only zeros.
+  - Rectangles of size 1-by-k or k-by-1 are never chosen; the rectangle has to be at least 2-by-2.
+  - If no such zero-filled rectangle of size at least 2-by-2 exists, the grid is returned unchanged.
+  - Cells that are not zero (like 1s or 5s) are never altered.
+
+- Strategy to find the rectangle:
+  - Brute-force all possible rectangle sizes with height and width from 2 up to 9 (and skip sizes that don’t fit within the current grid dimensions).
+  - For each size, slide a window over every possible top-left position within the grid where that rectangle would fit.
+  - For each candidate window, check whether every cell inside the window is zero.
+  - Track the best rectangle found so far by its area (height × width). Only replace the current best if you find a strictly larger area; this way, if there are ties in area, the first one encountered (by the chosen iteration order) is kept.
+
+- How to check a candidate window:
+  - Iterate over all rows and columns within the window bounds and verify that every cell equals zero.
+  - If any cell is nonzero, reject that window.
+
+- How to apply the result:
+  - If no valid rectangle was found, just return the grid as-is.
+  - Otherwise, create a copy of the grid and overwrite all cells within the chosen rectangle with the value 6, then return that modified copy.
+
+- Notes on iteration order and tie-breaking:
+  - Iterate sizes (e.g., width 2..9, height 2..9) and, for each size, iterate start_row top-to-bottom and start_col left-to-right.
+  - Keep the first rectangle you found for any maximal area by only updating when you see a strictly larger area. This matches the examples where only one region is filled even if multiple regions could have the same area.
+
+- Why this fits the examples:
+  - In each provided case, the region replaced by 6s is an all-zero block, at least 2-by-2, and its area is maximal among such blocks.
+  - Nonzero values (1s, 5s) remain unchanged.
+  - The selected rectangles align with the largest zero-only rectangles visible in the inputs (e.g., a 2×5 block in the third example, a 3×3 block at the right edge in the fourth example).
+
+This straightforward exhaustive search with a zero-check and then marking the best rectangle explains the outputs exactly.

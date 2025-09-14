@@ -1,0 +1,30 @@
+Here’s how I would solve it from the given I/O pairs:
+
+- First, notice the structure:
+  - The input is a large grid with a small, contiguous non-zero block surrounded by zeros.
+  - The output is exactly that non-zero block cropped out (no surrounding zeros).
+  - Within the cropped block, there are exactly two distinct non-zero colors, and the output swaps them: the border color becomes the interior color and vice versa.
+
+- So the task breaks into two parts: crop and swap.
+
+- Cropping strategy:
+  - Remove all rows that are entirely zero (they don’t contribute to the shape and only add padding).
+  - Among the remaining rows, find the minimum and maximum column indices where any non-zero appears; that gives the left and right bounds of the block.
+  - For each kept row, slice it between those bounds (inclusive) to crop away the zero columns.
+
+- Swapping strategy:
+  - While scanning the kept rows, collect all non-zero values; there are exactly two unique values in the examples.
+  - Build a 2-way mapping that swaps these two values: map the first value to the second and the second to the first. The order you discover them doesn’t matter because you map both directions.
+  - Apply this mapping to every cell in the cropped rows. Since the interior has only those two values (no zeros), every cell in the cropped area gets swapped.
+
+- Implementation outline:
+  - Filter rows where the sum is greater than zero (i.e., not all zeros).
+  - Iterate through those rows; whenever you see a non-zero, record its column index and its value.
+  - Compute min and max of the recorded column indices for the crop bounds.
+  - Determine the two unique non-zero values and construct the swap mapping.
+  - For each kept row, slice with the column bounds and replace each value using the mapping.
+  - Return the transformed cropped grid.
+
+- Assumptions matched by the examples:
+  - There is exactly one contiguous non-zero block.
+  - The cropped block contains exactly two non-zero colors and no zeros inside the bounding box.

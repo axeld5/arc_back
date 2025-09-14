@@ -1,0 +1,32 @@
+Here’s how I would solve it from the IO pairs:
+
+- Observation 1: Only cells with value 5 are changed. All zeros stay zero.
+- Observation 2: All 5-cells that are connected orthogonally (up, down, left, right) are turned into the same number in the output.
+- Observation 3: That number depends only on the size of the connected group. Checking examples:
+  - A 4-cell block of 5s becomes 1 everywhere in that block.
+  - A 3-cell block becomes 2.
+  - A 2-cell block becomes 3.
+  - So the rule is: new value = 5 − (size of the connected component).
+
+Given that, the approach is:
+
+1) Scan the 10x10 grid. Maintain a visited set so each 5-cell is processed once.
+
+2) When you find an unvisited 5, perform a flood-fill (BFS/DFS) over 4-directional neighbors to collect the entire connected component:
+   - Use a queue for BFS and a set to accumulate the positions in the current region.
+   - Only traverse into neighbors that are within bounds and equal to 5.
+   - Mark cells as visited as you add them to avoid reprocessing.
+
+3) After exploring a component, compute its size n = number of cells collected. Compute the replacement value v = 5 − n.
+
+4) Write v into all positions of that component. To avoid interfering with exploration (so you still see original 5s during traversal), write into a copy of the grid rather than the one you’re reading from.
+
+5) Continue scanning until all 5-components are processed. Return the modified grid.
+
+Implementation details that match the IO and constraints:
+- Use 4-neighborhood directions: (0,1), (1,0), (0,−1), (−1,0).
+- Bound checks are against a fixed 10x10 grid.
+- Separate helpers: one to explore and return the set of coordinates of a region starting from a 5, and another to apply the computed value to those coordinates.
+- The main routine copies the grid row-by-row before modifications and loops over all cells, invoking the region explorer on each unvisited 5.
+
+This exactly reproduces the pattern seen in the examples: each cluster of 5s is replaced by a constant equal to 5 minus the cluster’s size, and zeros remain unchanged.

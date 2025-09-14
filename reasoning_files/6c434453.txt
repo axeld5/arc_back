@@ -1,0 +1,45 @@
+Here’s how I’d solve it from the given input/output pairs:
+
+1) Infer the pattern from examples
+- The only places that change are 3x3 “hollow squares” (a 3x3 block of 1s with the center 0), i.e., rings of eight 1s.
+- Each such ring is removed (its eight 1s become 0s).
+- Then a plus-shaped cross of 2s is drawn inside that 3x3: the center and its four orthogonal neighbors become 2.
+- All other 1s remain untouched (e.g., plus-shapes of five 1s, lines, other clusters).
+
+2) Formalize what to detect
+- We need to find connected components of 1s using 4-neighbor connectivity (up, down, left, right). The ring of eight 1s forms a single 4-connected component of size exactly 8.
+- So the robust detection is: flood-fill each unseen 1 to get its 4-connected component; if its size is 8, treat it as a ring.
+
+3) Scan the grid and group cells
+- Iterate over every cell; skip zeros and already-visited cells.
+- For each 1, run a BFS/DFS that:
+  - Follows only 4-direction moves.
+  - Stays within bounds.
+  - Only includes cells equal to the starting value (1).
+  - Collects all coordinates of this component and marks them visited.
+- If the component size is exactly 8, record the set of its coordinates as a candidate ring.
+
+4) Decide where to place the 2s
+- For a true 3x3 ring, its bounding box is 3x3. The top-left corner of that box is (min_row, min_col) over the group.
+- The five positions to mark with 2 are the center of that 3x3 and its four orthogonal neighbors:
+  - (min_row + 1, min_col + 1)     center
+  - (min_row,     min_col + 1)     above center
+  - (min_row + 2, min_col + 1)     below center
+  - (min_row + 1, min_col)         left of center
+  - (min_row + 1, min_col + 2)     right of center
+- Collect all these positions for every detected ring in a set (to avoid duplicates when multiple rings are present).
+
+5) Build the output
+- Start from a copy of the original grid so detection isn’t affected by modifications.
+- For each detected ring:
+  - Set all its eight cells to 0 (remove the ring).
+- After clearing all rings, iterate over the collected “plus” positions and set them to 2 if they’re within bounds.
+- Leave all other cells unchanged.
+
+6) Notes and edge cases
+- Using 4-neighbor connectivity prevents diagonally touching groups from merging and matches the behavior seen in examples.
+- The exact size check (== 8) ensures we only act on rings and ignore other shapes like pluses of size 5.
+- Bounds checks when placing 2s are harmless; a true ring can’t lie on the border (it wouldn’t reach size 8), but the check keeps things safe.
+- Doing all detections first, then all modifications, avoids interference between rings.
+
+This reasoning reproduces the observed transformations in both examples: every 3x3 hollow square of 1s is erased and replaced by a plus of 2s centered inside, while all other structures remain the same.

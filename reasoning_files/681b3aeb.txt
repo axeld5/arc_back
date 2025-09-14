@@ -1,0 +1,54 @@
+Here’s how I would reason my way to a solution from the given I/O examples.
+
+Observations from the examples
+- Each 10x10 input contains exactly two different non-zero labels scattered somewhere on the board.
+- The 3x3 output is fully filled with just those two labels, with no zeros left.
+- The output looks like two shapes that perfectly tile a 3x3 square: they don’t overlap and their union covers all 9 cells.
+- The shapes in the output correspond to the relative arrangements of the same labels in the large grid, but “normalized” into a 3x3 window by translating them.
+
+Therefore, the task is to extract the two shapes (the sets of coordinates for each label), slide them toward the top-left by some amount, and pick a pair of translations that fit both shapes entirely inside a 3x3 window such that:
+- they do not overlap, and
+- together they cover all 9 cells of that 3x3.
+
+High-level plan
+1) Identify the two labels and collect their coordinates.
+   - Scan the grid, ignore zeros, and gather the positions for each non-zero label.
+   - There are exactly two labels; sort them to keep the result deterministic.
+
+2) Make translations easy by padding the grid with a top and left border.
+   - If a shape already touches row 0 or col 0, we still want the freedom to translate it one more step up/left when aligning into the 3x3 window.
+   - To achieve that, conceptually copy the original 10x10 grid into an 11x11 grid shifted by +1 in both row and column. Now any original coordinate (r, c) becomes (r+1, c+1). This buys an extra “unit” of allowable upward/leftward translation.
+   - After this shift, compute the positions for each label in this padded coordinate system.
+
+3) Generate all candidate placements of each shape inside a 3x3 window.
+   - For a given label, let positions be the set of its coordinates in the padded grid.
+   - You can only translate a shape upward by at most its minimum row index, and leftward by at most its minimum col index. So consider all offsets (x_offset, y_offset) with:
+     0 ≤ x_offset ≤ min_row_of_shape
+     0 ≤ y_offset ≤ min_col_of_shape
+   - For each offset, translate every point (r, c) to (r - x_offset, c - y_offset).
+   - Keep only those translations where all translated points land inside the 3x3 window, i.e., 0 ≤ r < 3 and 0 ≤ c < 3.
+   - Store each valid translated shape as a set of (r, c) pairs; optionally keep the offsets too, but the set is what we’ll match on.
+
+4) Find a pair of placements (one per label) that tiles the 3x3 exactly.
+   - Precompute the full 3x3 universe set U = {(r, c) | r in 0..2, c in 0..2}.
+   - Try every candidate translation for the first label against every candidate translation for the second label.
+   - Check two conditions:
+     a) Disjointness: the two sets of cells don’t overlap.
+     b) Coverage: their union equals U, i.e., they cover all 9 cells.
+   - Stop at the first pair that satisfies both conditions.
+
+5) Build the 3x3 result from that pair.
+   - Start with a 3x3 filled with zeros.
+   - Write the first label into its translated cells, then the second label into its translated cells.
+   - Because we guaranteed disjointness and full coverage, the entire 3x3 is filled correctly.
+
+Why this works
+- Any valid 3x3 output corresponds to picking an origin and translating each original shape so its points fit inside 3x3, without overlap, and covering all cells.
+- Enumerating all top-left translations bounded by the shape’s minimum row/col, then filtering by the 3x3 bounds, guarantees we consider exactly the relevant placements.
+- Using a padded copy of the grid ensures we don’t miss translations that would otherwise be blocked by the original top/left edges.
+- Set operations make the disjointness and coverage checks trivial and robust.
+- Sorting the labels ensures deterministic assignment of “first” and “second” labels when constructing the final 3x3.
+
+Complexity and robustness
+- The search space is tiny: for each label the number of admissible translations is small; their pairwise combinations are easily tried.
+- The approach is invariant to where the shapes appear in the 10x10 and only depends on their relative arrangements, which matches the examples.

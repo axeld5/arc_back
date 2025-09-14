@@ -1,0 +1,20 @@
+Here’s how I would solve it from the given I/O pairs:
+
+- Notice the outputs are full 7x7 grids whose values repeat in a 3-value cycle across both rows and columns. More precisely, cells that lie on diagonals with the same i+j share the same value, and the values repeat with period 3 as you move one step right or down.
+
+- In each example, the input contains a few non-zero “seeds” placed on the grid. The output then fills the entire grid with a periodic 3-coloring pattern that matches those seeds. For example:
+  - Example 1 seeds show values 2, 8, 3 on positions with i+j ≡ 0, 1, 2 (mod 3), and the output tiles the whole grid with that [2,8,3] cycle based on (i+j) mod 3.
+  - Example 2 seeds imply the cycle [2,4,1] by the same (i+j) mod 3 rule.
+  - Example 3 seeds imply the cycle [4,8,3], again keyed by (i+j) mod 3.
+
+- So the task is:
+  1) Infer which value belongs to each of the three residue classes r ∈ {0,1,2} based on the non-zero cells in the input. For any non-zero cell at position (i, j) with value v, compute r = (i + j) % 3 and record that r maps to v. If multiple seeds exist for the same r, they should be consistent; otherwise just let later ones overwrite earlier ones—the examples are consistent anyway.
+  2) Once we have this mapping from r to value, fill every cell (i, j) in the grid with the value corresponding to r = (i + j) % 3.
+  3) If a residue class was never observed (no seed for that r), leave those cells as 0 (default), although in the provided examples all three residues are defined.
+
+- Implementation plan:
+  - Scan the grid once to build a dictionary from residue r = (i+j) mod 3 to the observed non-zero value.
+  - Create a new grid of the same size. For each cell, compute r = (i+j) mod 3 and assign the value from the dictionary if present; otherwise assign 0.
+  - Return the transformed grid.
+
+- This matches all the examples: it reconstructs the repeating 3-pattern globally from the sparse seed hints.

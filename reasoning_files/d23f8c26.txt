@@ -1,0 +1,11 @@
+Here’s how I would solve it:
+
+- Look at the examples and notice that the output grid keeps only the values from the central column of the input and zeroes out everything else.
+- The position that’s preserved is the middle column: for a grid with C columns, its index is C // 2 (0-based). This matches the examples with 3 and 5 columns.
+- Build a new grid of the same size filled with zeros.
+- For each row, read the value at the middle column in the input and write that value into the same middle column position in the new grid. Leave all other positions as zero.
+- Return the new grid.
+
+Notes:
+- This approach preserves the grid dimensions exactly.
+- If the number of columns were even, taking C // 2 picks the right-of-center column; the provided examples are odd-width, so this matches the observed behavior.

@@ -1,0 +1,26 @@
+High-level reasoning to derive the solution:
+
+- Read the pattern from the examples:
+  - The 3s act as a static “guide” line.
+  - The 2s form a compact shape that is translated (not rotated or reshaped).
+  - If all the 3s lie on a single row, the 2s shift horizontally by two cells to the right.
+  - If the 3s span multiple rows but align in a single column, the 2s shift vertically by two cells downward.
+  - The 3s do not move; only the 2s are relocated. Zeros fill vacated spots.
+
+- Extract the necessary information:
+  - Scan the grid to collect all positions of value 3.
+  - Scan the grid to collect all positions of value 2.
+
+- Decide shift direction from the 3s:
+  - If the set of row indices of the 3s has size 1, it’s a horizontal guide line → use a shift of (row_delta, col_delta) = (0, 2).
+  - Otherwise, it’s a vertical guide line → use a shift of (2, 0).
+
+- Apply the translation to the 2s:
+  - Work on a copy of the grid so we don’t corrupt source positions while moving.
+  - First clear all original 2 positions (set them to 0).
+  - Then, for each recorded 2 position, place a 2 at its shifted location using the chosen (row_delta, col_delta).
+
+- Assumptions and notes:
+  - The provided puzzles guarantee the shifted 2s remain in-bounds; otherwise, bounds checks would be needed.
+  - The 3s remain unchanged throughout.
+  - The operation is purely a translation by exactly two cells along the axis implied by the 3s.

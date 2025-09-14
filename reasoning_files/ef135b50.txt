@@ -1,0 +1,22 @@
+Here’s how I would solve it, based on the IO examples:
+
+- What changes: Only horizontal gaps between two “solid” segments in the same row get filled with 9s. “Solid” means any value > 1 (in the examples, it’s 2). Leading zeros before the first solid are ignored. Trailing zeros after the last solid are also ignored. If a row has multiple solid islands, each in-between gap gets filled. The first and last rows are left unchanged.
+
+- So the rule per row is: starting from the left, once you’ve seen your first solid segment, any run of empty cells (values < 1) that is later closed by another solid segment should be turned into 9s. If the run of empties is not closed (i.e., it reaches the end of the row), leave it as is.
+
+- Algorithm per interior row (rows 1 to height-2):
+  - Maintain a simple state machine:
+    - state 0: haven’t seen a solid yet
+    - state 1: currently in/after a solid
+    - state 2: currently inside a gap after a solid (waiting to see the closing solid)
+  - Also track start_col, the first column index of the current gap.
+  - Scan columns left to right:
+    - If state < 1 and the current cell is solid (> 1), switch to state 1.
+    - If state == 1 and the current cell is empty (< 1), switch to state 2 and record start_col if not already set.
+    - If state > 1 and the current cell is solid (> 1), we’ve closed a gap: fill every column from start_col up to (but not including) the current column with 9s, then reset to state 1 and clear start_col.
+    - If we keep seeing empties while in state 2, do nothing (start_col stays at the first empty of that gap).
+  - At the row end, do nothing if a gap is still open (no right boundary found), so trailing gaps remain zeros.
+
+- Apply this to every interior row; skip the first and last rows entirely (as seen in the examples, they remain unchanged).
+
+- Output the modified grid.

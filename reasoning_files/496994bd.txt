@@ -1,0 +1,15 @@
+Here’s how I would solve it:
+
+- Look at the pattern in the examples. The output’s first five rows are identical to the input’s first five rows.
+- The output’s last five rows are the reverse of those same first five rows.
+- The lower half of the input is ignored entirely; the output is built solely from the top half (which in these examples is exactly five rows).
+- Therefore, the transformation is: take the first five rows, then append those five rows in reverse order to form a 10-row result.
+
+Algorithm:
+- Treat the input as a list of rows (length 10).
+- Extract the first five rows.
+- Produce the output as those five rows followed by their reverse.
+
+To organize it:
+- Write a helper that, given the full list, takes the first five rows and returns them concatenated with their reversed order.
+- The main solver just calls that helper.

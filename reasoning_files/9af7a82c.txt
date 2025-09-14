@@ -1,0 +1,25 @@
+Here’s how I would solve it, based only on the given input/output pairs:
+
+- What the output represents:
+  - It’s a columnar histogram of the numbers in the input matrix.
+  - Columns correspond to unique values, ordered by decreasing frequency (most frequent first).
+  - The height of the grid equals the maximum frequency among the selected values.
+  - In each column, the corresponding number is stacked from the top for as many rows as its frequency; remaining cells are zero.
+  - The top row therefore lists the chosen values in order of frequency.
+  - If there are more than nine distinct numbers, only the top nine most frequent are included.
+
+- Plan:
+  1. Flatten the 2D input into a single list of all numbers.
+  2. Count the occurrences of each number using a frequency map.
+  3. Sort the distinct numbers by their frequency in descending order. If frequencies tie, keep the earlier-seen order (as observed, ties aren’t showcased, but stable order is fine).
+  4. Keep only the top nine most frequent numbers (or fewer if there are fewer uniques).
+  5. Determine the number of rows in the output as the maximum frequency among the selected numbers.
+  6. Initialize an output grid of size [max_frequency rows] by [number_of_selected_values columns], filled with zeros.
+  7. For each column (iterating over the sorted values), fill from the top down for exactly “its frequency” rows with that value; leave the rest zeros.
+  8. Return the constructed grid.
+
+- Why this matches the examples:
+  - The first row of each output contains the unique numbers sorted by how often they appear in the input.
+  - Each column vertically repeats that number exactly as many times as it occurs overall.
+  - The grid’s height matches the highest frequency.
+  - Zeros pad the remaining cells below any column once that number’s occurrences are exhausted.

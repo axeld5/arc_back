@@ -1,0 +1,8 @@
+High-level reasoning:
+
+- In every example, the value at position (r, c) in the input appears at position (c, r) in the output.
+- Diagonal elements (where r == c) remain unchanged.
+- Off-diagonal elements swap across the main diagonal: what was in a row becomes aligned in the corresponding column.
+- The shape of the grid is preserved, and this holds for all provided sizes.
+
+Therefore, the transformation is a matrix transpose: swap rows and columns of the grid.

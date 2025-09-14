@@ -1,0 +1,16 @@
+Here’s how I would solve it:
+
+- First, compare input and output shapes. The height (number of rows) stays the same, while the width (number of columns) doubles.
+- Look at row-wise correspondence. Each output row is exactly the input row followed immediately by a mirror of that row. For example:
+  - [0, 7, 0] becomes [0, 7, 0, 0, 7, 0]
+  - [0, 0, 7] becomes [0, 0, 7, 7, 0, 0]
+  - [7, 0, 0] becomes [7, 0, 0, 0, 0, 7]
+- There are no color/value changes; it’s purely a horizontal reflection concatenated to the right.
+
+Algorithm:
+- For each row in the grid:
+  - Create a reversed copy of that row.
+  - Concatenate the original row with its reversed copy.
+- Collect these new rows to form the output grid.
+
+This matches all provided examples: the center stays centered when symmetric, asymmetric rows mirror correctly, and the grid width doubles with identical content mirrored horizontally.

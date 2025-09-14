@@ -1,0 +1,15 @@
+Here’s how I would solve it:
+
+- Look for the pattern in the examples. Each input is a 3×3 grid of integers, and each output is a 3×3 grid where every cell is the same number.
+- Compare input to output: the repeated number in the output matches the most frequent value appearing in the input grid (the mode). Example checks:
+  - First case: 4 appears 3 times (most frequent) → output all 4s.
+  - Second case: 9 appears 3 times → output all 9s.
+  - Third case: 6 appears 3 times → output all 6s.
+- Therefore, the task is: compute the mode of the 3×3 input grid and return a uniform 3×3 grid filled with that mode.
+
+Implementation plan:
+1) Flatten the 3×3 grid into a single list of 9 numbers.
+2) Find the value that occurs most frequently in that list. If there are ties, any consistent rule is fine (e.g., pick the first with the maximum count).
+3) Construct and return a 3×3 grid where every entry is that most frequent value.
+
+This matches all the provided input/output pairs.

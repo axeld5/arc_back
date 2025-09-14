@@ -1,0 +1,15 @@
+High-level reasoning (no code):
+
+- From the examples, the output always consists of 3 rows taken from the input’s first three rows, and each such row contains exactly the last three entries of that input row.
+- In a 9×9 grid with zero-based indexing, the last three columns are indices 6, 7, and 8.
+- Therefore, the outputs are precisely the 3×3 subgrid in the top-right corner: rows 0–2 and columns 6–8.
+
+Plan to implement:
+
+- Write a small helper that, given a row index, returns the slice of that row covering columns 6 through 8 (inclusive).
+- In the main solver, loop row_index from 0 to 2, call the helper for each, and collect these three slices in order.
+- Return the collected three rows as the result.
+
+Why this works:
+
+- Each provided output matches the values in columns 6–8 of rows 0–2 of the corresponding input, with no transformation or filtering; it’s a direct extraction of the top-right 3×3 subgrid.

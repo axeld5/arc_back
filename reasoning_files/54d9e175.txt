@@ -1,0 +1,27 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- First, notice the structure of the grids. There are vertical columns of 5s every 4th column and, in larger examples, entire rows of 5s every 4th row. Those 5s act as fixed separators and never change in the outputs.
+
+- Between these separator lines, the grid is partitioned into 3x3 tiles. In each such tile, the center cell holds a small number (e.g., 1, 2, 3, 4). In the outputs, each entire 3x3 tile is replaced by a uniform value equal to “center value + 5”. For example:
+  - A tile with center 1 becomes all 6s.
+  - A tile with center 2 becomes all 7s.
+  - A tile with center 3 becomes all 8s.
+  - A tile with center 4 becomes all 9s.
+  Meanwhile, the separator rows/columns of 5s remain as 5s.
+
+- The centers of these tiles are at consistent positions: one cell down and right from the top-left of each tile, with tiles repeating every 4 cells in both directions. Using zero-based indexing, those centers are at row indices 1, 5, 9, … and column indices 1, 5, 9, … (i.e., start at 1 and step by 4).
+
+- Algorithm:
+  1) Work on a copy of the grid so that filling one tile doesn’t affect reading the center values of later tiles.
+  2) Loop over candidate centers at rows 1, 5, 9, … and columns 1, 5, 9, … as long as they fit.
+  3) For each center, read its value v and compute v + 5.
+  4) Overwrite the 3x3 block centered at that position (rows r-1..r+1 and cols c-1..c+1) with v + 5 in the copy.
+  5) Return the modified copy. The separator 5s remain untouched because they are outside the 3x3 overwrite for each center and we never iterate centers on separator lines.
+
+- This exactly matches all given examples:
+  - Single band: centers with 1, 2, 1 produce 6, 7, 6 blocks.
+  - Another band: centers with 2, 3, 1 produce 7, 8, 6.
+  - Another band: centers with 3, 1, 4 produce 8, 6, 9.
+  - Larger grid with a horizontal separator row of 5s: the row of 5s is preserved, and the bands above/below are independently tiled the same way.
+
+In short: identify 3x3 tiles separated by lines of 5s, find each tile’s center at strides of 4, fill the 3x3 neighborhood with center+5 on a copy, and leave all 5s unchanged.

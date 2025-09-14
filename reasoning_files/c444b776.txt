@@ -1,0 +1,46 @@
+Here’s how I would solve it from the given I/O pairs.
+
+- Infer the “separator” color Y:
+  - In both examples, the value 4 appears either as a full row or a full column. That strongly suggests 4 marks the grid boundaries (separators) between repeating blocks.
+  - So set Y = 4.
+
+- Measure the grid:
+  - Let height, width be the dimensions.
+
+- Find all separator rows and columns:
+  - A separator row is one where every cell equals Y.
+  - A separator column is one where every cell equals Y.
+  - Collect their indices. These define the grid’s block lattice.
+
+- Deduce the base “unit” (tile) size:
+  - The content blocks are the regions between separator lines.
+  - If there are at least two separator rows, then the height of a tile is the distance between the first two separator rows minus the separator thickness (1). With a single separator row, the unit height is simply its index (i.e., the top block height). If no separator rows, the unit height is the entire grid height.
+  - Do the same for columns.
+
+- Determine how many blocks exist:
+  - The number of block sections along a dimension is count_of_separators + 1, because separators split the grid into that many content bands.
+
+- Locate a canonical example of the pattern:
+  - Scan the grid row-major to find the first cell that is neither 0 nor Y. This must be part of the motif that needs to be replicated.
+  - From that cell’s coordinates, snap back to the top-left of its block using integer division by (unit_size + 1), because each block is followed by a separator band of thickness 1.
+  - Extract the tile pattern as the unit-sized rectangle starting at that block’s top-left: size (unit_row_size x unit_col_size).
+
+- Prepare the output:
+  - Start with an all-zero grid.
+  - Lay down the separator lattice: for each cell, if its row index is at the separator position within the repeating period (i.e., row_index % (unit_row_size + 1) equals unit_row_size) or similarly for columns, set Y. This recreates all horizontal and vertical separator bands at the correct periodicity.
+
+- Tile the pattern across all blocks:
+  - For each block position (row_block, col_block), compute its top-left coordinates: (row_block * (unit_row_size + 1), col_block * (unit_col_size + 1)).
+  - Copy the extracted pattern into that block’s area. Only write non-zero values so that zeros remain background and don’t overwrite anything unintentionally.
+
+- Return the result.
+
+Why this matches the examples:
+- In the first example, there’s exactly one full row of 4s and one full column of 4s, so the grid is partitioned into 4 quadrants by a horizontal and a vertical separator. The unit sizes become the sizes of the top and left content blocks. The found motif in the top-left block is replicated to the other three quadrants, while the 4-separators are reconstructed at the same positions.
+- In the second example, there’s a single horizontal separator row and no separator column, so the unit width equals the full width. The top section’s motif is extracted and replicated only vertically below the separator. The separators are redrawn accordingly.
+
+Edge handling embodied by this approach:
+- If there’s only one separator row (or column), the unit size falls back to the distance from the border to that separator, which matches the observed layouts.
+- If there are at least two separators, we use the gap between the first two to define the unit size, which generalizes to grids with multiple bands.
+- If there are no separators in a dimension, the unit size spans the entire grid in that dimension, meaning no tiling there.
+- Only non-zero pattern cells get copied, preserving zeros as background.

@@ -1,0 +1,28 @@
+Here’s how I’d solve it from the I/O patterns:
+
+- Observation
+  - The grid is 10x10 with 0 as background, 5 marking regions to be recolored, and other nonzero numbers acting as “colors.”
+  - In each example, every connected region of 5’s gets replaced by a nonzero value that appears in the top row, in one of the columns that intersects that region.
+  - Which top value does a region take if multiple columns over it have nonzero top values? The behavior matches: the first such column encountered in a left-to-right sweep “claims” the region. After that, the region is no longer 5’s, so later columns won’t recolor it.
+
+- Rule deduced
+  - For each column c whose top cell grid[0][c] is nonzero (call it v), find any 5’s in that column below the top row, and recolor the entire 4-connected region of 5’s containing that cell to v.
+  - Do this left to right across columns.
+  - If a column has multiple disjoint 5-regions at different rows, they all get recolored to that column’s top value (because they’re discovered independently while scanning down that column).
+  - The top row itself is never recolored (we start scanning from row 1).
+  - Connectivity is 4-directional (up, down, left, right), not diagonal.
+
+- Algorithm
+  - Work on a copy of the grid so the original isn’t mutated.
+  - Implement a flood-fill (DFS or BFS) that, starting from a cell, replaces 5’s with a given new value, expanding 4-directionally and staying within bounds.
+  - For each column c = 0..9:
+    - Let v = grid[0][c]. If v is 0, skip this column.
+    - Scan rows r = 1..9:
+      - If the current cell is 5, run flood-fill from there with value v. This recolors the entire connected 5-region.
+      - Continue scanning down the column; if you encounter another 5 later (i.e., a different disconnected blob in the same column), flood-fill that one too with v.
+  - Return the filled grid.
+
+- Why this matches the examples
+  - Example 1: The big middle 5-region spans columns 4–7; only column 5 has a nonzero top (6), so that region becomes 6. The left 5-region spans cols 1–2; the first nonzero top among those is at col 2 (value 2), so the whole region becomes 2. The right region is claimed by col 9 (value 8).
+  - Example 2: The left block is claimed by top value 1 at col 1, the right by 7 at col 8, and the bottom-middle by 4 at col 5.
+  - Example 3: Similarly, each 5-region is recolored by the first (leftmost) nonzero top color in any column intersecting it.

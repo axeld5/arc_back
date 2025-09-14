@@ -1,0 +1,13 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- First, note all inputs are 5x7 and all outputs are 5x3. So we’re compressing each row from 7 to 3 columns while keeping the same number of rows.
+- In every input, the middle column (index 3) is a vertical stripe of 1s. That looks like a separator. The 3 output columns line up naturally with pairs of columns that are symmetric around that separator: (0 with 4), (1 with 5), (2 with 6).
+- The output only contains 0 and 8. Where do the 8s appear? Checking the examples row by row, an 8 appears exactly when both cells in the paired columns are 0. If either side is nonzero (9 or 1), the output is 0.
+- So the per-row rule is: for each j in {0,1,2}, look at the input at columns j and j+4. If both are 0, place an 8 in the output at column j; otherwise place 0.
+- Implementation plan:
+  - For each row, create a new row of length width-4 (which is 3 for width 7).
+  - For i from 0 to width-5 inclusive, read the values at positions i and i+4.
+  - Compute a boolean “both are zero” test. A compact way is to check not (left or right). Convert that boolean to 8 or 0 (e.g., multiply by 8).
+  - Append the result to the transformed row, and collect all transformed rows into the final grid.
+
+This exactly reproduces all given outputs: we ignore the central separator column of 1s, pair each left column with its counterpart on the right, and emit 8 only when both are zero.

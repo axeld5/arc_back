@@ -1,0 +1,24 @@
+Here’s how I would solve it:
+
+- What matters in each example is a set of “stripes” that run entirely along rows or entirely along columns. Zeros are background, and 5s are filler/noise: 5 appears in big blocks but never shows up in the outputs, so it should be ignored when detecting stripes.
+
+- First decide whether to look for row-stripes or column-stripes. In the examples:
+  - When there are completely empty rows (all zeros), the stripes are horizontal (row-wise), separated by those blank rows.
+  - When there are no completely empty rows, the stripes are vertical (column-wise).
+  So: if any row is all zeros, treat the pattern as row-stripes; otherwise treat it as column-stripes.
+
+- Extract the stripe colors in order:
+  - Scan line by line in the chosen orientation (rows if horizontal, columns if vertical).
+  - For each line, collect the nonzero entries while ignoring any 5s.
+  - If a line has no such entries, skip it (it’s either background or just a 5-block).
+  - Otherwise, take the first remaining value on that line as the stripe’s color. (Because a stripe line is dominated by a single color, any representative nonzero non-5 value suffices; taking the first is a simple deterministic choice.)
+  - Keep the lines in their natural order (top-to-bottom for rows or left-to-right for columns) to preserve the stripe ordering.
+
+- Let n be the number of detected stripes (the length of the color sequence). The target is a compact n-by-n square that encodes these stripes in order.
+  - Build an n-by-n grid where each row r is filled entirely with the r-th stripe color.
+  - If the original stripes were vertical, transpose this grid so that the stripes become vertical columns (matching the input’s orientation). If the original stripes were horizontal, leave it as is.
+
+This produces:
+- For horizontal-stripe inputs: an n-by-n with n horizontal bands, in top-to-bottom color order.
+- For vertical-stripe inputs: an n-by-n with n vertical bands, in left-to-right color order.
+- In all cases, background (0) and filler blocks (5) are ignored when determining the stripe colors.

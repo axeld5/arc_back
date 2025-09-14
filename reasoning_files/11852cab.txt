@@ -1,0 +1,46 @@
+Here’s how I would solve it from just the examples.
+
+1) What pattern is happening in the I/O
+- The outputs always “complete” a 4-fold symmetric ring around some interior pivot cell.
+- The four symmetric positions come in three specific rings around a center:
+  - Diagonals at distance 1: (row±1, col±1)
+  - Orthogonals at distance 2: (row±2, col), (row, col±2)
+  - Diagonals at distance 2: (row±2, col±2)
+- In the examples, two of those rings are already complete with four identical non-zero values, and the third ring has exactly one cell with a non-zero value. The output fills the other three cells of that “one-clue” ring with the same value, without touching any non-zeros.
+
+2) Constraints we can infer
+- We only care about interior centers where all three rings are fully inside the grid. Since we look up to 2 steps away, valid centers must be at least 2 cells away from the border.
+- We only consider centers that are themselves non-zero. That’s where the symmetry “anchors.”
+- For any ring to be acceptable:
+  - Either all four positions are filled and they all have the same value, or
+  - Exactly one of the four positions is filled (non-zero) and the other three are zero.
+  - Any other mix (e.g., two or three filled, or multiple different values) is invalid and we skip that center.
+
+3) Decision and fill rule
+- For a given center, check each of the three rings:
+  - Collect the four values from the ring.
+  - If the set of non-zero values is empty or has more than one distinct value, reject this center.
+  - Record whether the ring is “full” (4 identical non-zeros) or “single” (exactly one non-zero).
+- We only act when exactly one of the three rings is a “single,” and the other two are “full.” That means the puzzle gives us enough context to safely propagate the single value.
+- Choose that “single” ring, take its lone non-zero value as the color, and fill the other three cells in that ring with that value. Only write into zeros; never overwrite existing non-zeros.
+
+4) One-step solver behavior
+- As soon as we find the first center that satisfies the above and perform the fill, return the updated grid. If no center qualifies, return the grid unchanged.
+
+5) Implementation sketch (how I’d structure it)
+- Predefine the three rings as lists of relative offsets from the center:
+  - Ring A: diagonals at distance 1
+  - Ring B: orthogonals at distance 2
+  - Ring C: diagonals at distance 2
+- Iterate centers over rows and cols from 2 to n-3 (inclusive) to keep rings in-bounds.
+- Skip if center is zero.
+- For each ring:
+  - Read its four cells and validate the “single or full and consistent” rule.
+  - Track count (1 or 4) and the color.
+- If exactly one ring has count 1:
+  - Fill that ring’s four positions with the color, but only where the grid is zero.
+  - Return immediately.
+- If no eligible center is found, return the input grid.
+
+This exactly matches the examples:
+- In each case, there is a center where two rings are already complete and one ring has a single clue; the solver fills the three missing cells of that ring with the same value, preserving all non-zeros, and stops after the first such fill.

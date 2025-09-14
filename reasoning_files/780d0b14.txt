@@ -1,0 +1,30 @@
+Here’s how I would solve it.
+
+1) Spot the structure
+- In every input grid, there are full rows of zeros and full columns of zeros. Those act like dividers that split the big grid into smaller rectangular panels.
+- Each output is a much smaller grid whose entries seem to be the “label” of each panel.
+- That label is just the first non-zero color you hit if you scan the panel from its top-left corner (row-wise, left-to-right per row).
+
+2) Partition the grid
+- Find all row indices whose entire row is zero. These are horizontal separators between bands of panels.
+- Find all column indices whose entire column is zero. These are vertical separators between panels in each band.
+- Treat the grid’s outer borders as separators too by adding a sentinel before the first row/column and after the last row/column. This way, the ranges between consecutive separators define all rectangular subgrids (panels).
+
+3) Read a representative from each panel
+- For each rectangle defined by two consecutive empty-row separators and two consecutive empty-column separators:
+  - Scan the cells row-by-row, and within each row scan left-to-right.
+  - As soon as you find a non-zero value, that value is the panel’s representative; record it and stop scanning this panel.
+  - If the entire rectangle is zeros, skip it (i.e., don’t add anything for that slot).
+
+4) Assemble the compressed output
+- Do this panel scanning left-to-right across each band (between two empty rows), building a list of representatives for that band.
+- Append each band’s list (if it has at least one representative) to the final list of rows. The result is the compressed grid shown in the outputs.
+
+Why this matches the examples
+- In each example, the zero rows and zero columns clearly carve the grid into blocks. The outputs match the top-left-most non-zero value found in each block when scanning in reading order.
+- For example, in the second set, there are three panel columns across and two panel rows down; the representatives come out as 4 8 3 on the first band and 1 2 8 on the second, exactly as shown.
+
+Notes and edge cases
+- Using the full-zero rows/columns as separators is robust even if there are multiple consecutive empty rows/columns or none at the edges (the sentinels handle edges).
+- If a panel is entirely empty (all zeros), it’s ignored so you don’t get spurious zeros in the compressed output.
+- The scanning stops at the first non-zero per panel, which is sufficient to label the panel given the outputs.

@@ -1,0 +1,59 @@
+Here’s how I would reverse‑engineer a solver from the I/O pairs and end up with the algorithm you see:
+
+1) Fix the canvas size and treat 8s as the only “given” features
+- The grids are always 15 rows by 10 columns.
+- The output always keeps the 8s unchanged.
+- New marks are 1s that get painted based on the arrangement of 8s.
+
+2) Extract a template (mask) from the top of the grid
+- Look only at the first 5 rows to decide “what pattern of 8s” we want to propagate.
+- Try contiguous windows of height 1, 2, and 3 rows within those top 5 rows.
+- For each window, compute the total number of 8s in the window. For multi‑row windows, discard any window that contains a row with zero 8s (we want every row in the window to carry signal).
+- Choose the window with the maximum sum of 8s. This is the “best” band to propagate.
+- Convert that window into a binary mask: in the chosen rows, 8 becomes 1, anything else becomes 0.
+- Append one trailing zero column to the mask (sentinel) so later horizontal offsets can be handled uniformly without special‑casing right boundary conditions.
+
+3) Define how to test if the mask “fits” locally
+- For a candidate placement (start_row x, grid column y) and a horizontal “entry point” into the mask (offset), compute the maximum number of consecutive columns L starting from y such that, at each step k in [0, L):
+  - For every mask row r in the chosen window, the mask bit equals 1 if and only if the grid cell equals 8.
+  - In other words, mask[r][offset + k] == 1 matches exactly grid[x + r][y + k] == 8; zeros in the mask require “not 8” in the grid, and ones require 8 in the grid.
+- This yields a “compatible run length” (an extension) telling how well the mask’s current horizontal phase aligns with the grid at that start position.
+- Only consider y in the first three columns as candidate anchors; we only need a left‑side anchor to decide where to stamp.
+
+4) Two stamping modes: no offset first, then a shifted mode if needed
+- Primary attempt: with mask offset 0 (no horizontal shift inside the mask), compute the best extension at the candidate row for y in {0, 1, 2}. If the maximum compatible run length is at least 2 columns, accept this as a placement.
+- Fallback attempt: if the primary attempt fails, try offset 1 (start one column inside the mask) — but only at rows where each row of the mask window sits on a source row that contains at least one 8 somewhere (to avoid painting where there’s no signal at all). Again require a max compatible run length of at least 2.
+- The “>= 2” threshold avoids committing to tiny, accidental matches (e.g., a single column coincidence).
+
+5) Where and how to place
+- Start scanning rows just below the template source: current_row is one row under the bottom of the selected top window. This ensures we don’t stamp inside the seed.
+- At each current_row, evaluate the two‑step process above:
+  - First try offset 0; if this yields a run length >= 2, use it.
+  - Otherwise, if the row(s) beneath contain 8s, try offset 1; if that yields >= 2, use it.
+- When we accept a placement at some best_row:
+  - Choose the anchor column y among {0, 1, 2} that attains the maximum run length (take the first if there’s a tie).
+  - Stamp the mask across to the right from that anchor: for each mask row and for all mask columns starting at the chosen offset through the end of the mask, map mask columns to grid columns and write 1 wherever the mask has 1 — but never overwrite an 8. Stop painting when we hit the right edge.
+  - After stamping, advance current_row by the height of the mask window (so placements don’t overlap vertically).
+- If neither attempt is acceptable at current_row, just move down by one row and try again.
+
+6) Important details that explain the I/O behavior
+- We never change 8s; they’re treated as protected. Painting only writes 1s into cells that are not 8.
+- The extension check that decides whether a placement is “good enough” is strict (mask ones must match grid 8s and mask zeros must match non‑8s), but the actual paint fills the entire mask to the right from the chosen entry point, not just the “compatible run” portion. That’s why you see long horizontal bands of 1s extending to the edge once a placement is accepted.
+- Limiting candidate anchor columns to the first three columns keeps placements left‑anchored and consistent across examples.
+- Starting below the seed window prevents repainting the seed itself.
+- The fallback with offset 1 lets us “phase shift” the mask by one column when a direct alignment doesn’t pass the threshold but the rows still contain 8s somewhere — this explains rows where the bands of 1s appear shifted one column to the right in the outputs.
+
+7) How this matches the examples
+- Example 1: The densest top window is picked from the first five rows; the algorithm finds rows lower down where the mask can achieve a compatible run of at least 2 columns near the left, and then stamps full mask‑width to the right, producing long 1‑segments that align with the mask pattern (but never overwrite the 8s).
+- Example 2: You see multiple horizontal bands of 1s beginning at consistent left anchors and spanning to the right wherever the acceptance test allows stamping, including cases where the offset‑1 mode kicks in.
+- Example 3: With a checkerboard of 8s in the top block, the best window extracts a sparse mask; where compatibility is found, the solver stamps 1s in alternating positions consistent with the mask phase and the “don’t overwrite 8s” rule, yielding the staggered 1s you see.
+
+Putting it all together:
+- Determine the best 1–3 row mask from the first five rows by maximizing the count of 8s (and disallowing empty rows for multi‑row masks).
+- Append a sentinel zero column to the mask.
+- Scan downward from just below the mask, trying to place the mask at each row:
+  - First with offset 0, otherwise with offset 1 if the rows have 8s,
+  - Only accept placements with compatible run length >= 2 based on anchors at columns 0–2,
+  - Stamp the full mask from the chosen offset to the right, writing 1s only where the mask has 1 and the grid cell isn’t 8,
+  - Jump down by the mask height after a successful placement; otherwise move down by 1.
+- Return the painted grid.

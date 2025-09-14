@@ -1,0 +1,36 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observation from examples:
+  - The input grids contain 0s and 2s.
+  - The outputs contain only 0s and 3s.
+  - The 3s appear exactly in “holes” fully enclosed by 2s.
+  - Any 0-region connected to the border remains 0 in the output.
+  - All 2s in the input are ignored in the output (turned to 0), so the task is purely to highlight enclosed empty regions with 3.
+
+- Reformulate the task:
+  - Treat 2 as wall/obstacle.
+  - Treat 0 as empty space.
+  - Mark all empty cells that are NOT connected to the boundary (via 4-directional adjacency) as enclosed; output 3 on those cells.
+  - Everything else (walls and non-enclosed empty space) becomes 0.
+
+- Strategy:
+  1. Perform a flood fill (DFS or BFS) over 0-cells starting from the grid boundary (all cells on the outer frame). This will identify all empty cells that can “reach” the outside.
+     - Use 4-neighborhood (up, down, left, right).
+     - Only traverse through 0-cells.
+     - Maintain a visited matrix to mark reachable empty cells.
+  2. After this pass, any 0-cell that remains unvisited is an interior cavity (enclosed by 2s).
+  3. Build the output grid:
+     - If a cell is a 0 and unvisited, put 3.
+     - Otherwise, put 0 (this collapses both walls and outside-reachable empty cells to 0).
+
+- Important implementation details:
+  - Use a stack or queue for flood fill from each boundary position (top row, bottom row, left column, right column).
+  - Before pushing neighbors, ensure they are within bounds and are 0 and not yet visited.
+  - The grid appears square in the examples; index accordingly.
+
+- Why this matches the examples:
+  - First and second examples: closed loops of 2s form “O” shapes; the interior 0s get marked as 3 since they are not reachable from the boundary.
+  - Third example: a larger “O” block in the upper-left creates a 3x3 interior region of 3s; the small block of 2s on the right has no enclosed 0s, so no 3s there.
+
+- Complexity:
+  - Linear in the number of cells, due to a single flood fill and a final pass to build the output.

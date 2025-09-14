@@ -1,0 +1,27 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- The output is always 9×9, and it’s clearly partitioned into nine 3×3 blocks.
+- Each 3×3 block in the output is either:
+  - all zeros, or
+  - a copy of the original 3×3 input pattern.
+- Which of those two happens for a given block depends on the corresponding single cell in the input:
+  - If the input cell at that block’s position is 0, the whole block is zeros.
+  - If it’s nonzero (no matter which nonzero value), the block is a straight copy of the original input pattern.
+- The values inside the copied blocks are exactly the values from the input pattern (not scaled by the block’s selector value). So the input is used twice: as a “mask” (which blocks are enabled) and as the “pattern” to tile into enabled blocks.
+
+That suggests this construction:
+
+- Treat the 9×9 output indices (row, col) as composed of:
+  - a block coordinate: (row//3, col//3) → tells which 3×3 block we’re in, hence which input cell acts as the mask for this block,
+  - an in-block coordinate: (row%3, col%3) → tells which cell of the original 3×3 pattern to place there.
+- Let A be the 3×3 input.
+- For each output cell (r, c):
+  - If A[r//3][c//3] == 0, output 0.
+  - Otherwise, output A[r%3][c%3].
+
+This exactly reproduces all the given examples:
+- Nonzero entries in A “turn on” the corresponding 3×3 block.
+- When on, the block contains the original pattern A, placed by the modulo indices.
+- When off, the block is all zeros.
+
+Implement by looping r, c from 0 to 8, computing the two pairs of indices via integer division and modulo, and writing the masked pattern value accordingly.

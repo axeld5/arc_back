@@ -1,0 +1,18 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, notice the size relationship. Every output is exactly twice the height and twice the width of the input, and the original pattern appears unchanged in all four quadrants. So step one is to tile the input grid 2×2: duplicate each row side-by-side, then duplicate the whole block underneath. This makes a new grid that is the input repeated horizontally and vertically.
+
+- Next, observe the new values in the outputs: the only new number introduced is 8, and it appears only in positions that are diagonal neighbors of existing nonzero cells (like 2, 4, 5, 6). It never overwrites those numbers; it only fills into zeros. Also, 8s do not generate more 8s; only the original “colored” cells (nonzero values that are not 8) act as sources.
+
+- That suggests a simple rule on the tiled grid: for every cell whose value is positive and not 8, mark its four diagonal neighbors (up-left, up-right, down-left, down-right) with 8, but only if those neighbors are currently zero and within bounds. Leave any nonzero cells untouched.
+
+- This explains the “full rows of 8s” in some outputs: when you tile, the same source numbers repeat in aligned positions across quadrants; their diagonal marks overlap to fill entire rows or columns with 8s. It also explains the alternating 8 pattern when there’s a single source number: the diagonals land on every other cell in the appropriate rows.
+
+- Implementation plan:
+  1) Build the 2×2 tiled grid by concatenating each row with itself, then stacking that doubled block on itself vertically.
+  2) Scan the tiled grid. For each cell whose value is > 0 and not 8, attempt to set each diagonal neighbor to 8 if that neighbor currently equals 0 and is inside the grid.
+  3) Return the modified tiled grid.
+
+This exactly recreates the shown outputs:
+- The tiling reproduces the input in all four quadrants.
+- The diagonal marking adds 8s in the right places, never overwriting the original nonzero values, and does not propagate from the 8s themselves.

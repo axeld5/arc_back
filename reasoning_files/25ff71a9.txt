@@ -1,0 +1,22 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- First, look for what changes between input and output. In every example, the columns don’t change relative to each row; the positions within each row are preserved. What does change is the placement of rows: the whole grid is shifted vertically in a cycle.
+
+- Concretely, the bottom row moves to the top, the original top row moves to the middle, and the original middle row moves to the bottom. That’s a cyclic downward shift by 1 across the rows. Equivalently, for a 3-row grid, the new grid is [row2, row0, row1].
+
+- There’s no visible horizontal shift in the examples. If I want a clean, reusable pipeline, I can still include a per-row circular shift helper that rotates a 1D list left by k positions using wrap-around (normalize k with modulo the row length). For these 3-column rows, rotating left by 3 positions is a no-op (3 mod 3 = 0), which matches the examples (no horizontal change). Including it makes the transform explicit and easy to generalize.
+
+- Implementation plan:
+  - Write a helper that circularly rotates a row left by k positions (handle k via modulo of the row length).
+  - Reorder the grid rows by performing a cyclic shift down by 1. For 3 rows, that’s constructing [last_row, first_row, second_row]. This is the same as taking the slice from index 2 to the end and appending the first two rows.
+  - Apply the left-rotation helper to each row with k equal to the row length (3 here), which leaves rows unchanged for these cases but keeps the pattern uniform.
+  - Provide a thin wrapper that calls this transformer.
+
+- Quick sanity check against the examples:
+  - A single nonzero row in the first/middle shifts down one position.
+  - A structure spanning two rows becomes those same two rows shifted down one, with the bottom empty row moving to the top.
+  - Values within each row stay aligned horizontally (no effective per-row rotation), as expected since a left rotation by 3 on length-3 rows is identity.
+
+This reasoning yields a solution that:
+- Cycles the rows downward by one step (by moving the last row to the front or, equivalently, moving the first two rows to the end).
+- Optionally rotates each row left by the row length (3), which doesn’t change the data here but keeps the operation pattern consistent and ready for different widths.

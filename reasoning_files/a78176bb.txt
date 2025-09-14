@@ -1,0 +1,37 @@
+High-level plan to get from the I/O behavior to a solver:
+
+- Key invariant: Nonzero entries align along diagonals of constant (row − column). Call this value the diagonal’s “offset.”
+
+- What the outputs keep: Only one of the nonzero numbers is drawn in the final grid. It is placed on its original diagonal and, depending on the other number’s positions, also on one or two additional diagonals.
+
+- Extract structure from the input:
+  - Find all distinct nonzero numbers present.
+  - For each number, collect the set of offsets (row − column) where it appears.
+
+- Choose the target number:
+  - Pick the number that occupies the fewest distinct offsets (i.e., lies on fewer diagonals). In the examples, one number is concentrated on a single diagonal while the other spreads across multiple nearby diagonals. We take the concentrated one as the number to draw in the output.
+
+- Establish a base diagonal:
+  - Take any offset from the target number’s offsets (in the examples it’s the only one). This is the base offset where the target will definitely be drawn.
+
+- Use the other number to infer expansion:
+  - Look at the other number’s offsets relative to the base offset.
+    - If there exists an offset greater than the base, take the largest such offset and project two steps further (max_offset + 2). Draw the target on that projected offset.
+    - If there exists an offset less than the base, take the smallest such offset and project two steps further in that direction (min_offset − 2). Draw the target on that projected offset.
+  - This “push two past the nearest spread” matches the observed spacing in the examples.
+
+- Build the output:
+  - Start with a zero grid.
+  - For each chosen offset (base, and possibly the projected ones), fill the entire diagonal with the target number: for every row, compute the column = row − offset; if in bounds, set that cell to the target number.
+
+- Notes/assumptions mirrored in the examples:
+  - The grid is 10×10.
+  - Exactly two nonzero numbers appear.
+  - Zeros are ignored.
+  - When only one side (above or below the base offset) exists for the other number, only one extra diagonal is added; when both exist, two extra diagonals are added; when neither exists, only the base diagonal is drawn.
+
+This reasoning yields a solver that:
+- Identifies diagonals by offset,
+- Chooses the most “focused” number,
+- Uses the other number’s spread to decide where to add new diagonals by projecting two offsets beyond it,
+- And draws the target number along those diagonals.

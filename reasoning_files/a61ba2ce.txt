@@ -1,0 +1,49 @@
+Here’s how I would solve it, given just the two I/O pairs:
+
+1) Infer what the inputs contain
+- The 13×13 input grid is mostly zeros with a few small “L” shapes made of three identical, non‑zero numbers. Each “L” is three cells of a 2×2 block (i.e., three corners of a 2×2, one missing), so I’ll think of them as “3-of-4” 2×2 squares.
+- In each example, there are exactly four such L‑shapes, each with a different number and a different orientation:
+  - One L at the top-left of its local 2×2 (cells: top-left, top-right, bottom-left filled; bottom-right missing).
+  - One L at the top-right (cells: top-left, top-right, bottom-right filled; bottom-left missing).
+  - One L at the bottom-left (cells: top-left, bottom-left, bottom-right filled; top-right missing).
+  - One L at the bottom-right (cells: top-right, bottom-left, bottom-right filled; top-left missing).
+
+2) Infer what the outputs represent
+- The output is always a 4×4 grid.
+- The four L‑shapes from the big grid are “compressed” and placed into the 4×4 in fixed positions corresponding to their orientations:
+  - The top-left oriented L in the big grid becomes an L in the top-left corner of the 4×4, occupying positions (0,0), (0,1), (1,0).
+  - The top-right oriented L in the big grid becomes an L in the top-right corner of the 4×4, occupying positions (0,2), (0,3), (1,3).
+  - The bottom-left oriented L in the big grid becomes an L in the bottom-left corner of the 4×4, occupying positions (2,0), (3,0), (3,1).
+  - The bottom-right oriented L in the big grid becomes an L in the bottom-right corner of the 4×4, occupying positions (2,3), (3,2), (3,3).
+- Everything else in the 4×4 is zero.
+- This mapping exactly matches the given outputs in both examples.
+
+3) Detection strategy
+- Scan the big grid for these four specific 3-of-4 patterns, ignoring zeros. To avoid bounds issues, iterate rows and cols only up to the penultimate index (since we look at r+1 and c+1).
+- For each (r, c), test the four L orientations by checking equality of three cells in the corresponding 2×2, and require they are non-zero:
+  - Top-left L: (r,c), (r+1,c), (r,c+1)
+  - Top-right L: (r,c), (r,c+1), (r+1,c+1)
+  - Bottom-left L: (r,c), (r+1,c), (r+1,c+1)
+  - Bottom-right L: (r+1,c+1), (r+1,c), (r,c+1)
+- If any of these three-cell checks pass, we’ve found the value and orientation of one L.
+
+4) Output construction
+- Initialize a 4×4 result with zeros.
+- When an L is found:
+  - If it’s top-left oriented, set result[0,0], result[0,1], result[1,0] to that value.
+  - If it’s top-right oriented, set result[0,2], result[0,3], result[1,3].
+  - If it’s bottom-left oriented, set result[2,0], result[3,0], result[3,1].
+  - If it’s bottom-right oriented, set result[2,3], result[3,2], result[3,3].
+- Multiple detections of the same L as we scan don’t hurt; they just write the same value again in the same output slots.
+
+5) Practical details
+- To keep it simple, I’d write four tiny helpers, each returning the value of the L if present at (r, c) in that orientation, else 0.
+- Iterate r, c up to n-2 (with n=13 here), or equivalently just loop 0..11 to avoid bounds checks.
+- Store the 4×4 either directly in a 2D array or in a flat list of length 16 and slice it into rows at the end. The fixed indices for the three cells per corner L are:
+  - Top-left L: 0, 1, 4
+  - Top-right L: 2, 3, 7
+  - Bottom-left L: 8, 12, 13
+  - Bottom-right L: 11, 14, 15
+  These correspond to the 4×4 (row-major) positions listed above.
+
+This reasoning explains the pattern recognized from the I/O, the four-orientation detection on the big grid, and the fixed placement into the 4×4 that reproduces the provided outputs.

@@ -1,0 +1,46 @@
+Here’s how I’d arrive at the transformation rule and implement it to match the given input/output pairs:
+
+- What changes between input and output:
+  - Only zeros ever change, and they become 2s.
+  - Fives are never modified.
+  - The 2s always appear in 2×2 blocks, i.e., every 2 introduced is part of a 2×2 square of 2s.
+  - Those 2×2 squares correspond to 2×2 regions that were entirely zeros in the input.
+  - But not every 2×2 all-zero region is converted if it is part of a larger zero “plateau.” The converted ones are “isolated” 2×2 zero squares that do not extend further immediately to the left/right (first kind) or up/down (second kind).
+
+- Hypothesis from the patterns:
+  - We want to detect each 2×2 all-zero block.
+  - We only convert it if it is horizontally bounded: the pair of cells immediately to its left (same two rows) are not both zero, and the pair immediately to its right are not both zero. Edge of the grid also counts as “bounded.”
+  - After we convert those horizontally bounded 2×2 zero squares to 2s, there may still be 2×2 zero squares that are vertically bounded (no zeros immediately above or below). We then convert those.
+  - Doing this in two passes (first horizontal, then vertical) prevents us from missing blocks due to adjacency in only one direction and also avoids interfering with detection within the same pass.
+
+- Concrete detection logic:
+  - A helper to check whether a 2×2 block at (row, col) is all zeros.
+  - First pass:
+    - For each top-left corner (row, col), if the 2×2 block is all zeros, check horizontal boundedness:
+      - If there is a column to the left, the two left-adjacent cells (same two rows) must not both be zero.
+      - If there is a column to the right, the two right-adjacent cells (same two rows) must not both be zero.
+      - If we’re at the grid edge, that side is considered bounded automatically.
+    - Collect all such blocks, then write 2 into their four cells. (Collect first, update later to avoid influencing other detections in the same pass.)
+  - Second pass:
+    - Repeat the scan for 2×2 all-zero blocks that remain.
+    - This time check vertical boundedness:
+      - If there is a row above, the two above-adjacent cells (same two columns) must not both be zero.
+      - If there is a row below, the two below-adjacent cells must not both be zero.
+      - Edges are again treated as bounded.
+    - Collect and then write 2s for all such blocks.
+
+- Why two passes:
+  - Some 2×2 zero blocks are only horizontally isolated (width exactly 2 but can stack vertically); these are caught in the first pass.
+  - Others are only vertically isolated (height exactly 2 but can extend horizontally); these are caught in the second pass.
+  - If we tried to require both horizontal and vertical boundedness at once, we would miss cases that the outputs clearly convert.
+
+- Edge handling:
+  - If the block abuts the left/right edge in the first pass or the top/bottom edge in the second pass, that side is treated as bounded (no zero continuation possible off-grid).
+
+- Mutation strategy:
+  - Always gather candidate blocks in a list for a pass, then update all of them after scanning. This avoids a block’s conversion to 2 affecting detection of neighboring blocks within that same pass.
+
+- Complexity:
+  - Two linear scans over all (row, col) top-left positions of 2×2 blocks, O(n^2) for an n×n grid (here 18×18).
+
+This exact two-phase “detect isolated 2×2 zero squares, first horizontally then vertically, and convert them to 2s while leaving 5s untouched” reproduces the outputs shown.

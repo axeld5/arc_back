@@ -1,0 +1,32 @@
+Here’s how I would solve it, reverse‑engineering from the given input/output pairs.
+
+- The grid is square and mostly zeros, with a small number of nonzero “hint” cells. The task is to propagate one color/value outward in a very structured, periodic way (the outputs are large, axis‑aligned square “rings” or stripes repeating across the grid).
+
+- First, detect which value to propagate. Count positions for each nonzero value and pick the one with the highest frequency. In all examples, the most frequent value is the one used to fill the final pattern.
+
+- Next, infer the geometric template that defines the pattern. The hints for the chosen value occur in threes and are laid out so that one of them is the exact midpoint of the other two (equal spacing along a straight line). So:
+  - Among the three positions, find a pair whose average (midpoint) matches the third position (both row and column mids must be integers and present).
+  - That midpoint is the “center” of the pattern.
+
+- Determine the fundamental spacing of the pattern. The two outer points of the equally spaced triple define the base “ring radius” increment:
+  - Compute the Chebyshev distance (max of row diff and column diff) between the two outer points.
+  - The step size is half of that, i.e., the distance from the center to either outer point. This is the ring spacing.
+
+- With the center and step known, fill the grid with concentric, axis‑aligned square perimeters centered at the midpoint, at radii equal to multiples of the step (step, 2*step, 3*step, …). For each radius r:
+  - Draw the top and bottom edges: fixed row = center_row ± r, all columns from center_col − r to center_col + r.
+  - Draw the left and right edges: fixed column = center_col ± r, all rows from center_row − r to center_row + r.
+  - Clip to the grid bounds.
+  - Also ensure the center cell itself is set to the chosen value.
+
+- Keep expanding radius by adding step each time until the radius is large enough that further rings would be entirely outside the grid. A conservative stop is when the radius exceeds roughly twice the grid size; boundary checks will prevent out‑of‑bounds writes anyway.
+
+- This procedure exactly matches the outputs:
+  - In the first example (value 8), the three 8s identify a center and spacing so that expanding square rings produces the striped/cross‑like tiling of 8s across the grid.
+  - In the second (value 2) and third (value 3), the same logic yields concentric square perimeters at regular intervals, matching the dense lattice/ring patterns seen in the outputs.
+
+- Implementation notes I’d follow:
+  - Build a map from value to list of its coordinates; select the value with the largest list.
+  - From its first three coordinates, find the midpoint triplet; use that as the center and derive the step from that defining pair.
+  - Copy the grid, set the center, then iterate radii r = step, 2*step, … filling four edges per ring with boundary checks.
+
+This reasoning leads directly to a simple solver that: identifies the dominant value, finds its equally spaced triple to get the center and spacing, then draws concentric square rings at multiples of that spacing until the grid is fully covered.

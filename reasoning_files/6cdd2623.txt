@@ -1,0 +1,35 @@
+Here’s how I’d solve it from the given input/output pairs:
+
+1) Notice the structure of the outputs:
+- They contain only zeros except for a single nonzero color.
+- That color forms entire horizontal rows and/or entire vertical columns.
+- The color used in the output always appears on the border (outer frame) of the input.
+- A row is filled if its leftmost and rightmost cells in the input both have that color.
+- A column is filled if its topmost and bottommost cells in the input both have that color.
+
+2) Hypothesis from patterns:
+- For each color that appears on the border (ignoring zero), identify all rows whose two ends (left and right borders) are that color, and all columns whose two ends (top and bottom borders) are that color.
+- The output is then a grid of zeros with exactly those rows and columns painted entirely with that color.
+- When multiple colors are possible, choose the color that yields the largest total number of lines (rows + columns). If no color yields any full row or column, return an all-zero grid.
+
+3) Algorithm:
+- Determine grid height H and width W.
+- Gather the set of candidate colors from the border (first/last row and first/last column), excluding zero.
+- For each candidate color k:
+  - Find all row indices r such that the first and last cell of row r are both k.
+  - Find all column indices c such that the top and bottom cell of column c are both k.
+  - Compute a score as the count of such rows plus columns.
+- Select the color with the highest positive score; if no color has any such rows/columns, output all zeros.
+- Initialize the output as all zeros.
+- Paint every selected row entirely with the chosen color.
+- Paint every selected column entirely with the chosen color.
+
+4) Why this matches the examples:
+- Example 1: The output is a cross made of one full row and one full column of 3s. Those correspond exactly to the row(s)/column(s) whose ends on the border are 3, and 3 is the choice that maximizes the number of such lines.
+- Example 2: The output has two full rows of 2s; those are the rows whose left and right ends are 2. No columns qualify for 2, and no other color yields more lines.
+- Example 3: The output is a cross of 8s: one full row and one full column, exactly the ones whose ends are 8. 8 is chosen because it yields the most lines.
+
+5) Edge handling:
+- Zero is ignored as a candidate color.
+- If no candidate color produces any qualifying row/column, return a zero grid.
+- Filling rows and columns can be done in any order since they use the same chosen color.

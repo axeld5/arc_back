@@ -1,0 +1,18 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, notice each input is a 9x4 grid and each output is a 4x4 grid containing only 0s and 3s.
+- The 5th row (index 4) in every input is always 4 4 4 4. That strongly suggests it’s just a visual separator between two 4x4 blocks: the “top” block (rows 0–3) and the “bottom” block (rows 5–8).
+- Comparing the outputs to the inputs, each output cell at position (r, c) depends only on:
+  - The cell at (r, c) in the top 4x4 block, and
+  - The cell at (r+5, c) in the bottom 4x4 block (i.e., same column, row shifted by +5 to skip the separator row).
+- Testing a few positions across the provided examples shows a consistent rule:
+  - The output at (r, c) is 3 if and only if both the top cell (r, c) and the corresponding bottom cell (r+5, c) are 0.
+  - Otherwise, the output is 0.
+- It doesn’t matter whether the nonzero values are 2, 7, or anything else; only zeros qualify. The 3 in the output is simply a marker indicating “both are zero.”
+
+Algorithmically:
+- Build a 4x4 result grid.
+- For each r in 0..3 and c in 0..3, check the two positions: (r, c) and (r+5, c).
+- If both are zero, put 3 in the result; else put 0.
+
+That exactly reproduces all the given outputs from the inputs.

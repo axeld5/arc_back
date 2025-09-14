@@ -1,0 +1,31 @@
+Here’s how I would solve it from the I/O alone:
+
+- The nonzero pixels form a square block in the input. Its side length is always a perfect square. Let L be the side length of the bounding square of all nonzeros; then s = sqrt(L) is an integer.
+
+- If you partition that LxL square into an s by s grid of equally sized tiles, each tile is itself s by s cells. A tile is “active” if it contains at least one nonzero.
+
+- The 9x9 outputs (for s=3 in the examples) are not a simple copy of those tiles. Instead, they are a self-Kronecker/outer-product of the s by s activity pattern:
+  - Let B be the s by s boolean matrix of tile activity (True = has color).
+  - The output is an s^2 by s^2 matrix where, for each active tile (i, j) in B, you place the whole pattern B again as a binary mask in the block of rows [i*s, i*s + s) and columns [j*s, j*s + s).
+  - Equivalently, output[r, c] is colored iff both the “macro” tile B[i, j] containing (r, c) is active and the “micro” offset B[r mod s, c mod s] is active. This yields the boolean outer product B ⊗ B.
+
+- The color to write is the color of the nonzero pixels in the input (5 in the examples).
+
+Concrete steps to implement:
+
+1) Collect all nonzero cell coordinates and their color.
+
+2) Find the topmost and bottommost rows with nonzeros: min_row, max_row. Let L = max_row - min_row + 1 and s = int(sqrt(L)). Also get min_col to anchor the left edge.
+
+3) Build B (size s x s):
+   - For each tile index (i, j) in 0..s-1:
+     - Look at the s by s block in the input whose top-left is (min_row + i*s, min_col + j*s).
+     - Mark B[i][j] = True if any cell in that block is nonzero.
+
+4) Build the result (size s^2 x s^2) initialized to zeros. For every (i, j) with B[i][j] True, and for every (r, c) with B[r][c] True, set result[i*s + r][j*s + c] = color.
+
+This exactly matches the behavior seen in all examples:
+- Identify the minimal square containing the shape.
+- Factor its side into s tiles per side.
+- Extract the s x s macro-pattern of which tiles are present.
+- Output the self-Kronecker product of that macro-pattern, using the original color.

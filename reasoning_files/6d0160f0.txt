@@ -1,0 +1,30 @@
+Here’s how I would solve it from the IO examples.
+
+1) See the structure
+- Each input is an 11×11 grid with two full horizontal lines and two full vertical lines of 5s (at indices 3 and 7). Those 5-lines partition the grid into a 3×3 arrangement of nine 3×3 “cells” separated by 1-cell wide bars.
+- So the nine payload cells are at top-left coordinates (0,0), (0,4), (0,8), (4,0), (4,4), (4,8), (8,0), (8,4), (8,8), each covering a 3×3 patch.
+
+2) Find the special cell
+- Among the nine 3×3 payload cells, exactly one contains the digit 4.
+- Record two things:
+  - the entire 3×3 payload cell that contains the 4 (we’ll copy it later),
+  - the position of the 4 inside that 3×3 cell, as a pair (r, c) where r and c are 0, 1, or 2.
+
+3) Build the output scaffold
+- Start with an 11×11 grid of zeros.
+- Draw the same cross bars of 5s by filling row 3 and row 7 entirely with 5s, and column 3 and column 7 entirely with 5s.
+
+4) Place the found 3×3 cell according to the 4’s local position
+- Interpret the (r, c) position of the 4 inside its 3×3 cell as the destination block index in the 3×3 arrangement of blocks on the 11×11 canvas.
+- In other words:
+  - If the 4 was at local (0,0) inside its original 3×3, place that whole 3×3 at the top-left block of the 11×11 (rows 0–2, cols 0–2).
+  - If the 4 was at local (0,2), place it at the top-right block (rows 0–2, cols 8–10), etc.
+- The mapping from a block index (rb, cb) to its top-left coordinate in the 11×11 is simply (4*rb, 4*cb). So for each cell (i, j) in the 3×3, copy it into the output at (4*r + i, 4*c + j).
+
+5) Stop after placing
+- There is only one 4 in all the payload cells, so once we find it and place its 3×3 cell, we’re done.
+
+Why this matches the examples
+- The outputs always preserve the cross of 5s.
+- Only one 3×3 payload block remains populated in the output, and its location among the nine blocks matches the local position of the 4 inside the source 3×3 payload cell.
+- The content of that block is exactly the original 3×3 cell copied verbatim. All other places remain zero.

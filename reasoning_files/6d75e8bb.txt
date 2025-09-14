@@ -1,0 +1,25 @@
+Here’s how I would solve it based on the examples:
+
+- Observation from the I/O pairs:
+  - The 8s form a cluster (possibly with holes). In the output, every 0 that lies “inside the span” of the 8s becomes a 2, while the 8s remain unchanged.
+  - “Inside the span” behaves like an axis-aligned bounding box: take the minimum and maximum row indices and the minimum and maximum column indices over all cells that are 8. Any cell whose coordinates lie within that rectangle is considered inside.
+  - Only zeros inside that rectangle are turned into 2; everything else stays as-is.
+  - Zeros outside the rectangle remain 0.
+
+- Strategy:
+  1) Scan the grid and collect all positions (row, col) where the value is 8.
+  2) From these positions, compute:
+     - min_row, max_row
+     - min_col, max_col
+     These define the smallest axis-aligned rectangle that contains all the 8s.
+  3) Build a new grid by iterating over every cell:
+     - If the cell lies within [min_row..max_row] and [min_col..max_col] and its value is 0, set it to 2.
+     - Otherwise, keep the original value (so 8s stay 8, and anything outside the box remains unchanged).
+
+- Why this matches the examples:
+  - Anywhere the 8s create gaps or paths inside their overall bounding rectangle, those zeros become 2 in the output.
+  - The perimeter and overall shape of the 8 cluster are preserved because we don’t change 8s.
+  - The fill never extends beyond the most extreme rows/columns where 8s appear, which matches the outputs exactly.
+
+- Assumptions:
+  - There is at least one 8 in the grid (otherwise there’s no bounding box to define).

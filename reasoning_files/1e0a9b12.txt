@@ -1,0 +1,42 @@
+Here’s how I’d solve it.
+
+1) Infer the rule from the examples
+- Look at each column independently.
+- All zeros in a column move to the top.
+- All non-zero values in a column “fall” to the bottom, preserving their original top-to-bottom order.
+- No horizontal interactions: rows aren’t being rearranged; the change is purely a per-column vertical collapse.
+
+You can verify this by tracking one column across input/output:
+- If a column is [0, 4, 0, 9], it becomes [0, 0, 4, 9].
+- If a column is [1, 0, 0, 0], it becomes [0, 0, 0, 1].
+- If a column already has all non-zeros at the bottom in order, it remains unchanged.
+
+2) Define the core operation on a single column
+- Extract all non-zero entries from the column in their original order.
+- Count how many zeros were in the column.
+- Rebuild the column as: that many zeros at the top, followed by the non-zeros (order preserved).
+
+This ensures stability (relative order of non-zeros is unchanged) and achieves the “gravity to the bottom” effect.
+
+3) Apply the operation to the whole grid
+- We need to apply that column operation to every column.
+- It’s often simpler to process rows than columns in a 2D list, so:
+  - Transpose the grid so columns become rows.
+  - Apply the column-collapse operation to each of these rows (which are the original columns).
+  - Transpose back to restore original orientation.
+
+4) Sanity checks with the provided examples
+- Columns that are entirely zeros remain all zeros.
+- Columns with scattered non-zeros end up with the same sequence of non-zeros, just packed at the bottom.
+- The final grids match the outputs shown.
+
+5) Complexity and edge cases
+- Time complexity is linear in the number of cells: O(rows × cols).
+- Works when a row or column is all zeros.
+- Works when all entries are non-zero (no change).
+- Handles duplicates and any non-zero integers without special cases.
+
+In code terms, I’d:
+- Write a helper that takes a list (one column), filters non-zeros, counts zeros, and returns zeros + non-zeros.
+- Write a transpose utility to flip rows/columns.
+- Transpose, map the helper across, and transpose back.

@@ -1,0 +1,18 @@
+Here’s how I’d solve it from the given I/O pairs:
+
+- First, notice the 5s behave as beacons that mark the corners of a larger axis-aligned rectangle. The outputs never overwrite the 5s; instead they add a rectangular frame one cell inside that outer rectangle.
+
+- The color used for that inner frame matches the “motif” color that already appears inside the rectangle (1 in the first example, 3 in the second, 4 in the third), not the dominant background 0. A simple way to robustly pick that motif color is: look at the values strictly inside the rectangle (exclude the outermost ring that contains the 5s), count frequencies, and choose the least frequent value among those interior cells. In the examples, that picks 1, 3, and 4 respectively because 0s are far more common.
+
+- So the plan:
+  1. Collect all coordinates where the cell equals 5.
+  2. Take the min and max row and column among those coordinates to get the bounding rectangle [top..bottom] × [left..right].
+  3. Extract the inner region by trimming off the outermost ring of that rectangle (i.e., consider rows top+1..bottom-1 and columns left+1..right-1). If this inner region is empty (rectangle too thin), do nothing.
+  4. Flatten that inner region and compute a frequency count of values present there; pick the least frequent value.
+  5. Paint a frame exactly along the border of that inner region (i.e., along rows top+1 and bottom-1 for columns left+1..right-1, and along columns left+1 and right-1 for rows top+1..bottom-1) with the chosen value. Ensure each border cell is written once (or just allow duplicates; it doesn’t change the result).
+  6. Leave everything else (including the 5s) unchanged and return the modified grid.
+
+- This matches all provided examples:
+  - The 5s define the outer rectangle.
+  - The selected color is the least frequent interior value (picking the motif color over background 0).
+  - The new border appears exactly one cell inside the 5-bounded rectangle.

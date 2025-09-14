@@ -1,0 +1,21 @@
+Here’s how I would solve it given the I/O pairs:
+
+- First, spot the invariant in the examples: any row that is entirely zeros in the input turns into a row entirely filled with 2s in the output. Example: in the first and third datasets, the all-zero rows become all 2s.
+
+- Next, see the column rule: any column that contains only zeros (and possibly 2s) ends up entirely filled with 2s. This happens even if the 2s were introduced by the previous step (turning zero-rows into 2s). For instance:
+  - In the first dataset, column 9 is all zeros in the input; after turning the all-zero row into 2s, that column contains only 0s and 2s, so the entire column becomes 2.
+  - In the second dataset, columns like the 5th and 11th are zeros across all rows, so they become all 2s.
+  - In the third dataset, column 2 is zeros everywhere; after the zero-rows become 2s, the column still has only 0s/2s, so it becomes all 2s.
+
+- The order matters:
+  1) Do a row pass first: for each row, if it’s all zeros, replace the entire row with 2s.
+  2) Then do a column pass: for each column, if every entry is either 0 or 2, replace the entire column with 2s.
+
+- Implementation details I’d use:
+  - Number of rows and columns from the grid dimensions.
+  - To test an all-zero row quickly, sum the row and compare to 0.
+  - To test a column, check that every entry is in the set {0, 2}.
+  - To fill, overwrite the entire row with 2s, and overwrite entries in the entire column with 2s.
+  - Return the modified grid.
+
+This two-pass approach exactly reproduces the transformations shown in all provided examples.

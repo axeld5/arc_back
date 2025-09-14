@@ -1,0 +1,54 @@
+Here’s how I would solve it given the I/O pairs, aiming to discover the underlying rule and then turn that into an implementation:
+
+1) What pattern do the examples show?
+- We never change the grid except along 45-degree diagonals that emanate from certain bends in existing shapes.
+- Those diagonals start from “elbows” of a constant-valued shape (an L-shaped corner where a color turns).
+- The color that gets painted along that diagonal is not the elbow’s color; it is the color found just inside the elbow, two steps along the diagonal into the corner.
+- The diagonal is drawn outward (away from the elbow) and can extend to the border; sometimes the very last painted cell is on the border.
+
+2) Identify which cells are elbows
+- A cell is an elbow for its value v if:
+  - It’s nonzero.
+  - It has exactly one neighbor of the same value horizontally (either left or right, but not both).
+  - It has exactly one neighbor of the same value vertically (either up or down, but not both).
+- That precisely captures a 90-degree turn inside a polyline or region of constant v: the cell has one same-valued neighbor in x, one in y.
+
+3) Determine the elbow’s orientation
+- For an elbow cell (r, c), decide which way its same-valued neighbors lie:
+  - Vertical direction: is the matching neighbor above (-1) or below (+1)?
+  - Horizontal direction: is the matching neighbor left (-1) or right (+1)?
+- The “inside” of the corner is the diagonal cell (r + vertical_dir, c + horizontal_dir).
+- If that inside-diagonal cell already equals v (i.e., the corner interior is already filled with the same color), there’s nothing to do, so we skip. This avoids repainting or overextending where the corner is not concave.
+
+4) Determine the color to project along the diagonal
+- Look two steps into the corner along the same inside diagonal: (r + 2*vertical_dir, c + 2*horizontal_dir).
+- Whatever value is there (which can be zero or a nonzero color) is the payload color we will paint outward along the opposite diagonal.
+- This choice matches the examples: at a 9-elbow next to a 3-block, the cell two steps inside contains 3, and the diagonal we draw is 3s; for the 8-shape next to a 6, the diagonal gets 6s, etc.
+
+5) Paint the outward diagonal
+- Starting from the elbow, repeatedly step one cell along the opposite diagonal: (r - vertical_dir, c - horizontal_dir), then again, and so on.
+- At each step, write the payload color into that location.
+- Continue while the current position remains inside the inner window of the grid (i.e., avoid reading neighbors out of range). Because we step before writing, the last write may land on the border, which matches the observed outputs where the diagonals include a border cell.
+
+6) Only process interior cells
+- To safely check left/right/up/down and diagonal neighbors, only consider cells with indices that are not on the outer border (so all neighbor reads are in bounds).
+
+7) Apply to entire grid once
+- Iterate over all interior cells and apply the elbow rule; update the grid in place.
+
+Why this matches the examples:
+- Example 1: The elbow formed by 9s at the bottom-right of the 9-shape has its “inside” pointing toward the 3-block. Two steps inside is a 3, so we project 3s along the opposite diagonal to (5,5) and (6,6).
+- Example 2: The 8-shape’s top-left and top-right elbows each look two steps inside and find a 6. Hence we draw two outward diagonals of 6s on opposite sides.
+- Example 3: The 4-ring around a 2-block has elbows that, when checked, project 2s along an outward diagonal toward the top-right corner.
+- Example 4: The 4-area adjacent to a vertical 5 produces outward diagonals of 4s near the top-right, exactly as the two-steps-inside inspection prescribes.
+
+Edge cases and guards:
+- Skip zero-valued cells; they can’t be elbows of a colored shape.
+- Require exactly one horizontal and exactly one vertical same-valued neighbor; that excludes straight segments, endpoints, and crosses.
+- Skip if the inside diagonal cell is already the same as the elbow’s value; that indicates a filled corner rather than a concave one.
+- Bound checks are handled by only evaluating interior cells and by stopping the diagonal paint when stepping would leave the interior; the last write may legitimately hit the border.
+
+In short:
+- Detect concave 90-degree corners of a color.
+- Sample the color two steps into the corner along the inside diagonal.
+- Shoot a ray along the opposite diagonal, painting that sampled color until you leave the interior.

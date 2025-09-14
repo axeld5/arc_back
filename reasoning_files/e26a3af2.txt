@@ -1,0 +1,26 @@
+Here’s how I would solve it.
+
+1) Look at what the outputs are doing
+- In the first two examples, every row of the output is identical, and that identical row is exactly the list of “most common values per column” from the input. That’s a vertical-bands solution: for each column, pick its dominant color and fill the whole column with it; repeat that column-majority vector across all rows.
+- In the third example, each entire row is a single value, and that value is the row’s most common value. That’s a horizontal-bands solution: for each row, pick its dominant color and fill the whole row with it.
+
+2) So the core operation is “mode by row” and “mode by column”
+- For each row, compute its mode (most frequent value). Collect those into a list r, one per row.
+- For each column, compute its mode. Collect those into a list c, one per column.
+
+3) Decide whether the puzzle wants horizontal or vertical bands
+- We need a simple heuristic to choose between using r (row modes) versus c (column modes).
+- A robust cue across the examples is the diversity of the mode list: whichever mode list varies more is the one that seems intended to define the bands. Concretely, compare how many distinct values appear in c versus r.
+- If the column-mode list has more distinct values than the row-mode list, we assume vertical bands (use columns). Otherwise, assume horizontal bands (use rows). This also conveniently breaks ties in favor of rows.
+
+4) Build the output from the chosen modes
+- If we picked columns: take c (length = width) and repeat it as the content of each row for the whole height.
+- If we picked rows: for each row i, fill the entire row with r[i].
+
+5) Edge cases
+- If the grid is empty, return empty.
+- Ties in “most common” can be broken arbitrarily/consistently; the examples don’t require special handling beyond “pick one of the tied values.”
+
+This produces:
+- Example 1 and 2: column-majority vector repeated across all rows.
+- Example 3: each row filled with its row’s majority, yielding horizontal stripes.

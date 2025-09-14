@@ -1,0 +1,59 @@
+Here’s how I would solve it from the examples.
+
+1) What the task is really asking
+- The input grids are all zeros; the actual values inside don’t matter. Only the size (width) matters.
+- The outputs are square and show a 1-pixel-wide “corridor” of zeros carved through a field of 3s, forming a clockwise spiral from the outer frame inward.
+- The top row is always all 3s; the second row is all 0s except the last cell is 3. That “L” start appears in every example and is the new layer you add each time you grow the spiral.
+
+2) Key structural observation
+- If you take any output and remove the top two rows, the remainder is exactly the previous (smaller) spiral rotated 90 degrees clockwise. In other words:
+  - “Current = two new top rows (the frame and opening) + rotate(previous).”
+- That means we can build the pattern inductively: start from a small “seed” spiral and repeatedly “wrap” it by:
+  - Adding a new top row of all 3s.
+  - Adding a second row of 0s with the last cell 3 (this creates the opening).
+  - Then placing the previous pattern rotated clockwise underneath.
+
+3) Why two different seeds
+- Because target sizes can be even or odd, the spiral’s parity/phase must line up so the corridor connects correctly after the last growth step.
+- For even widths, a 4×4 seed already matches the required square shape and phase.
+- For odd widths, you need a rectangular seed whose first growth step turns it into the smallest odd square with the correct alignment.
+  - A 5×3 seed works: after one growth (i.e., one “wrap”), it becomes 5×5 with the correct turning.
+
+4) Concrete seeds (so the growth aligns with the examples)
+- Even-width seed (4×4):
+  - Row0: 3 3 3 3
+  - Row1: 0 0 0 3
+  - Row2: 3 3 0 3
+  - Row3: 3 3 3 3
+- Odd-width seed (5×3):
+  - Row0: 3 3 3
+  - Row1: 0 0 3
+  - Row2: 3 0 3
+  - Row3: 3 0 3
+  - Row4: 3 3 3
+
+5) The growth step
+- Given the current pattern with R rows (its width equals R after the first time it becomes square), produce the next pattern by:
+  - Creating a new first row of length R filled with 3.
+  - Creating a new second row of length R filled with 0 except the last cell is 3.
+  - Rotating the current pattern 90 degrees clockwise and placing it below those two rows.
+- This grows the outer shell by one unit and keeps the corridor continuous, because the opening in row 2 aligns with the rotated entrance of the inner pattern.
+
+6) How many times to grow
+- Let N be the target width of the output (same as the input’s width).
+- The base “effective core” is 4 units wide. So we need N − 4 growth steps to reach width N.
+- For even N, start from the 4×4 seed and perform N − 4 growths; the pattern alternates between rectangular and square during the process and lands exactly at N×N.
+- For odd N, start from the 5×3 seed; after the first growth it becomes 5×5 (so still, total growths = N − 4), and it likewise lands on N×N.
+
+7) Putting it together
+- Determine N from the input grid’s width.
+- Choose the appropriate seed based on N’s parity.
+- Repeat the growth step N − 4 times:
+  - Prepend the two top rows (all 3s; then 0s with trailing 3).
+  - Replace the remainder with the previous pattern rotated clockwise.
+- Return the final grid.
+
+This exactly reproduces all provided outputs:
+- The top boundary and the second-row “opening” match every example.
+- The interior is a rotated copy of the previous stage, so the spiral path proceeds clockwise.
+- The parity-specific seed ensures we hit both even and odd sizes cleanly.

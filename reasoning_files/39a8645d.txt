@@ -1,0 +1,46 @@
+Here’s how I would solve it from the given I/O pairs.
+
+Observations from the examples
+- The big grid is 14×14 with many zeros and some nonzero digits.
+- Each output is a 3×3 pattern made entirely of one nonzero digit (8 in the first and third, 4 in the second).
+- The chosen 3×3 patterns clearly match small “motifs” that repeat several times in the input: an X of 8s, an L-shaped 4 cluster, a plus of 8s.
+- Those motifs are connected if you allow diagonal adjacency (8-neighborhood). For example, the X shape only connects diagonally; with 4-neighborhood it would split.
+- There are other digits present (1s, 2s, 6s), but the output uses the digit whose small motif is most common in the grid.
+
+So the task is: find all small connected components (by 8-neighborhood) of nonzero values, restrict to those that fit within a 3×3 box, normalize each component’s shape to a 3×3 coordinate frame, count how often each (value, normalized shape) appears, and return the most frequent one as a 3×3 grid.
+
+Algorithm
+- Constants
+  - Grid size is fixed at 14×14 (as per data).
+  - Treat 0 as empty; ignore it.
+  - Use 8-directional connectivity (N, NE, E, SE, S, SW, W, NW).
+- Traverse and group components
+  - Maintain a visited boolean grid.
+  - For each cell (r, c):
+    - If it’s zero or already visited, skip.
+    - Otherwise, do a BFS/DFS to collect the full connected component of that value using 8-neighborhood adjacency.
+    - Record all coordinates in this component.
+- Filter by size and normalize shape
+  - Compute the component’s bounding box: min_row, max_row, min_col, max_col.
+  - If the height or width exceeds 3 (i.e., max_row - min_row ≥ 3 or max_col - min_col ≥ 3), discard it. We only want shapes that fit in a 3×3 window.
+  - Normalize the component’s shape by translating it so its top-left is at (0, 0): for each cell (x, y), map to (x - min_row, y - min_col).
+  - Convert the set of normalized coordinates to an orderable representation (e.g., a sorted tuple of (row, col) pairs) so it can be used as a key.
+- Count patterns
+  - Use a counter keyed by (value, normalized_shape) to count how many times each value-specific shape occurs.
+- Pick the most common pattern
+  - Take the (value, normalized_shape) with the maximum count. This captures “which digit forms which small motif most often.”
+- Render the 3×3 output
+  - Start with a 3×3 grid of zeros.
+  - For each (dr, dc) in the chosen normalized shape, set output[dr][dc] to the chosen value.
+  - Return this 3×3 grid.
+
+Why this matches the examples
+- Example 1: multiple 8-shaped X motifs occur; they are 8-connected and fit in 3×3; counting selects that X of 8s, yielding the shown 3×3 X.
+- Example 2: among 1s, 2s, 4s, the small 4-shaped “L” appears most frequently in 3×3-sized components; that pattern is returned.
+- Example 3: the plus-shaped 8 appears multiple times as a 3×3 cross; that becomes the output.
+
+Key implementation choices
+- 8-neighborhood connectivity is required so diagonal-only motifs (like the X) are treated as single components.
+- Bounding-box filtering ensures we only consider motifs that can be represented in a 3×3 output.
+- Normalizing by top-left of the component (rather than rotation/flip canonicalization) is sufficient because the repeated motifs in the inputs share the same orientation.
+- Counting by (value, shape) avoids mixing identical shapes made of different digits.

@@ -1,0 +1,17 @@
+Here’s how I’d solve it:
+
+- From the examples, each column alternates between keeping the rows as-is and swapping them:
+  - Even-indexed columns (0, 2, 4) keep the original row order.
+  - Odd-indexed columns (1, 3, 5) swap the two rows.
+- Since there are exactly two rows, the “other” row of r is simply 1 - r.
+- So for any cell at row r and column c in the output:
+  - If c is even, take the value from grid[r][c].
+  - If c is odd, take the value from grid[1 - r][c].
+- Implement this with:
+  - A small helper that, given (r, c), returns from the same row when c is even, otherwise from the opposite row.
+  - A row-construction loop/comprehension over columns 0..5 using that helper.
+  - Build both output rows (r = 0 and r = 1) using the same rule.
+
+This reproduces the alternating stripe pattern seen in the I/O, yielding:
+- Row 0: values from its own row on even columns, from row 1 on odd columns.
+- Row 1: the opposite.

@@ -1,0 +1,28 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observation 1: The output always contains a single color (non-zero) repeated in a solid rectangle. It’s not a cropped image; it’s a newly constructed block filled with one color.
+
+- Observation 2: Which color? In every example, it’s the least frequent non-zero color in the input:
+  - Example 1: Colors are 2 and 8; 8 occurs fewer times → output is all 8s.
+  - Example 2: Colors include 3, 4, 8, 2, 1; 1 is the rarest → output is all 1s.
+  - Example 3: Colors include 3, 6, 2; 6 is the rarest → output is all 6s.
+  - Example 4: Colors include 2, 7, 3; 7 is the rarest → output is all 7s.
+  - Example 5: Colors include 1, 4, 6; 4 is the rarest → output is all 4s.
+
+- Observation 3: The output’s width and height match the bounding rectangle that covers all occurrences of that rarest color in the input. For example, if the rarest color occupies rows r1..r2 and columns c1..c2 in the input, then the output has height (r2 - r1 + 1) and width (c2 - c1 + 1).
+
+- Zeros are background and should be ignored when counting frequencies.
+
+Algorithm:
+1. Count how many times each non-zero color appears in the grid.
+2. Select the color with the minimum count (the rarest).
+3. Scan the grid to collect all row indices and column indices where this color appears.
+4. Find the minimum and maximum row index and column index among those occurrences. This defines the bounding rectangle.
+5. Compute the rectangle’s height and width from those min/max indices.
+6. Create a new grid of that height and width, filling every cell with the rarest color.
+7. Return this filled rectangle.
+
+This matches all the provided examples:
+- It picks the rarest non-zero color.
+- It uses the span of that color’s occurrences to set the output dimensions.
+- It fills the entire output with that color.

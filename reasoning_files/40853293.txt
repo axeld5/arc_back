@@ -1,0 +1,23 @@
+Here’s how I’d solve it, based only on the given input/output pairs:
+
+- Pattern observation
+  - For each nonzero color, all of its marks in the input either lie in exactly one row (same row index, different columns) or exactly one column (same column index, different rows).
+  - In the output, such a color is “filled” along that straight line: if the marks are in one row, fill the whole horizontal span from the leftmost to rightmost occurrence; if in one column, fill the whole vertical span from the topmost to bottommost occurrence.
+  - When a horizontal and a vertical fill intersect, the vertical color overwrites the horizontal at the crossing cell (this is visible where a horizontal band of 3s crosses a vertical band of 2s or 6s).
+
+- Algorithm
+  1. Scan the grid and collect, for each color, the list of its coordinates.
+  2. For each color, compute the min and max row indices and the min and max column indices of its occurrences.
+     - If all occurrences share the same row (min_row == max_row), that color defines one horizontal segment: in that row, from min_col to max_col inclusive.
+     - If all occurrences share the same column (min_col == max_col), that color defines one vertical segment: in that column, from min_row to max_row inclusive.
+     - If a color is scattered across multiple rows and columns, it defines no segment and is ignored.
+     - Note: a color that appears only once trivially satisfies both checks; filling either segment just writes that single cell, so the result is unchanged.
+  3. Create a copy of the input grid to write the result.
+  4. Draw all horizontal segments first by setting every cell in their spans to the segment’s color.
+  5. Then draw all vertical segments by setting every cell in their spans to the segment’s color. This enforces the observed precedence where vertical fills overwrite horizontal ones at intersections.
+
+- Why this matches the examples
+  - Colors with multiple marks in one row expand into continuous horizontal bands across the extremes of their marks.
+  - Colors with multiple marks in one column expand into continuous vertical bands across the extremes of their marks.
+  - At crossings, the vertical band’s color replaces the horizontal band’s color, reproducing the outputs exactly.
+  - The background 0 never forms a single-line segment (it’s spread everywhere), so it doesn’t get expanded.

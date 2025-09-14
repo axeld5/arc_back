@@ -1,0 +1,19 @@
+Here’s how I’d solve it from the I/O pairs:
+
+- Spot the invariant: whenever a row starts with a nonzero color, that color acts like a “seed” and the entire row ends up being that color, overwriting anything else in that row. If a row starts with 0, the row is left unchanged.
+  - Example 1: rows 4–6 start with 3 and get fully painted 3, overwriting the 8s in those columns.
+  - Example 4: the row starting with 2 gets fully painted 2, fixing the stray 3 in that row.
+
+- Notice a second mode: if applying that row rule doesn’t actually change the grid (because any row that starts nonzero is already uniform), then the transformation must be column-based with an analogous rule: any column whose top cell is nonzero gets filled down entirely with that color.
+  - Example 2: the only nonzero-leading row (all 1s) is already uniform, so no row change occurs. Then columns with a top 6 get filled down, turning the two middle cells in the all-1s row into 6s.
+  - Example 3: same idea; the column that starts with 1 is filled down, replacing the center row’s cell in that column with 1.
+
+- Strategy to implement cleanly:
+  - Define a row operation: for a given row, if its first element is nonzero, replace the whole row with that value; otherwise leave it as is.
+  - Apply this operation to every row to get a tentative result.
+  - If this tentative result differs from the input, return it (row mode applied).
+  - If it’s identical (row mode had no effect), switch to column mode by reusing the same row operation on the transposed grid: transpose, apply the row operation to each “row” (which are original columns), then transpose back.
+
+- This matches all examples:
+  - Examples 1 and 4 trigger row mode (changes happen immediately).
+  - Examples 2 and 3 don’t change under row mode, so they trigger column mode via transpose, fill, transpose back.

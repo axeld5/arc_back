@@ -1,0 +1,23 @@
+Here’s how I’d solve it:
+
+- Look at the first example. The output is two rows:
+  - 4 3
+  - 6 0
+  These are exactly the first two numbers of the first two rows of the input grid. It looks like the output is the 2x2 block in the top-left corner.
+
+- Check the second example. The output:
+  - 2 4
+  - 2 5
+  Again, these are the first two entries from the first two rows. Same pattern holds.
+
+- Verify with the third example. The output:
+  - 3 2
+  - 1 4
+  Matches the first two numbers from the first two lines of the input. Consistent again.
+
+- Conclusion: The task is simply to extract the top-left 2x2 subgrid from the given grid, preserving order. So:
+  - Take the first two rows.
+  - From each of those rows, take the first two elements.
+  - Return that 2x2 block.
+
+- Assumptions: The input grid has at least two rows and two columns; no other transformation is needed.

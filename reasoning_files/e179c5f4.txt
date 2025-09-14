@@ -1,0 +1,26 @@
+Here’s how I would solve it.
+
+1) Understand what matters from the input:
+- The input grids are all zeros except for a single 1 in the bottom-left cell. Across examples, the only thing that changes is the grid width.
+- The actual values in the input don’t affect the output except for the grid’s shape. So we can ignore the content and only use height and width.
+
+2) Observe the output pattern:
+- The output grid is entirely 8s, except for exactly one 1 in every row.
+- The 1 forms a “snake” (zigzag) path as you go from the bottom row to the top row.
+- The path starts at the bottom-left corner.
+- As we move up row by row, the 1 shifts horizontally by one column each step, moving right until it hits the right edge, then reversing direction and moving left, bouncing at the edges.
+
+3) Generalize the movement:
+- Initialize the output as a height-by-width grid filled with 8.
+- Start with column_index = 0 (leftmost column), direction = +1 (moving right).
+- Iterate rows from bottom to top (row = height-1 down to 0):
+  - Set the current cell (row, column_index) to 1.
+  - Advance column_index by direction.
+  - If column_index hits either boundary (0 or width-1), flip direction (multiply by -1) so the path “bounces.”
+
+4) Edge cases and structure:
+- If the input grid is empty, return an empty grid.
+- Width 1 naturally degenerates to a single vertical line of 1s (direction flips each step but the column remains 0).
+- Implement a small helper to create the initialized 8-filled grid, and a routine to perform the zigzag fill.
+
+This produces exactly the shown outputs for widths 2, 3, 4, etc., with a single 1 per row tracing a back-and-forth path from bottom-left to top.

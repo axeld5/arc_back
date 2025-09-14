@@ -1,0 +1,29 @@
+Here’s how I’d solve it:
+
+- Treat each input as an ordered list of rows. The numbers inside a row never change; only the vertical ordering of rows changes.
+
+- Notice the output is a vertical palindrome made from the input rows:
+  - For the 3-row example, if we label the input rows as [R1, R2, R3], the output order is:
+    R1, R2, R3, R2, R1, R2, R3, R2, R1
+  - For the 4-row example with rows [R1, R2, R3, R4] (where R2 and R3 happen to be identical in the data), the output order is:
+    R1, R2, R3, R4, R3, R2, R1, R2, R3, R4, R3, R2, R1
+  - In both cases, the whole output is symmetric if you read it top-to-bottom or bottom-to-top.
+
+- Build this in two steps:
+  1) Create a “palindrome segment” from the input sequence by concatenating:
+     - the original sequence, followed by
+     - the reversed sequence but excluding the first and last elements (to avoid duplicating the endpoints at the mirror seam).
+     - Example:
+       - With [R1, R2, R3], this gives [R1, R2, R3, R2].
+       - With [R1, R2, R3, R4], this gives [R1, R2, R3, R4, R3, R2].
+  2) Create the final output by repeating that palindrome segment twice and then appending the very first row once more to close the overall palindrome.
+     - Example:
+       - For the 3-row case: [R1, R2, R3, R2] + [R1, R2, R3, R2] + [R1] → 9 rows.
+       - For the 4-row case: [R1, R2, R3, R4, R3, R2] + [R1, R2, R3, R4, R3, R2] + [R1] → 13 rows.
+
+- This exactly matches both given outputs:
+  - The length becomes 2*(2n−2) + 1 = 4n−3 rows for an input of n rows.
+  - The center of the final palindrome is the first input row.
+  - If some input rows are identical (like the repeated second row in the 4-row example), they stay identical; we always treat rows by position, not by value.
+
+In short: mirror the input around its interior to form a palindromic block, duplicate that block, and finish by appending the first row to complete the global palindrome.

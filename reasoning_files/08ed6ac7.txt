@@ -1,0 +1,14 @@
+Here’s how I’d solve it from the I/O examples:
+
+- The only nonzero values in the inputs are 5, and in the outputs those 5s become small positive integers. Zeros remain zeros.
+- Each column that contains 5s is assigned a single, consistent label across the whole grid. For example, in the first example the entire column with the first 5 seen becomes 1s, the next previously unseen 5-column becomes 2s, and so on.
+- The order of labels (1, 2, 3, …) is determined by the first time a column with a 5 is encountered when scanning the grid row by row (top to bottom) and within each row left to right. The first column encountered that contains a 5 gets label 1, the next new column with a 5 gets label 2, etc.
+- Algorithm:
+  - Keep a mapping from column index to its assigned label.
+  - Initialize a counter starting at 1.
+  - Iterate the grid row by row, and within each row column by column.
+  - When you see a 5 at column c:
+    - If column c does not yet have a label, assign it the current counter value and increment the counter.
+    - Replace that 5 with the label for column c.
+  - Leave zeros unchanged.
+- This reproduces both sample outputs: columns with 5s are renamed consistently, and the numbering reflects the first-seen order of those columns during the scan.

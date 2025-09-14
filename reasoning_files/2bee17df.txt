@@ -1,0 +1,26 @@
+Here’s how I would solve it based on the input/output behavior I observed:
+
+- Key observations from the examples:
+  - The outer border (first and last rows, first and last columns) is never modified.
+  - Whenever an entire interior column (rows 1..n-2) is all zeros in the input, that whole interior column becomes 3s in the output, top to bottom (excluding borders).
+  - Whenever an entire interior row (cols 1..n-2) is all zeros in the input, that whole interior row becomes 3s in the output, left to right (excluding borders).
+  - If both a zero-only column and a zero-only row intersect, the cell is 3 in the output (consistent with either rule).
+  - Rows that are not fully zero inside are not turned into 3s, except at positions where they intersect a zero-only column (which produces a vertical stripe of 3s).
+  - The detection of “all zeros” is done on the original grid; the painting should not influence subsequent detection.
+  - When filling rows after columns, only remaining zeros are changed to 3, so we don’t overwrite anything that was already set (and we never change non-zero cells).
+
+- Strategy:
+  1. Work on a copy of the grid so detection uses the original values while painting goes to the result.
+  2. Column pass:
+     - For each column c from 0 to n-1, check the interior cells (rows 1..n-2).
+     - If all those interior cells are zero (you can quickly assert the top and bottom interior endpoints are zero, and verify the whole interior is zero, e.g., by summing equals zero), then paint 3s down that column for rows 1..n-2 in the result grid.
+  3. Row pass:
+     - For each row r from 0 to n-1, check the interior cells (cols 1..n-2).
+     - If all those interior cells are zero in the original grid, then paint 3s across that row for cols 1..n-2 in the result grid, but only where the result grid still has zeros (so we don’t overwrite any values set by the column pass or any non-zero original values).
+  4. Return the painted copy.
+
+- Important details:
+  - Never touch border cells (indices 0 and n-1 in either dimension).
+  - Use the original grid to decide if a row/column is “all-zero” so column filling doesn’t affect row detection, and vice versa.
+  - For efficiency and simplicity, checking “all zeros” can be done by summing the interior and comparing to zero, given the values are non-negative in these tasks.
+  - Fill entire qualifying columns unconditionally in the interior because, by construction, those positions are zeros in the original; fill qualifying rows conditionally (only zeros) to avoid overwriting what the column pass already set.

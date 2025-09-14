@@ -1,0 +1,32 @@
+Here’s how I would reverse-engineer the rule from the examples and turn it into an implementation plan:
+
+1) What the outputs show
+- The input is a 9×9 grid with some non-zero “seed” cells (in the samples they’re 5s).
+- The output does not copy the seeds; instead, for each seed, its eight neighboring cells get filled:
+  - Orthogonal neighbors (up, down, left, right) get 1.
+  - Diagonal neighbors (the four corners) get 5.
+- This produces a “ring” around each seed: a plus of 1s and an X of 5s.
+- The border in the output can be affected only if a seed sits one step inside the border. The seed itself is never written into (it remains 0 unless some other nearby seed writes into it).
+- When two seeds influence the same cell, the last one processed wins (overwrites). The samples are consistent with simple row-major processing and overwriting.
+
+2) Safety around edges
+- Writing all eight neighbors of a cell requires index offsets of -1, 0, +1.
+- To avoid bounds checks, only consider seeds whose coordinates are strictly inside the border: rows and columns 1 through 7 (0-based). That guarantees all neighbor writes land within 0..8.
+
+3) Concrete algorithm
+- Create a fresh 9×9 grid initialized to 0. We never mutate the input; we build the output from scratch.
+- For i in 1..7 and j in 1..7:
+  - If input[i][j] is non-zero, visit its eight neighbors via (dr, dc) in {-1, 0, +1}×{-1, 0, +1} excluding (0, 0):
+    - If dr == 0 or dc == 0, write 1 at output[i+dr][j+dc] (orthogonal).
+    - Else, write 5 at output[i+dr][j+dc] (diagonal).
+- No special merge logic: if a cell is written multiple times due to overlapping neighborhoods, the later write overwrites the previous value. With row-major iteration, this is deterministic.
+
+4) Small implementation details
+- A helper to create the 9×9 zero grid keeps things clear.
+- A small “update” helper that assigns a value to a given cell can be used, but it’s just a direct assignment.
+- The input’s actual value doesn’t matter beyond being non-zero; any non-zero acts as a seed.
+
+This exactly reproduces the observed patterns:
+- Each seed produces a cross of 1s and diagonals of 5s around it.
+- Edges are handled implicitly by skipping seeds on the outermost ring.
+- Overlaps resolve by last-write-wins in row-major order.

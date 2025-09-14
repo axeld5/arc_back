@@ -1,0 +1,38 @@
+Here’s how I’d solve it from the I/O pairs.
+
+1) What’s fixed and what changes
+- The 8s are obstacles/walls and they stay exactly where they are in the output.
+- The non-8, non-0 numbers in the input appear to be “hints” that define which two values should fill the open space, and how they alternate.
+- The 0s are empty space that should be filled, but only in regions that are reachable from at least one hint (i.e., not separated by 8-walls). If an area is completely isolated from all hints by 8s, it remains 0 in the output.
+
+2) What pattern fills the reachable empty cells
+- In the outputs, the fill always alternates like a checkerboard across the open cells: two numbers A and B repeat on positions with (row + col) even/odd parity.
+- Which number goes on which parity is determined by the positions of the hints: if a hint with value V sits at (r, c), then all cells with the same parity as (r + c) should get V.
+- There are usually multiple hints scattered around; they all agree with the same checkerboard assignment (so one parity maps to one value, the other parity maps to the other value).
+
+3) How to infer the two values and their parity mapping
+- Scan the grid. For every cell that is not 0 and not 8 (i.e., it’s a hint), use its (row + col) % 2 to determine which parity it belongs to and record that parity’s value. Do this for all hints; they should be consistent across the puzzle.
+- Store all hint positions as starting points for later propagation.
+
+4) Build the output scaffolding
+- Create an output grid initialized to 0s.
+- Copy all 8s from the input into the same positions in the output immediately. That way, the fill will naturally respect walls, since those output cells are already nonzero and won’t be overwritten.
+
+5) Fill reachable open space from the hints
+- Use a flood fill that starts from all hint positions at once (multi-source). A simple stack/queue with 4-direction neighbors (up, down, left, right) is enough.
+- Pop a position. If it’s outside the grid or its output cell is already set (either 8 or already filled), skip it.
+- Otherwise, set the output cell to the value dictated by its parity using the mapping learned from the hints.
+- Push its four neighbors to the stack/queue.
+- Because 8s were prewritten into the output, any attempt to spread onto a wall will be blocked automatically (that cell is already nonzero).
+- Continue until the frontier is empty.
+
+6) Why this matches the examples
+- In both samples, 8s are preserved.
+- The two non-8 values (e.g., 3 and 2 in the first, 1 and 4 in the second) fill the open space in a checkerboard pattern determined by (row + col) parity.
+- Areas disconnected from any hint by 8s remain 0 in the output (you can see entire strips or pockets of 0 where no path from hints exists).
+
+That’s the complete reasoning:
+- Detect the two fill values and their parity via hints.
+- Copy walls.
+- Multi-source flood fill across 4-neighbors, assigning each visited cell the parity-based value.
+- Leave unreachable areas as 0.

@@ -1,0 +1,21 @@
+Here’s how I would solve it:
+
+- From the examples, there are two kinds of “compression” happening:
+  - If each row looks like it’s made by repeating its first half twice (left half == right half), then the output keeps the left half of each row and keeps all rows. Example 1 and 2 show this: width is even and every row’s second half equals its first half, so we horizontally halve every row.
+  - Otherwise, the output keeps only the top half of the rows (same columns), as in Example 3 where the set of rows appears to be duplicated vertically.
+
+- So the decision rule can be:
+  1) Only try horizontal compression if the width is even and every row is horizontally symmetric (first half equals second half).
+  2) If that condition fails, fall back to vertical compression by taking the top half of the grid.
+
+- Concretely:
+  - Define a helper that checks if a row is horizontally symmetric by splitting it at its midpoint and comparing the two halves.
+  - Define another helper that applies that check to all rows in the grid.
+  - If width is even and all rows pass the symmetry check, build a new grid by taking the left half of each row.
+  - Otherwise, build a new grid by taking only the top half of the rows.
+
+- Why this matches the examples:
+  - Example 1 and 2: widths are even; every row is two identical halves; so we take the left half of each row.
+  - Example 3: rows are not horizontally symmetric, so we take the top half of the rows.
+
+That’s the whole strategy: prefer horizontal halving when every row is a doubled half; otherwise, halve vertically by rows.

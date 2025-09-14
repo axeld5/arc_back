@@ -1,0 +1,38 @@
+Here’s how I would solve it from the I/O alone.
+
+Observations
+- The grid is always 19×19.
+- Outputs are four-way symmetric: any nonzero seed in the input appears mirrored across both the vertical and horizontal axes (so it shows up in all four quadrants).
+- Besides mirroring the seeds, the output also draws “dashed” rectangular frames at certain offsets from the border. These frames:
+  - Sit at a fixed offset i from the border (same i for top, bottom, left, right edges).
+  - Use every other cell (alternating zeros), so the dash spacing is 2.
+  - Skip the corners; the corners keep the original seed values.
+- When do we draw a frame at offset i, and what value do we put on it?
+  - Look at the main diagonal at indices (i, i) and (i, i+2) with i odd. If both are nonzero, that “announces” a frame at offset i.
+  - The frame value is the value at the farther of the two diagonal hints (i, i+2), not the nearer one at (i, i).
+- This same rule happens relative to each corner, not just the top-left. You can detect them all by flipping the grid horizontally and/or vertically, treating the top-left as the reference each time, then reflecting your drawn marks back.
+
+Plan
+1) Initialize the output as four-way symmetric seeds:
+   - For every nonzero cell in the input, copy it to its three mirrors: reflect across the vertical axis, horizontal axis, and both. This gives the base mirrored grid and preserves the original corner values.
+
+2) For each of the four orientations (original, horizontal flip, vertical flip, both flips):
+   - Treat the top-left as the anchor corner and scan the main diagonal for the frame trigger pattern.
+   - Only consider odd offsets i = 1, 3, 5, … up to SIZE-3. (This matches the dash parity seen in the outputs; the dashed pattern aligns only on those indices.)
+   - If both diagonal cells (i, i) and (i, i+2) are nonzero, we will draw a rectangular “ring” at offset i from the border. Let:
+     - top = i, bottom = SIZE-1-i, left = i, right = SIZE-1-i
+     - v = value at (i, i+2) (the farther hint), which is the value used for the dashed frame.
+   - Draw the dashed frame, skipping corners, with step 2 to keep the alternation:
+     - On the left and right borders: for rows X = i+2, i+4, …, bottom-1, set (X, left) and (X, right) to v.
+     - On the top and bottom borders: for columns Y = i+2, i+4, …, right-1, set (top, Y) and (bottom, Y) to v.
+     - Note this deliberately excludes the corners at (top,left), (top,right), (bottom,left), (bottom,right), so seed corners remain untouched.
+   - Reflect the drawn marks back to the original orientation and merge them into the overall output. We only write where we place nonzeros for the frame; corners remain as already set by the mirroring step.
+
+3) Return the combined grid.
+
+Why this matches the examples
+- The base mirroring explains why single seeds appear in all four symmetric positions in the outputs.
+- The diagonal hints separated by two along the main diagonal determine which offset ring to draw and what value to use.
+- The dashed pattern with step size 2 explains the alternating zeros on the frame lines.
+- Skipping corners preserves the original corner seed values (e.g., 8s or 4s stay at the corners), while the edges between corners take the value of the “farther” hint (e.g., 1s or 3s).
+- Doing the detection after each of the four flips reproduces frames anchored from each corner, covering all examples.

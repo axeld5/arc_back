@@ -1,0 +1,52 @@
+Here’s how I would solve it from just the I/O pairs:
+
+1) Structural pattern to extract
+- All non-zero pixels form one contiguous rectangular block.
+- That block has two colors:
+  - A “border” color around the outside.
+  - An “inner” color filling the interior.
+- Inside the inner area there are thin stripes aligned to rows and/or columns. These stripes appear at specific offsets measured from the inner area’s top-left. They’re visible because along the inner perimeter (one cell inside the outer border) you can see the inner color at some positions and the border color at others; those inner-color touches indicate where the stripes are “aligned.”
+- The outputs reconstruct a clean rectangle with border and inner fill, reimpose the detected stripe pattern inside the inner area using the border color, and also extend those stripe offsets as full guide lines of the inner color across the entire canvas outside the rectangle.
+
+2) Detect the rectangle and colors
+- Find the tight bounding box of all non-zero cells. If there are none, return the input unchanged.
+- Let the outer border color be the color at the top-left of the bounding box.
+- Let the inner color be the color two steps inward from the top-left of the bounding box. The examples show a border thickness of 2, so the inner region starts at offset +2 from each side.
+
+3) Detect the stripe offsets
+- Only do this if the rectangle is big enough to have an interior after removing a 2-thick border (height and width at least 5).
+- Look just inside the border:
+  - Top inner row: one row below the top border (brow+1).
+  - Bottom inner row: one row above the bottom border (brow+tall-2).
+  - Left inner column: one column to the right of the left border (bcol+1).
+  - Right inner column: one column to the left of the right border (bcol+wide-2).
+- Scan along these four inner edges.
+  - Wherever the cell equals the inner color, record the offset relative to the inner area’s top-left (brow+2, bcol+2).
+  - Keep two sets: row offsets (for horizontal stripes) and column offsets (for vertical stripes).
+- Intuition: inner-color “touches” along the inner perimeter mark the rows/columns where the stripe pattern should be placed. Using offsets makes the pattern independent of absolute position.
+
+4) Compose the output in a specific order
+- Start with an all-zero canvas.
+- First, draw the guide lines across the entire canvas:
+  - For each detected row offset, draw that entire row with the inner color (global horizontal line).
+  - For each detected column offset, draw that entire column with the inner color (global vertical line).
+  - Drawing these first ensures the guide lines remain visible outside the rectangle even after we rebuild the rectangle.
+- Next, rebuild the rectangle:
+  - Fill the bounding box with the border color.
+  - Fill the inner area (offset 2 from each side) with the inner color.
+- Finally, “carve” the interior stripes:
+  - For each row offset, overwrite that row within the inner area back to the border color (making a horizontal stripe inside).
+  - For each column offset, overwrite that column within the inner area back to the border color (making a vertical stripe inside).
+- This ordering matches the outputs:
+  - Outside the rectangle: you see thin inner-colored lines at the detected offsets.
+  - Inside the rectangle: most cells are the inner color, except at the stripe offsets where they are the border color.
+  - The border is clean and uniform.
+
+5) Edge handling
+- If no non-zero region exists, just return the input.
+- Only look for offsets when the rectangle is large enough to have a 2-thick border and a non-empty inner area (height and width at least 5), to avoid out-of-bounds and meaningless detections.
+
+This explains the behavior in all three examples:
+- The border and inner colors are recovered from the bounding box.
+- The stripe offsets are inferred from where the inner color touches the inner perimeter.
+- The outputs show the reconstructed rectangle with embedded stripes and extended inner-color guide lines across the whole grid.

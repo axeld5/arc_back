@@ -1,0 +1,26 @@
+Here’s how I would solve it:
+
+- Notice each input consists of 6 rows by 3 columns. The output is 3x3. So the input is naturally split into two 3x3 grids: the top half (rows 0–2) and the bottom half (rows 3–5).
+
+- The top half only contains 0s and 9s, and the bottom half only contains 0s and 1s. The output only contains 0s and 2s.
+
+- By scanning the examples cell-by-cell across the two halves, a clear pattern emerges: the only time the output cell is 2 is when both the corresponding top and bottom cells are 0. In every other case (including 9 on top or 1 on bottom or both), the output is 0.
+
+- Verify with a couple of spots:
+  - Example 1, position (0,0): top=0, bottom=0 → output=2. Position (0,1): top=9, bottom=1 → output=0. Matches.
+  - Example 2, position (2,0): top=0, bottom=1 → output=0. Position (0,1): top=0, bottom=0 → output=2. Matches.
+  - This holds across all provided samples.
+
+- Interpretation: treat 0 as “empty,” 9 and 1 as “occupied.” The task is to mark with 2 where both layers are empty; otherwise mark 0.
+
+- Algorithm:
+  1. Split the 6x3 input into two 3x3 grids: top and bottom.
+  2. Initialize an empty 3x3 output grid.
+  3. For each cell (r, c) in 0..2:
+     - If top[r][c] == 0 and bottom[r][c] == 0, set output[r][c] = 2.
+     - Otherwise, set output[r][c] = 0.
+  4. Return the 3x3 output grid.
+
+- For clarity and reuse, define a small helper that checks “both cells empty” (both zero), and another that maps a pair of cell values to the output value (2 if both empty, else 0).
+
+- This exactly reproduces the outputs for all given inputs.

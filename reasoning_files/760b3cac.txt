@@ -1,0 +1,18 @@
+Here’s how I would solve it from the I/O pairs:
+
+- The grid is 6 rows by 9 columns. The bottom half (rows 3–5) contains a fixed “4” structure shaped like a T centered in the middle three columns. The top half (rows 0–2) contains some 8s in the middle three columns.
+
+- From the outputs, only the top three rows change. The bottom three rows are left untouched.
+
+- In the outputs, a new 3×3 block appears either on the leftmost three columns or on the rightmost three columns of the top three rows. Which side it goes to depends on the state of the “4” structure:
+  - When the cell directly under the center of the middle 3×3 (row 3, col 3 in 0-based indexing) contains a 4 (i.e., is nonzero), the new block is placed on the left (columns 0–2).
+  - When that cell is empty (zero), the new block is placed on the right (columns 6–8).
+
+- What exactly is copied into that side block? It is the horizontal mirror of the middle 3×3 portion of the top (rows 0–2, columns 3–5). Concretely, for each of the first three rows, take the three values in the middle columns (3–5), reverse their left-to-right order, and paste that reversed triplet into the chosen side columns (either 0–2 or 6–8).
+
+- Everything else stays the same: the original middle columns remain unchanged; only the destination side block is overwritten with the mirrored values.
+
+- So the algorithm is:
+  1) Look at the pivot cell at row 3, col 3. If it’s zero, choose the right side as the destination; otherwise choose the left side.
+  2) For each row r in 0,1,2, take the slice of columns 3–5 in that row, reverse it, and write it into the chosen destination slice (either columns 0–2 or 6–8).
+  3) Return the modified grid.

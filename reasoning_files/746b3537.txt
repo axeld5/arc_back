@@ -1,0 +1,31 @@
+Here’s how I’d solve it from the given I/O pairs:
+
+1) What’s consistent across examples
+- Each input grid is made of flat “stripes”: either every row is constant (horizontal stripes) or every column is constant (vertical stripes), or at least many of them are.
+- The output is always a 1D sequence of colors (either a single column or a single row).
+- The output sequence preserves the left-to-right or top-to-bottom order of the stripes.
+- Consecutive identical stripes get collapsed to a single color (run-length deduplication).
+
+2) Deducing the orientation rule
+- When all rows are uniform but columns are not, the stripes are horizontal, so the output is a single column: list the row colors from top to bottom, merging consecutive duplicates. Example: rows 1/2/1 → output column [1,2,1].
+- When all columns are uniform (including the case where rows are also uniform), the stripes are vertical, so the output is a single row: list the column colors from left to right, merging consecutive duplicates. Example: columns 2/3/3/8/1 → output row [2,3,8,1].
+- When neither “all rows uniform” nor “all columns uniform” holds, pick the more convincing stripe direction by counting how many rows are uniform vs how many columns are uniform. Choose the axis with the larger count. On ties, prefer horizontal (rows). Then do the same run-length deduplication along that axis.
+
+3) How to extract the sequence
+- For horizontal extraction:
+  - For each row r in order, take its color as the first element in the row (since a uniform row’s color is well-defined).
+  - Build a sequence by appending that color only when it differs from the previous appended color.
+  - Output this as a single-column grid (each color on its own row).
+- For vertical extraction:
+  - For each column c in order, take its color as the first element in the column (since a uniform column’s color is well-defined).
+  - Build a sequence by appending that color only when it differs from the previous appended color.
+  - Output this as a single-row grid.
+
+4) Edge cases and tie-breaking
+- If the entire grid is one color, both rows and columns are uniform; treat it as “columns are uniform” and output a single-row sequence of length 1.
+- If both orientations seem partially striped, use the counts of uniform rows vs uniform columns to decide. On ties, choose rows.
+
+This rule precisely reproduces all provided I/O:
+- Horizontal stripes → vertical 1D output with deduped row colors.
+- Vertical stripes → horizontal 1D output with deduped column colors.
+- Ambiguous/mixed → choose the axis with more uniform lines, dedupe along it.

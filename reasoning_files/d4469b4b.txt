@@ -1,0 +1,35 @@
+Here’s how I would solve it:
+
+- First, look at the outputs: they’re always a fixed 3x3 pattern made of 5s and 0s. There are exactly three distinct patterns:
+  - A plus sign (centered cross).
+  - A T-shape with a full top row and a center column below it.
+  - An L-shape rotated so the vertical bar is on the right and the base is the bottom row.
+
+- Next, check what in the input determines which of the three patterns appears. Across all examples:
+  - When the grid contains 1s (and zeros otherwise), the output is the plus sign.
+  - When the grid contains 2s (and zeros otherwise), the output is the T-shape.
+  - When the grid contains 3s (and zeros otherwise), the output is the rotated L-shape.
+  - The exact positions or counts of these numbers in the 5x5 grid do not affect the output; only which label is present matters.
+
+- Since the input examples only ever include a single nonzero label from {1, 2, 3} at a time, the problem reduces to: detect which of {1, 2, 3} is present and emit the corresponding fixed 3x3 template.
+
+- A robust single-step way to detect that label is to take the maximum value in the grid (because values are 0, 1, 2, 3 and there’s only one nonzero label in a given grid). That maximum will be 1, 2, or 3, which directly identifies the intended pattern.
+
+- Then, map that detected key to the fixed 3x3 output:
+  - 1 -> plus sign:
+    - Row 1: 0 5 0
+    - Row 2: 5 5 5
+    - Row 3: 0 5 0
+  - 2 -> T-shape (top row full, center column below):
+    - Row 1: 5 5 5
+    - Row 2: 0 5 0
+    - Row 3: 0 5 0
+  - 3 -> rotated L (right column full, bottom row full):
+    - Row 1: 0 0 5
+    - Row 2: 0 0 5
+    - Row 3: 5 5 5
+
+- Implementation outline:
+  - Flatten the 5x5 grid and compute the maximum value.
+  - Use a small lookup from the key {1, 2, 3} to the corresponding 3x3 template of 5s and 0s.
+  - Return that template.

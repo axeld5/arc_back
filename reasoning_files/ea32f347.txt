@@ -1,0 +1,20 @@
+Here’s how I would solve it:
+
+- From the I/O pairs, the only non-zero input value is 5, and in the outputs all 5s are replaced by 1, 2, or 4. Each example has exactly three connected groups of 5s, using orthogonal (up/down/left/right) connectivity.
+
+- The mapping of these groups is consistent across all examples: the smallest group becomes 2, the middle-sized group becomes 4, and the largest group becomes 1. Their shapes and positions are preserved; only the value changes.
+
+- So the task reduces to:
+  1) Find all connected components of 5s using 4-directional connectivity.
+  2) For each component, collect all its cell coordinates.
+  3) Sort the components by their sizes (ascending).
+  4) Assign values to the components in that sorted order: smallest → 2, next → 4, largest → 1.
+  5) Write those values back into the grid at the stored coordinates.
+
+- Implementation details:
+  - Scan the grid; when a 5 is found, launch a flood-fill/DFS/BFS to explore its entire component using only orthogonal neighbors.
+  - During exploration, mark visited 5s so they aren’t revisited (overwriting them to 0 is a simple in-place way to do this), and store the coordinates of the component.
+  - After collecting all components, sort them by length and then iterate over them paired with the replacement sequence (2, 4, 1), writing the corresponding number to each stored coordinate.
+  - Return the modified grid.
+
+- This matches every provided example: the longest bar becomes 1, the medium bar becomes 4, the shortest becomes 2, regardless of their positions or orientations.

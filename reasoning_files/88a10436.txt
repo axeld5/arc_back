@@ -1,0 +1,35 @@
+Here’s how I would solve it:
+
+- Interpret the grid as a set of 4-connected components (clusters) of nonzero cells. Use BFS/DFS over the four orthogonal neighbors to find each cluster. For each cluster, keep all its cells as (value, (row, col)) pairs.
+
+- Among the clusters, identify:
+  - The “target” cluster: the one that contains the marker value 5. (In the examples this is a single cell 5, but the logic works if it’s a larger 5-cluster too.)
+  - The “pattern” cluster: the other nonzero cluster (assuming there are exactly two meaningful clusters in these tasks).
+
+- For the target cluster, compute its axis-aligned bounding box, then take its midpoint:
+  - row_mid = min_row + (max_row − min_row) // 2
+  - col_mid = min_col + (max_col − min_col) // 2
+  This integer midpoint centers the placement near the target.
+
+- For the pattern cluster, find its “top-left” anchor by taking the minimum row and minimum column among its cells. This gives the cluster’s reference corner.
+
+- Decide the placement rule: place the pattern so that its top-left corner lands one cell up and one cell left from the target midpoint. That is, compute the translation offset:
+  - drow = (row_mid − 1) − pattern_min_row
+  - dcol = (col_mid − 1) − pattern_min_col
+
+- Apply this translation to every cell of the pattern cluster:
+  - new_row = old_row + drow
+  - new_col = old_col + dcol
+  If the translated position is inside the grid, write the cell’s value at that location. This is an overlay: it does not erase the original clusters and may overwrite cells (including the 5), which matches the examples.
+
+- Return the modified grid.
+
+Why this matches the examples:
+- Example 1: The 5 is alone; its midpoint is its own cell. Placing the pattern’s top-left at one up-left from that midpoint duplicates the top-left cluster around the 5, overwriting the 5.
+- Example 2: The top-right cluster (with 6/1/2s) is translated so its top-left aligns just up-left of the 5’s position, producing the left-aligned copy at the bottom, as shown.
+- Example 3: The bottom-left pattern is copied near the 5’s midpoint above, while the original remains, matching the output layout.
+
+Implementation notes:
+- Use a queue (BFS) and a visited set to extract clusters via 4-neighborhood connectivity.
+- Store clusters as lists of (value, (row, col)).
+- When drawing the translated pattern, bounds-check to avoid writing outside the grid.

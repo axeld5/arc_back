@@ -1,0 +1,16 @@
+Here’s how I would solve it from the I/O patterns:
+
+- The outputs only include rows that had at least one non-zero in the input, and they appear in the same order as those rows in the input. So first, filter to only the “non-empty” rows.
+
+- The outputs are made from a contiguous vertical band of columns that tightly spans all non-zero entries across the entire grid. In other words, find the smallest and largest column indices that contain any positive value anywhere in the grid. These define the start and end of the crop (use end as exclusive to make slicing easy).
+
+- For each non-empty row, take that row’s slice between the global start and end column indices. This preserves the original numeric values (8, 2, 1, etc.) exactly as they appear in that band.
+
+- The output rows are twice as wide as that slice: simply duplicate the slice horizontally by concatenating it with itself.
+
+- Collect these duplicated slices for each non-empty row and return them as the final output grid.
+
+This explains:
+- Why the width of each output row is twice the cropped band’s width.
+- Why only the rows containing non-zero values are present.
+- Why the values and their relative positions inside the cropped band are preserved.

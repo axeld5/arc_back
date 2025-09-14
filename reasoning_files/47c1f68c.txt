@@ -1,0 +1,24 @@
+Here’s how I’d solve it from the IO pairs.
+
+- The inputs are odd-sized square grids that have a prominent cross (entire middle row and middle column) in a single “center” color. The outputs are even-sized squares whose size is exactly the input size minus one in each dimension (i.e., drop the central row and the central column).
+
+- The outputs only contain the center color, and it appears in four-fold symmetry. The original non-center, non-zero marks (like 1’s or 3’s) are used only to indicate locations; their actual values are ignored. Every such mark becomes the center color in the output.
+
+- The transformation rule:
+  1) Let n be the input size, which is odd. Let k = (n−1)//2 be the index of the center row/col. The center color is the value at the true center cell.
+  2) Construct an output grid of size (n−1)×(n−1), initialized with zeros. Conceptually, this is the input with its middle row and middle column removed.
+  3) For every cell (r, c) in the input:
+     - If the value is non-zero and not equal to the center color, treat it as a “marker.”
+     - Map (r, c) into the output’s coordinate system where the center row and column are skipped. Equivalently, think of a 2k×2k frame around the center (n = 2k+1), and use (r, c) as offsets within that frame that exclude the middle row/col.
+     - In the output, place the center color at the four symmetric positions of that mapped coordinate within the 2k×2k frame:
+       • (r’, c’)
+       • (r’, width − 1 − c’)
+       • (height − 1 − r’, c’)
+       • (height − 1 − r’, width − 1 − c’)
+       where height = width = 2k, and (r’, c’) are the indices within this 2k×2k frame (i.e., after skipping the middle row/col).
+  4) Ignore zeros and ignore any cells that already have the center color in the input (e.g., the cross); those do not generate marks.
+
+- Intuition check against examples:
+  - The center cross is removed (hence the shrink by one in both dimensions).
+  - Every off-center non-zero cell produces four placements in the output, mirrored across horizontal and vertical axes, and all of them use the center color.
+  - This exactly matches the observed symmetric patterns and dimensions in the outputs.

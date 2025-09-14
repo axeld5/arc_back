@@ -1,0 +1,51 @@
+Here’s how I’d approach deriving a solver from the given input/output pairs:
+
+1) Identify the global background
+- Flatten all cells and pick the most frequent color as the background. This explains the large areas of 0’s, 8’s, etc. in the inputs that don’t appear as structure in the outputs.
+
+2) Find the rectangular frame formed by “almost-solid” lines
+- The outputs consistently extract a rectangle bounded by strong horizontal and vertical lines in the input.
+- For each row: find its most common color and how many times it appears. If this dominant color is not the background and it covers almost the entire row (allowing up to 2 deviations), mark that row as a candidate border row and remember the color.
+- Do the same for each column to get candidate border columns.
+- Take the extreme indices of these candidate rows/columns: up = min border row, down = max border row; left = min border column, right = max border column. This gives the bounding rectangle.
+
+Why “almost-solid” (length − 2)?
+- The examples show borders that are very solid but may tolerate a couple of holes/noise. A threshold of “row length minus two” (or “column length minus two” respectively) robustly finds them.
+
+3) Determine the border colors
+- Each of the four sides has a single dominant color (top, bottom, left, right) found from the corresponding candidate line.
+- Note: the corners may be special cells; keep those exact corner colors from the original grid later.
+
+4) Check for a “ray” color inside the rectangle
+- Look at the interior (strictly inside the four borders).
+- If any of the four side colors also appears inside the rectangle, we interpret that as a “ray” color to be extended in a specific direction:
+  - If it matches the left side color, extend rays leftward.
+  - If it matches the right side color, extend rays rightward.
+  - If it matches the top side color, extend rays upward.
+  - If it matches the bottom side color, extend rays downward.
+- If multiple side colors appear inside, pick the first in the priority order: left, then right, then top, then bottom. This matches the examples where a single ray system is chosen even if others might be present.
+
+5) Collect all interior seeds of the ray color
+- Within the interior, gather all cells equal to the chosen ray color. Each such cell is a seed for ray extension.
+
+6) Build the output rectangle
+- The output is exactly the sub-rectangle from up..down and left..right.
+- Initialize it filled with the global background color.
+- Paint the four borders as solid lines with their respective side colors. This yields the clean frame seen in the outputs.
+- Preserve corner cells by copying the original corner values from the input (the four intersection cells of the borders).
+- If a ray color was detected:
+  - Convert each interior seed’s coordinates into the local coordinates within the rectangle.
+  - From each seed, step one cell at a time in the chosen direction (left/right/up/down), painting the ray color, until you would hit the border (i.e., stay strictly inside the interior while extending). This reproduces the straight “beams” in the outputs connecting seeds toward the corresponding side.
+
+7) Return the constructed rectangle
+- This matches the examples: a clean framed rectangle, background-filled interior, optional rays propagated in the correct direction, and original corner colors preserved.
+
+Why this works on the provided tasks:
+- The first group shows a clear large rectangle implied by dominant near-solid lines; the output collapses the scene to that framed rectangle with left border color 3, right border color 8, top/bottom border colors as observed, background fill, and rays of whichever border color appears inside (extended toward that side).
+- The second and third groups follow the same: detect frame by near-solid lines, crop to it, paint borders and background, then extend any interior occurrences of a border color straight to that side.
+
+Edge handling and robustness:
+- Using the most common color globally gives a reliable background even when the interior is noisy.
+- Requiring near-solid lines (allowing up to two mismatches) provides stable frame detection in imperfect inputs.
+- If no border color appears inside, the result is just the clean frame with background interior (no rays).
+- Priority on which side to use for rays is fixed to ensure consistent choice when multiple sides’ colors show up inside.

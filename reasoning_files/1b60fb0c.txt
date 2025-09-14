@@ -1,0 +1,29 @@
+Here’s how I’d solve it from the given input/output pairs.
+
+- The grids are 10x10. The outputs differ from the inputs only by adding 2s, never by changing existing 1s. The 2s appear in positions that are 0 in the input and whose centrally mirrored counterpart (with respect to the grid center) is a 1. That is, if (i, j) is a 0, and (9 − i, 9 − j) is a 1, then output(i, j) becomes 2; otherwise it stays as input(i, j).
+
+- The mirroring is point symmetry about the center of the 10x10 grid: mirror(i, j) = (9 − i, 9 − j). This matches all three examples: the 2s on the left/top sides correspond to 1s on the right/bottom sides.
+
+- We never overwrite nonzero cells. If a cell already contains 1, we leave it as 1. We only write where the input is 0.
+
+- Because the grid has even width, we can process only the left half columns (j = 0..4) and all relevant rows, and read from their mirrored cells on the right half. That avoids double-writing both a cell and its mirror.
+
+- There’s a subtlety about the border: in all examples the outermost frame (row 0/9, col 0/9) remains unchanged. However, not all tasks will necessarily require ignoring the border. So we need a way to decide whether to apply the operation to the whole grid or only to the inner “frame” (i.e., rows/cols 1..9 and 1..5 for the half-plane we’re writing). The examples suggest this decision depends on whether the pattern is “internally” centrally symmetric once we do the mirror-fill.
+
+- To encode that decision, I do this:
+  1) Define a transform that, within a rectangular “window” controlled by an offset, scans the left half columns and all rows of that window. For each cell in that window that is 0, copy in a multiple of its globally mirrored cell’s value. The mirror is always computed relative to the full 10x10 frame (mirror(i, j) = (9 − i, 9 − j)), not relative to the offset window.
+  2) Define a symmetry check over the same window: compare each window cell (again indexed via the left-half scheme) with its globally mirrored counterpart. If all equal, we say the grid is symmetric in that window.
+  3) First, try a “trial” transform on the inner window (offset = 1) using a neutral multiplier (1). Then check whether that trial result is symmetric within the inner window. If it is symmetric, that means the structure respects center symmetry once you ignore the border, so the final transform should operate only on the inner window. If it is not symmetric, we should apply the transform over the full grid (offset = 0).
+
+- The multiplier in the final transform is 2 to match the required outputs: when a mirrored cell contains a 1, the new filled value should be 2, not 1. Using a multiplier parameter also lets us run the trial pass with multiplier 1 so we can assess symmetry without baking in the “2” choice.
+
+- Implementation details I’d keep in mind:
+  - Use a deep copy for the transform so reading and writing don’t interfere within a single pass.
+  - Iterate rows i from 0 to (10 − offset − 1), and columns j from 0 to 4. Convert to absolute coordinates by adding the offset for where we write, but compute the mirror from the un-offset (i, j) so it always refers to the true global mirror in the 10x10 grid.
+  - Only write when the original grid at the write location is 0, i.e., we never overwrite 1s.
+  - The main solver does: trial inner transform with multiplier 1 → check inner symmetry → if symmetric, do inner transform with multiplier 2; else do full-frame transform with multiplier 2.
+
+- This exactly reproduces the examples:
+  - It places 2s only where the original cell is 0 and the global mirror has a 1.
+  - It keeps 1s unchanged.
+  - In these examples the decision ends up applying the inner-window transform (offset 1), so 2s appear only in the inner band, leaving the border untouched. If a case failed the symmetry test, it would apply to the whole grid.

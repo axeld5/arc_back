@@ -1,0 +1,28 @@
+Here’s how I’d reverse-engineer the rule from the I/O pairs and turn it into a solution:
+
+1) Spot the invariant and the change
+- The only values that ever appear in the outputs that weren’t in the inputs are 1s.
+- All existing nonzero values (like 3, 5, 7) stay exactly where they are; they are never modified.
+- The 1s always show up in 3-by-3 blocks, never in other shapes or sizes.
+
+2) Hypothesis about when 1s appear
+- Compare each 3x3 block in the input with the corresponding 3x3 block in the output.
+- Wherever the output has a 3x3 block of 1s, the input had a 3x3 block of all zeros in that exact location.
+- Zeros outside those exact 3x3 all-zero blocks remain zeros, confirming that the transformation is specifically triggered by “3x3 all zeros.”
+
+3) Decide how to scan and update
+- The grid is 20x20 in the examples, so the top-left corner of any 3x3 block ranges over rows and columns 0 through 17.
+- For each top-left (row, col) in that range, look at rows row..row+2 and columns col..col+2.
+- If all 9 values are zero, replace those 9 values with ones.
+
+4) What about overlapping candidate blocks?
+- The outputs are consistent with modifying in-place during a top-to-bottom, left-to-right scan: once a 3x3 block is turned into ones, any overlapping blocks that include those cells no longer look all-zero, so they won’t be turned as well.
+- That matches the examples where we only see distinct 3x3 patches of ones, not larger merged patches.
+
+5) Implementation details I’d use
+- Iterate row from 0 to 17. For each row, take references to the three consecutive rows (row, row+1, row+2) to avoid repeatedly indexing the outer list.
+- Iterate col from 0 to 17. For each col, compute the sum of the 9 values in the 3x3 window by summing the three length-3 slices from those rows.
+- If that sum is zero, overwrite those three slices with [1, 1, 1] on each of the three rows.
+- Return the mutated grid.
+
+This exactly reproduces the observed outputs: every 3x3 all-zero block becomes a 3x3 block of ones, and nothing else changes.

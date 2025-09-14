@@ -1,0 +1,38 @@
+Here’s how I would solve it from just the input/output pairs:
+
+- Observation from the examples:
+  - The grid contains only 9s and 1s initially.
+  - In the outputs, some—but not all—1s are turned into 8s.
+  - Which 1s change? The ones belonging to connected blobs of 1s that touch “internal pockets” of 9s (regions of 9s that do not touch the boundary of the grid). 1s far from such internal 9 pockets stay as 1s.
+  - Adjacency is 4-directional (up, down, left, right), not diagonal.
+
+- High-level plan:
+  1) Work with connected components on the grid using 4-neighbor connectivity.
+  2) Find all connected components of value 9 and determine which of those 9-components are internal (do not touch any border of the grid). These are the “internal pockets” of 9s.
+  3) Find all connected components of value 1.
+  4) For each 1-component, check whether it is adjacent (4-neighbor) to any cell that belongs to the union of internal 9 pockets. If yes, mark that 1-component to be changed.
+  5) Finally, change every cell in each marked 1-component from 1 to 8. Leave all other cells unchanged.
+
+- Details to implement each step:
+  - Neighbor enumeration:
+    - For any cell (r, c), the valid neighbors are (r−1, c), (r+1, c), (r, c−1), (r, c+1) as long as the neighbor indices are inside the grid bounds.
+  - Connected components:
+    - Use a BFS/DFS with a visited set to collect cells of the same target value (either 9 or 1).
+    - Iterate all cells; if a cell has not been visited and matches the target value, start a BFS/DFS to collect its entire component.
+  - Boundary test for a component:
+    - A component “touches the boundary” if any of its cells has row = 0, row = last_row, col = 0, or col = last_col.
+    - Internal 9-components are those that do not touch the boundary.
+  - Adjacency test between a 1-component and internal 9s:
+    - First collect all cells from all internal 9-components into a set.
+    - For each 1-component, examine its cells; if any of those cells has a neighbor contained in that internal-9 set, then this entire 1-component should be converted from 1 to 8.
+  - Apply updates:
+    - For every cell in every marked 1-component, set its value to 8.
+
+- Why this matches the examples:
+  - The big background sea of 9s touches the borders, so it is excluded from being an “internal pocket.”
+  - Any isolated 9 region completely surrounded by 1s is an internal pocket; all 1-blobs touching those pockets become 8.
+  - 1s that do not touch such pockets remain 1.
+
+- Complexity and properties:
+  - Each cell is visited a constant number of times across component finds and adjacency checks: overall O(R*C) time and O(R*C) memory for visited markers and component sets.
+  - The procedure is deterministic and only mutates 1s that are adjacent to internal 9s, exactly as seen in the provided input/output pairs.

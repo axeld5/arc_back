@@ -1,0 +1,31 @@
+Here’s how I’d approach this family of I/O examples, working backward from what’s consistent across them:
+
+1) What’s the structure?
+- Each big input is a square grid that’s visually partitioned by straight, full-length “separator” lines all of a single color. Those separators create a regular grid of rectangular subregions.
+- Inside each subregion, the color is uniform (or at least the center cell is representative of the subregion’s value).
+- The expected output is a much smaller matrix whose entries are the values of those subregions, in their natural grid order.
+
+2) How to detect the separators robustly?
+- First, I normalize orientation to avoid left/right ambiguity. A simple horizontal mirroring (reverse each row) aligns the examples so that the subgrid order matches the expected output order.
+- Then I scan for uniform whole rows and uniform whole columns. Among all uniform lines (rows and columns), the most common value is the separator color. This works because separator lines tend to appear more frequently and are perfectly uniform, whereas inner content is rarely uniform across an entire row/column.
+
+3) Which uniform lines are “dividers”?
+- I only want internal dividers (not the very first or last row/col), and they must be fully the separator color.
+- Those indices split the grid into tiles. I treat the space before the first internal divider and after the last internal divider as outer “bands,” so I add virtual boundaries just outside the grid: one before index 0 and one at the last index. Concretely, if the grid is size N, I extend the list of dividers to [-1, …, N-1].
+
+4) Building the compressed output
+- The internal dividers give me a sequence of row bands and column bands; their cartesian product is the tiling of subregions.
+- Each subregion is bounded between two successive divider indices in rows and two successive divider indices in columns. I take the midpoint index along the row range and the midpoint index along the column range to sample the representative value for that tile. Because these regions are constant in the examples, the midpoint alone suffices.
+- I assemble these midpoint samples into a smaller matrix whose shape is (number of row bands) × (number of column bands). That matrix is the final output.
+
+Why this works on the given examples
+- In every case, there’s a dominant uniform color forming a crosshatch of lines that cleanly partitions the grid (2 in the first, 8 in the second, 2 in the third).
+- The outer borders are not treated as dividers; instead, they bound the outermost tiles implicitly via the virtual boundaries. That ensures we capture the outer tiles.
+- Sampling midpoints produces exactly the provided outputs: the subgrid values are correctly ordered left-to-right, top-to-bottom because of the initial horizontal mirroring and the boundary arithmetic.
+
+In summary:
+- Mirror the grid horizontally to normalize orientation.
+- Find all fully uniform rows/cols; pick the separator color as the most common among them.
+- Keep only internal rows/cols that are fully that separator color; use them as cut lines.
+- Add virtual borders and, for each resulting subregion, sample its center cell.
+- Return the matrix of these sampled values.

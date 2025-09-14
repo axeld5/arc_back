@@ -1,0 +1,29 @@
+Here’s how I’d solve it from the I/O pairs alone:
+
+- What the outputs show:
+  - 8s appear only in straight horizontal or vertical lines.
+  - Those lines of 8 connect cells that originally contain the same number (in your examples, that number is 1).
+  - No diagonals are drawn.
+  - The original numbered cells stay as their number (1), even when they lie on a line of 8s.
+  - If multiple anchors exist in the same row, the entire span between the leftmost and rightmost anchor in that row becomes 8 (except at the anchors). Similarly for a column.
+
+- Rule inferred:
+  - For each distinct digit value present in the grid (the examples show only 1s, but generalize to any 1–9), connect every pair of equal digits that share a row by filling the cells between them in that row with 8s. Do the same for pairs that share a column by filling the cells between them in that column with 8s.
+  - Do not connect across diagonals.
+  - Where multiple such connections overlap, the cell remains 8 (unless it is an original anchor).
+  - Original anchor cells keep their original value (they are not turned into 8).
+
+- How to implement it:
+  1. Work on a copy of the original grid so that new 8s don’t influence which cells are considered anchors.
+  2. For each digit d from 1 to 9:
+     - Collect all coordinates where the original grid equals d.
+     - Consider every unordered pair among those coordinates:
+       - If the two cells are in the same row, fill every column between their column indices (inclusive) in that row with 8.
+       - If the two cells are in the same column, fill every row between their row indices (inclusive) in that column with 8.
+     - After marking, ensure all anchor positions for digit d are set back to d (so anchors remain as 1s in your examples).
+  3. Return the modified copy.
+
+- Notes and edge cases:
+  - If a row (or column) has fewer than two anchors of the same digit, nothing is filled there.
+  - Using all pairs ensures you fill the entire span between the extreme anchors in a row/column, which matches the outputs.
+  - Processing per digit prevents accidentally connecting different numbers if a grid contained multiple digits.

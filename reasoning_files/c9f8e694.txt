@@ -1,0 +1,14 @@
+Here’s how I would solve it from the given I/O pairs:
+
+- Look at each row independently; transformations don’t depend on other rows.
+- In every transformed row, all zeros stay zero.
+- The value 5 never survives in the output. Instead, every 5 turns into a row-specific label already present in that row.
+- That label is the first non-zero value that isn’t 5 encountered when scanning the row left to right. In the examples it’s 1, 2, 3, or 4 depending on the row.
+- If a row contains only 0s and 5s (i.e., there is no such label), the row is left unchanged.
+
+Algorithm per row:
+- Scan left to right to find the first value that is neither 0 nor 5. Call it label.
+- If found, produce a new row by replacing every 5 with label and leaving all other entries unchanged.
+- If not found, keep the row as is.
+
+Apply this row-process to every row in the grid, updating each row in place.

@@ -1,0 +1,36 @@
+Here’s how I would solve it, guided purely by the I/O patterns:
+
+1) What the 4s represent
+- The 4s act like anchor points that define axis-aligned frames. In the examples, whenever two 4s share a row, the cells along the straight horizontal segment between them belong to the frame; whenever they share a column, the vertical segment between them belongs to the frame.
+- The union of these horizontal/vertical segments produces one or more rectilinear “skeletons” that outline rectangles.
+
+2) How to build the frame(s)
+- Collect all positions containing 4.
+- For every pair of 4s:
+  - If they are in the same row, mark every cell in that row between their columns (inclusive).
+  - If they are in the same column, mark every cell in that column between their rows (inclusive).
+- Use a temporary marker (e.g., -1) to mark these frame cells without losing the distinction between empty background (0) and existing 4s.
+
+3) Group continuous frames
+- After marking frame cells, find connected components of all non-zero cells (i.e., 4s and the temporary frame marks). Use 4-directional connectivity and a BFS/queue to explore components.
+- Each connected component corresponds to a single rectilinear frame or a cluster that forms a bounding rectangle.
+
+4) Fill the interior(s)
+- For each component, compute its bounding box: min/max row and min/max column across all its cells.
+- Fill the interior of that box (strictly inside: rows in (min_row+1..max_row-1) and columns in (min_col+1..max_col-1)) with the color 2.
+- This matches the examples: the interior of the rectangular frame(s) gets filled with 2s, while the edges remain as the original 4s and temporary marks.
+
+5) Cleanup
+- Restore the temporary frame marks back to 0, so the only non-zero outputs are the original 4s (unchanged) and the filled interior 2s.
+
+6) Implementation details to match the behavior
+- Work on a copy of the grid so the original inputs remain intact.
+- Use a set to accumulate all frame cells to avoid duplicates when multiple pairs overlap.
+- The grid is treated as square; use height = len(grid) and construct visited as height x height.
+- When filling interiors, only fill if the bounding box has a valid interior (min+1 ≤ max-1 on both axes); otherwise, skip.
+- BFS uses 4-neighborhood (up, down, left, right), and treats any non-zero cell as part of a component.
+
+This procedure exactly reproduces:
+- Example 1: two parallel horizontal segments connected by verticals via shared columns → small 3x3 bounding box → single center cell filled with 2.
+- Example 2: a rectangular frame formed by two rows and two columns of 4s → interior is a 4x4 block of 2s.
+- Example 3: separate frames in different places → each component’s bounding box interior gets filled with 2s independently.

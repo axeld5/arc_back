@@ -1,0 +1,22 @@
+Here’s how I would solve it:
+
+- From the examples, the transformation is row-wise and only starts at the first nonzero entry of a row.
+- Once a positive value v is encountered in a row, that cell and every cell to its right alternates between v and the constant 5.
+- All cells before the first positive in that row remain as they are (zeros in the examples). Rows with no positive values remain unchanged.
+
+Algorithm:
+- Iterate each row left to right.
+- For each row, keep:
+  - a flag indicating whether we’ve hit the first positive yet,
+  - a running index into an alternating pattern,
+  - and a prebuilt pattern that alternates [v, 5] long enough to cover the row width.
+- When you see the first positive value v in the row, build a pattern [v, 5] repeated more than enough times to cover the row (e.g., repeat 20 times for safety), set the flag to start filling.
+- From that same position onward (including the seed cell), overwrite the row entries with successive values from the pattern, advancing the pattern index each step.
+- Reset these per-row variables for each new row.
+- Return the modified grid.
+
+This exactly reproduces:
+- Zeros left of the first positive unchanged,
+- The first positive preserved,
+- A rightward alternation v, 5, v, 5, … across the rest of the row,
+- Rows without positives untouched.

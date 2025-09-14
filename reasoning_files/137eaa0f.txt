@@ -1,0 +1,19 @@
+Here’s how I would solve it:
+
+- First, notice the output is always a fixed 3x3 grid. Its entries match values that appear in the input at specific positions relative to a 5. It looks like we’re aggregating the local neighborhoods around all 5s.
+
+- Hypothesis: For every occurrence of the number 5 in the input, take its 3x3 neighborhood (including the 5 itself). For each position in that neighborhood:
+  - If the neighbor is inside the grid and non-zero, copy that value into the corresponding position of the 3x3 output (top-left corresponds to the neighbor at row-1, col-1; center corresponds to the 5 itself; bottom-right corresponds to row+1, col+1).
+  - If multiple 5s contribute to the same slot in the 3x3 output, the later one seen in scanning order can overwrite the earlier one. Zeros are ignored (so they don’t overwrite anything).
+
+- Initialize the 3x3 output as all zeros. Then scan the entire input grid. Whenever you find a 5, iterate over i, j in {-1, 0, 1} to visit its 3x3 neighborhood. For each neighbor:
+  - Compute neighbor_row = row + i, neighbor_col = col + j.
+  - If it’s within bounds and the cell value is non-zero, write that value into output[1 + i][1 + j].
+
+- This exactly matches the examples:
+  - In the first example, the pair of 6s above a 5 populate the top row positions; the 7s to the right/up-right of another 5 fill the top-right and middle-right; the 4s below-left and below-center of a 5 fill the bottom-left and bottom-center; the center becomes 5 because the 5 itself is non-zero.
+  - In the second and third examples, each non-zero neighbor relative to any 5 shows up in the corresponding slot of the 3x3 result. Positions with no non-zero neighbor across all 5s stay 0.
+
+- Edge handling: if a 5 is near the border, only in-bounds neighbors are considered; out-of-bounds are skipped.
+
+So the algorithm is: scan for 5s, and for each, project its non-zero 3x3 neighborhood into a fixed 3x3 accumulator at matching relative offsets, ignoring zeros and skipping out-of-bounds.

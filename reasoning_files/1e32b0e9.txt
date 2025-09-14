@@ -1,0 +1,37 @@
+Here’s how I would solve it.
+
+1) Recognize the structure
+- Each grid is 17x17 and has a prominent “divider” color (8 in the first task, 2 in the second, 1 in the third) forming a cross at rows 5 and 11 and columns 5 and 11 (0-based). That splits the canvas into a 3x3 array of 5x5 tiles.
+- The top-left tile (rows 0..4, cols 0..4) contains a small 3x3 motif centered inside the tile (rows 1..3, cols 1..3). This 3x3 motif is the “reference pattern” to be replicated elsewhere. Its nonzero value is the “symbol color” (2 in example 1, 1 in example 2, 3 in example 3).
+- The “divider color” is the solid color used by the separating cross; it can be read from any cell on that cross, e.g., (5,0).
+
+2) What the output is doing
+- The top-left tile stays as-is (we do not modify it).
+- In every other tile (the eight remaining 5x5 tiles), the 3x3 center area (offset +1 inside each 5x5) gets rewritten to match the reference motif’s shape.
+- Where the reference motif has a nonzero cell, we draw that motif shape in the target tile using the divider color — except if that target cell already contains the same symbol color as in the reference tile, in which case we keep it (we don’t overwrite existing exact matches of the symbol color).
+- Where the reference motif has a zero, we force the corresponding target cell to zero (clearing noise inside the 3x3 centers).
+
+3) How to locate the regions to edit
+- The 5x5 tiles start at (0,0), (0,6), (0,12), (6,0), (6,6), (6,12), (12,0), (12,6), (12,12).
+- We skip the first one (0,0).
+- Inside each tile, we only touch the central 3x3 block, which is the tile start plus an offset of +1 in both row and column, with relative indices 0..2 mapped to absolute positions start+1..start+3.
+
+4) The per-cell rule (applied only to those 3x3 centers)
+- Let T be the 3x3 reference motif taken from rows 1..3, cols 1..3 of the top-left tile.
+- For each corresponding target cell v:
+  - If T is zero at that position: write 0.
+  - Else (T is nonzero):
+    - If v already equals the symbol color in T: keep v as-is.
+    - Otherwise, write the divider color.
+
+5) Implementation sketch in words
+- Copy the input grid to the output.
+- Read the divider color from row 5 (any column outside the tiles is fine, e.g., (5,0)).
+- Extract the 3x3 reference motif from (1..3,1..3).
+- For each of the eight other tiles (starting at the fixed offsets), rewrite the 3x3 center using the rule above.
+
+This exactly reproduces:
+- Replicating the top-left motif into the center of every other tile.
+- Using the divider color to draw the motif elsewhere.
+- Preserving cells that already match the symbol color where the motif expects that color.
+- Clearing cells where the motif expects background.

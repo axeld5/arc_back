@@ -1,0 +1,23 @@
+Here’s how I’d solve it from just the I/O pairs:
+
+- What’s invariant: 4s mark existing strokes of a “plus-like” shape. The output inserts 7s to complete the interior of that shape, but only within localized 3×3 neighborhoods. Existing 4s are never changed; only zeros inside certain 3×3 blocks turn into 7s.
+
+- What neighborhood triggers filling: Look at each 3×3 window sliding over the grid. A window gets filled when it looks like a fragmented “plus” made of 4s: the window’s top edge has at least one 4, the bottom edge has at least one 4, the left edge has at least one 4, and the right edge has at least one 4. It doesn’t require the 4s to be centered or continuous—just that each of those four edge segments contains a 4 somewhere. This matches the examples where incomplete arms still trigger filling.
+
+- What to fill: For any 3×3 window that passes the test, convert every zero inside that 3×3 window into a 7. Leave any existing 4s as-is. This explains why sometimes you see multiple 7s (not just the literal center): we fill every missing piece inside that 3×3 where there isn’t already a 4.
+
+- How to scan: Slide a 3×3 window by iterating top-left anchors from (0, 0) to (num_rows − 3, num_cols − 3). For each anchor:
+  - Check the four edge segments of the 3×3:
+    - Top row: cells [row][col:col+3]
+    - Bottom row: cells [row+2][col:col+3]
+    - Left column: cells [row..row+2][col]
+    - Right column: cells [row..row+2][col+2]
+  - If each of these four segments contains at least one 4, then fill: traverse all nine cells in the 3×3; if a cell is 0, change it to 7.
+
+- Overlaps and stability: If multiple 3×3 windows overlap, a cell might be considered multiple times. That’s fine—zeros become 7 on first pass and remain unchanged thereafter. 4s are never modified.
+
+- Complexity: Linear in the grid size, with constant 3×3 checks per position.
+
+- Structure: Wrap the scan/fill into a function. Use a small helper to test the “plus” condition on a 3×3 window, and another helper to perform the fill. A thin wrapper returns the mutated matrix. A minor no-op parameter can exist on the wrapper to satisfy a caller signature.
+
+This logic reproduces the outputs: wherever a 3×3 region has at least one 4 on each of its four sides, all the zeros in that 3×3 are turned into 7s, completing the plus-like interior.

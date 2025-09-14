@@ -1,0 +1,33 @@
+Here’s how I would solve it, given the input/output pairs:
+
+- Observe the pattern:
+  - For each non-zero color, the output is the smallest axis-aligned rectangle that covers all occurrences of that color in the input, filled entirely with that color.
+  - The output grid starts as all zeros; then each color’s bounding box is painted.
+
+- So the rule is:
+  - For every distinct non-zero value, find the minimum and maximum row indices where it appears, and the minimum and maximum column indices where it appears.
+  - Those four extremes define the color’s bounding rectangle.
+  - Fill that rectangle in the result grid with the color.
+
+- Plan the steps:
+  1. Collect all unique non-zero values in the grid.
+  2. For each such value:
+     - Scan the grid to record all row indices and column indices where the value occurs.
+     - Compute min row, max row, min col, max col.
+     - Note: when iterating with ranges, it’s convenient to use half-open intervals, so use max+1 to make the end exclusive.
+  3. Initialize a result grid of the same size with zeros.
+  4. For each color, fill its bounding rectangle in the result grid with that color.
+  5. Return the result grid.
+
+- Decompose into small helpers:
+  - A helper to scan the grid and return the min/max row and col for a given value.
+  - A helper to fill a rectangular region in a grid with a given value.
+  - A main function that builds a zero grid, loops over unique colors, gets their bounds, and paints them.
+
+- Edge cases and notes:
+  - If a color appears only once, its bounding box is a single cell—fill that one cell.
+  - Zeros are ignored when collecting colors.
+  - This approach is O(R*C) to find bounds per color if you rescan, but you can afford it for small grids; or you can collect positions in one pass if needed.
+  - If different colors’ bounding boxes overlap, later fills will overwrite earlier ones; in the given examples, rectangles don’t conflict.
+
+This reasoning produces a solution that scans for each color’s extremal positions, then paints those rectangles over a zero-initialized grid.

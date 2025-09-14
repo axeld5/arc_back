@@ -1,0 +1,42 @@
+Here’s how I’d solve it from the examples:
+
+1) Spot the invariant
+- Each example uses a single nonzero value (8s, 7s, 6s).
+- The nonzeros in the output are arranged by repeating a 3x3 pattern across the whole 9x9 grid.
+- Which 3x3 blocks get that pattern is not “everywhere,” but is controlled by a 3x3 mask.
+
+2) Find where the seed lives
+- Look for the first non-empty row and the first non-empty column in the input.
+- Snap each to the nearest 3-multiple (floor to 0, 3, or 6). That gives the top-left corner of a 3x3 block that acts as the “seed area.”
+- In all given examples, the meaningful data is confined to that aligned 3x3 window.
+
+3) Extract two things from that 3x3 window
+- The pattern: the exact 3x3 arrangement of values inside that window (these are the values that will be tiled across the grid).
+- The mask: the same 3x3 window, but used only to decide which of the 3x3 macro-cells across the grid should receive the pattern. A nonzero in the mask cell means “activate” that macro-cell; a zero means “leave it empty.”
+
+4) Map 9x9 coordinates to macro/micro positions
+- Think of the 9x9 as a 3x3 grid of 3x3 blocks.
+- For any cell (y, x):
+  - macro position = (y // 3, x // 3) selects which 3x3 block we are in.
+  - micro position = (y % 3, x % 3) selects which cell within the 3x3 pattern.
+
+5) Compose the output
+- For each (y, x), look up:
+  - pattern value = pattern[y % 3][x % 3]
+  - mask flag = mask[y // 3][x // 3] is nonzero?
+- If the mask flag is true, place the pattern value; otherwise place 0.
+- This reproduces exactly what the outputs show: the seed 3x3 pattern is cloned into those 3x3 blocks whose corresponding mask cell is nonzero.
+
+6) How this matches each example
+- Example 1: The seed 3x3 is the top-left block. Its nonzero cells define both the pattern and which macro-cells (top-left, top-middle, middle-right, bottom-left) get the pattern.
+- Example 2: The seed 3x3 is centered (rows 4–6, cols 4–6). Its nonzeros define the pattern and which macro-cells to fill across the grid; the output is exactly the tiling.
+- Example 3: The seed 3x3 is the block covering columns 4–6 in the first three rows. The same tiling-with-mask logic explains the output.
+
+7) Implementation outline
+- Find first non-empty row index; find first non-empty column index.
+- Floor each to a multiple of 3 to get the seed block’s top-left corner.
+- For all y, x in 0..8:
+  - output[y][x] = seed[y % 3][x % 3] if seed[y // 3][x // 3] is nonzero else 0.
+- Using a boolean check for the mask and direct multiplication by that boolean is a concise way to combine them.
+
+This reasoning yields a simple O(81) solution that exactly reproduces the shown outputs.

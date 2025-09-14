@@ -1,0 +1,33 @@
+High-level reasoning to reach this solution from the I/O:
+
+- Observation from examples:
+  - The grid is square and contains exactly one non-zero cell (the 8).
+  - The output draws 5s in two “arms” that start at the 8 and extend in a repeating pattern: two steps vertically, then two steps horizontally, and so on, until hitting the grid edge.
+  - One arm goes up then right (up-right zigzag), the other goes down then left (down-left zigzag).
+  - The 8 itself is preserved.
+
+- Strategy:
+  1. Locate the coordinates of the only non-zero cell by scanning rows and columns; call it (sr, sc).
+  2. For each of two direction pairs:
+     - Up-right: vertical step = -1, horizontal step = +1
+     - Down-left: vertical step = +1, horizontal step = -1
+  3. For each arm:
+     - Start from (sr, sc).
+     - Repeat:
+       - Attempt to take two single-cell moves in the vertical direction. After each move:
+         - If still within bounds, set that cell to 5.
+         - If stepping out of bounds, stop this arm immediately.
+       - If both vertical moves succeeded, attempt two single-cell moves in the horizontal direction with the same rule: mark 5s while in bounds; if a move would go out of bounds, stop this arm.
+       - If both horizontal moves succeeded, continue the loop; otherwise, the arm stops.
+  4. Do not overwrite the starting 8.
+
+- Why this matches the I/O:
+  - Starting at the 8, the up-right arm marks exactly the cells seen in the first example near the top-right area: two up, two right, two up, until it hits the top boundary.
+  - The down-left arm similarly marks two down, two left, repeating, producing the bottom-left pattern shown.
+  - In the second example, the same rule from a different starting position reproduces the provided pattern.
+
+- Implementation notes:
+  - Find the start by scanning for the first non-zero cell.
+  - Use a loop that alternates two vertical moves and two horizontal moves for each arm.
+  - Stop an arm as soon as any single-step move would leave the grid.
+  - Modify the grid in place, preserving the 8.

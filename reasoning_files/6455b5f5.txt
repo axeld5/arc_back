@@ -1,0 +1,36 @@
+Here’s how I would solve it from just the input/output pairs:
+
+- First, identify what the numbers mean from the examples:
+  - 2s never change between input and output → they’re walls/obstacles.
+  - 0s turn into either 1s or 8s depending on where they are.
+  - Shapes bounded by 2s behave like “rooms” or “zones.”
+  - In each example, one zone is filled with 1s and another with 8s; others remain 0. Comparing sizes shows the largest open zone becomes 1s and the smallest open zone becomes 8s. If there are multiple largest/smallest zones, they all get filled with the corresponding marker.
+
+- Model the grid as a graph with 4-directional connectivity (up, down, left, right). Treat every cell that is not a 2 as traversable and part of some zone.
+
+- Perform a flood fill (DFS or BFS) to find all connected components (“zones”) of non-2 cells:
+  - Maintain a visited set to avoid revisiting cells.
+  - For each unvisited non-2 cell, explore its whole component, collecting:
+    - The list of cells in this zone (so we can mark them later).
+    - The count of empty cells (cells that are 0) in this zone. Only 0s should contribute to the size used for comparison, because walls are 2 and should never be counted, and any pre-filled non-2 values would be considered part of the zone shape but not counted as empty. In the given inputs, zones are all 0s, but counting only 0s is the safe definition.
+
+- After discovering all zones, compute:
+  - The maximum count of empty cells across zones → largest zone size.
+  - The minimum count of empty cells across zones → smallest zone size.
+
+- Create the output by copying the original grid and marking zones:
+  - For each zone:
+    - If its empty-cell count equals the largest size, set all its 0 cells to 1.
+    - Else if its empty-cell count equals the smallest size, set all its 0 cells to 8.
+    - Otherwise, leave its cells as they are.
+  - Note: Only change cells that were 0 in the original grid. Never overwrite 2s (walls). This also ensures if there were other non-2, non-zero values, they remain unchanged.
+  - If a zone is simultaneously both smallest and largest (e.g., there’s only one zone), give precedence to marking it as the largest (1). That matches the outputs and is a reasonable tie-break.
+
+- Complexity is linear in the number of cells since each cell is visited at most once in the flood fill and again in the marking pass.
+
+This matches the observed transformations:
+- 2s are never changed.
+- The largest open area becomes 1s.
+- The smallest open area becomes 8s.
+- Ties for largest/smallest result in multiple regions being marked.
+- Only original zeros are overwritten with markers; walls and other values are preserved.

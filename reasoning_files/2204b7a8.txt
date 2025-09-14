@@ -1,0 +1,22 @@
+Here’s how I would solve it:
+
+- The grids are 10x10. There are exactly two “anchor” colors that live on opposite edges, and a third “intruder” color appearing sparsely inside that needs to be replaced by one of the two anchors, depending on which side of the grid it lies.
+
+- First, identify the two anchor colors and the axis along which to split:
+  - Take the top-left cell as the primary anchor color.
+  - Look at the top-right cell. If top-left equals top-right, that means the top edge is uniform; the two anchors are on the top and bottom edges, so the split should be horizontal (top vs bottom).
+  - Otherwise, the top-left and top-right are different; the two anchors are on the left and right edges, so the split should be vertical (left vs right).
+  - The other anchor comes from the opposite edge: if we’re splitting top/bottom, use the bottom-left; if splitting left/right, use the top-right.
+
+- Find the “intruder” color to be replaced: scan the grid to find the first nonzero value that is not equal to either anchor color. Assume there is only one such value used for all intruders.
+
+- For each cell that has the intruder color, decide which anchor it should turn into by comparing its position to the grid’s midpoint along the chosen axis:
+  - If we’re splitting left/right, compare the column index c to its distance from the right edge (9 - c). If c < 9 - c, it’s on the left half, so recolor it to the left anchor; otherwise recolor it to the right anchor.
+  - If we’re splitting top/bottom, compare the row index r to its distance from the bottom edge (9 - r). If r < 9 - r, it’s on the top half, so recolor it to the top anchor; otherwise recolor it to the bottom anchor.
+  - With a 10x10 grid, there’s no true tie (the “middle” is between indices 4 and 5), so a strict less-than cleanly assigns halves.
+
+- Leave zeros and any existing anchor-colored cells unchanged. Only recolor the intruder-colored cells.
+
+- This matches the examples:
+  - When left and right edges differ (example 1), intruders on columns 0–4 become the left-edge color; columns 5–9 become the right-edge color.
+  - When the top edge is uniform (examples 2 and 3), intruders on rows 0–4 become the top-edge color; rows 5–9 become the bottom-edge color.

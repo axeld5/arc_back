@@ -1,0 +1,33 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observe the pattern:
+  - The 5s form a rectangular frame (sometimes with a gap on one side).
+  - The output fills the entire interior of that frame with 8s.
+  - Additionally, from the gap in the frame, a straight “ray” of 8s is extended outward to the edge of the canvas in the direction of the gap (up, down, left, or right).
+
+- So the plan is:
+  1. Find all coordinates where the value is 5. This identifies the frame.
+  2. Compute the bounding box of the frame: min/max row and min/max column among all 5s. This gives the top, bottom, left, and right limits of the rectangle.
+  3. Fill the interior of that bounding box (excluding its border) with 8s. That reproduces the filled interior seen in the outputs.
+  4. Determine which side of the bounding box is “open” (i.e., has positions along the border where the value is not 5). For each of the four edges:
+     - Scan the top edge across its columns.
+     - Scan the bottom edge across its columns.
+     - Scan the left edge down its rows.
+     - Scan the right edge down its rows.
+     - Collect the positions on that edge where the value is not 5. These are potential gap locations.
+  5. Choose the edge with the largest number of such “not-5” positions. That’s the most likely side where the opening exists (this matches both examples, where one side has one clear gap and the others have none). If there are multiple gaps on that edge, just take the first one in scan order (leftmost for top/bottom, topmost for left/right), which makes the behavior deterministic.
+  6. From that gap position, draw a straight line of 8s outward to the boundary of the grid:
+     - If the chosen edge is the bottom edge, extend downward in the same column to the bottom of the grid.
+     - If it’s the top edge, extend upward to the top of the grid.
+     - If it’s the left edge, extend left to the left boundary.
+     - If it’s the right edge, extend right to the right boundary.
+  7. Return the modified grid.
+
+- Notes/assumptions:
+  - The grid is square with known height H (10 in the examples). Iteration uses a generic range alias for flexibility.
+  - The interior fill never overwrites the frame, because we fill only strictly inside the bounding box (min_row+1..max_row-1, min_col+1..max_col-1).
+  - The examples always include at least one gap on one edge. If there were no gaps, the “ray” step would need extra guarding; here we assume a gap exists as per the I/O.
+  - Time complexity is linear in the number of cells (we scan the grid once to find 5s, then scan the four edges and fill interior/ray).
+
+This reasoning yields a straightforward pipeline:
+- collect 5s → compute bounding box → fill interior with 8s → find edge gaps → pick the longest-gap edge → cast a ray of 8s outward from the first gap along that edge.

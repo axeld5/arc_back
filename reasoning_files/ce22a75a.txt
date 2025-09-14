@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+- Pattern from the examples:
+  - The only meaningful input value is 5.
+  - Each 5 turns into a 3×3 block of 1s in the output, centered on the 5’s position.
+  - If multiple 3×3 blocks overlap, the output simply has 1s in the union of those blocks (no addition or counting).
+  - At the grid edges, the 3×3 block is clipped to stay within the 9×9 bounds.
+  - All other cells remain 0.
+
+- Algorithm:
+  - Create a new 9×9 grid initialized with zeros.
+  - Scan every cell (row 0..8, col 0..8) of the input.
+  - Whenever the current cell equals the target value (5), mark its neighborhood:
+    - For r from max(0, row−1) to min(8, row+1)
+    - For c from max(0, col−1) to min(8, col+1)
+    - Set output[r][c] = 1
+  - Return the marked grid.
+
+- Design notes:
+  - Use a small helper that “marks neighbors” to keep the main scan clean.
+  - Clamp neighborhood indices to [0, 8] so edges are handled safely.
+  - Parameterize the target value in case it changes (default 5).
+  - The wrapper function simply calls the main routine and returns the result.
+
+- Why this matches the I/O:
+  - A single 5 yields exactly a 3×3 block of 1s centered on it.
+  - Multiple 5s produce multiple blocks whose overlap remains 1s.
+  - The examples show blocks aligned with the 5s’ rows/cols and clipped at edges, which the clamped neighbor loops ensure.

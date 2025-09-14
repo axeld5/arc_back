@@ -1,0 +1,31 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, notice the output grid is always 2n by 2n when the input is n by n.
+
+- Next, the only values that appear in the output are taken from the first row of the input, in order, stopping before the first zero. Duplicates are kept, zeros are ignored. This gives a sequence (a palette) that I’ll call C. Examples:
+  - For 2 2 2 3 0 → C = [2, 2, 2, 3]
+  - For 1 1 4 6 0 → C = [1, 1, 4, 6]
+  - For 2 3 4 1 6 → C = [2, 3, 4, 1, 6]
+
+- Now look at how the values are placed. In the outputs:
+  - Row 0 is just C cycled across the whole row.
+  - Row 1 starts with the second element of C for the first two columns, then continues with C cycled to the right.
+  - More generally, in row i, the first i+1 cells are the same value (the (i mod len(C))th element of C), and to the right of the diagonal the row continues by repeating C.
+
+- The clean way to express this is: each cell (i, j) in the 2n by 2n output is determined by the “level” k = max(i, j). Then you take C[k mod len(C)] as the value for that cell. This creates square “shells” centered at the top-left corner, where each shell uses the next color from C, wrapping around.
+
+- Algorithm:
+  1) Let n be the input size.
+  2) Build C from the first row of the input by taking all non-zero entries in order.
+  3) Create a 2n by 2n result grid.
+  4) For every position (i, j) with i, j in [0, 2n):
+     - Let k be the larger of i and j.
+     - Set result[i][j] to the element of C at index k modulo the length of C.
+
+- Quick checks against the samples:
+  - First row (i = 0): k = j, so you just repeat C across the row, matching all first rows shown.
+  - On the main diagonal (i = j): k = i, so each diagonal step advances one position in C (modulo its length), matching the banded look.
+  - Below the diagonal (j < i): k = i, so the left block of each row stays constant up to the diagonal, as in the outputs.
+  - Above the diagonal (j > i): k = j, so the right side of each row resumes the cyclic sequence from C, matching the examples.
+
+This reasoning reproduces all the given outputs.

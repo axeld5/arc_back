@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+- Observation from the I/O:
+  - Each input is a 9×3 grid (9 rows, 3 columns).
+  - The output is always one 3×3 block taken from the input.
+  - The 9×3 grid can be viewed as three stacked 3×3 subgrids: rows 0–2, 3–5, and 6–8 (columns are always 0–2).
+  - In each example, two of the 3×3 subgrids are symmetric across the main diagonal (i.e., equal to their transpose), and exactly one is not. The output is that asymmetric 3×3 subgrid.
+
+- Plan:
+  - Treat the input as a list of 9 rows, each with 3 values.
+  - Iterate the starting row over 0, 3, 6:
+    - Extract the 3×3 subgrid formed by rows [start_row, start_row+1, start_row+2] and columns [0,1,2].
+    - Form its transpose by swapping indices (row, col) -> (col, row) within that 3×3.
+    - Compare the subgrid with its transpose.
+    - If they differ, that subgrid is the answer. Return it immediately.
+  - If none differ (not expected given the examples), return nothing.
+
+- Why this works:
+  - The outputs match the unique 3×3 that breaks symmetry, while the other two 3×3 blocks are symmetric (equal to their transpose).
+  - The transpose check captures “is this 3×3 symmetric across its main diagonal?” which is exactly the distinguishing property in the examples.
+
+- Structure:
+  - A small helper to extract a 3×3 block given a starting row (columns are always 0–2 here).
+  - A helper to test whether that block differs from its transpose.
+  - A loop over the three candidate blocks; return the first that fails the symmetry test.
+
+- Complexity:
+  - Constant time: only three 3×3 checks, each O(1).

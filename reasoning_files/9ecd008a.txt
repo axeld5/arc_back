@@ -1,0 +1,16 @@
+Here’s how I would solve it from just the I/O pairs:
+
+- First, notice each input is a 16x16 grid containing a tight rectangular block of zeros. The corresponding output is a small matrix whose size exactly matches the height and width of that zero block (e.g., 3x3 in the examples). So the zeros define a cropping window: take the minimal axis-aligned rectangle that contains all zeros.
+
+- Next, observe that the numbers in the outputs don’t match the values in that rectangle in the original grid. Instead, they match what you’d get if you horizontally mirror the entire grid first (reverse each row left-to-right) and then read the values inside that same zero-defined rectangle. You can verify this row-by-row on the given examples: each output row equals the values in the mirrored row at the same columns as the zero block in the original.
+
+- Therefore, the transformation is:
+  1) Scan the original grid to collect the positions of all zeros.
+  2) Compute the minimal bounding rectangle of those zeros: topmost row, bottommost row, leftmost column, rightmost column.
+  3) Create a horizontally mirrored version of the grid by reversing each row.
+  4) Extract the submatrix from the mirrored grid using the row and column bounds found in step 2.
+  5) Return that submatrix.
+
+- This matches all examples:
+  - The zero block determines the output’s shape and location.
+  - The contents come from the horizontally flipped grid at the same indices, not from the original.

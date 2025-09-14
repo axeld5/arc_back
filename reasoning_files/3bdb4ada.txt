@@ -1,0 +1,28 @@
+Here’s how I’d solve it based on the I/O pattern:
+
+1) What’s changing?
+- Only 3-row-tall horizontal bands of a single color are affected.
+- Within such a band, only the middle row gets altered.
+- The alteration is to punch out every other cell in the middle row (alternating zeros), starting from the band’s left edge. The top and bottom rows remain intact.
+- Bands are contiguous horizontally: all three rows share the same color across a run of adjacent columns.
+
+2) How to detect a band
+- Scan the grid top-to-bottom, left-to-right, but only consider rows where a 3-row-tall check is possible (i.e., up to row count - 2).
+- When you see a non-zero cell at (r, c), check whether the same color appears at (r, c), (r+1, c), and (r+2, c). If not, skip.
+- If yes, this is the start of a 3-row stripe at column c. Now extend this stripe to the right as long as each next column maintains the same color in all three rows.
+- Collect all (row, col) positions belonging to this 3×width block. Keep a visited set so you don’t process the same band more than once if you encounter it again while scanning.
+
+3) How to modify the band
+- Determine the horizontal span of the band: its leftmost and rightmost columns.
+- On the middle row of that band (r+1), set every other cell to zero across that span. The “every other” should be aligned to the left edge of the band, i.e., zero out columns whose offset from the left edge is odd. This matches the outputs where the middle row keeps the original color at the left edge, then 0, then color, then 0, and so on.
+- Leave the top and bottom rows of the band unchanged.
+
+4) Implementation outline
+- Work on a copy of the input grid so you can read from the original while writing the transformed result.
+- Maintain a visited set to avoid reprocessing cells in the same band.
+- For each unvisited non-zero cell, try to build a 3-row band by verifying the vertical triple and then extending right while the triple stays consistent.
+- After collecting the band’s cells, compute the min and max columns of the band, and apply the alternating zero pattern on the middle row between these columns (inclusive).
+- Continue the scan until done, then return the modified copy.
+
+This yields exactly the observed transformations:
+- In the 4-band and 8-band examples, only the middle row of the 3-row-tall runs is turned into an alternating sequence, aligned from the band’s left edge, and the rest of the grid remains unchanged.

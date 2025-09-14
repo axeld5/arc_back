@@ -1,0 +1,39 @@
+Here’s how I’d figure it out from the I/O and build a solution:
+
+1) Spot the structure
+- Each input is a 9x9 grid.
+- The output is a 3x3 grid.
+- Natural guess: split the 9x9 into nine 3x3 subgrids, and map each subgrid to a single value in the 3x3 output.
+
+2) Hypothesize the mapping rule
+- For each 3x3 subgrid, pick the value that “best represents” that subgrid.
+- From the examples, zeros are allowed and sometimes dominate the output (so zero counts too).
+- Checking the samples: the output cell matches the most frequent number inside the corresponding 3x3 block (e.g., top-left block has many 3s → output is 3; middle block often has many 7s → output is 7; blocks with mostly zeros → output 0).
+
+3) Validate on samples
+- Top-middle block in the first input is mostly zeros → output 0.
+- Bottom-right block has many 9s → output 9.
+- The pattern holds across given examples.
+
+4) Design the algorithm
+- Partition the 9x9 grid into 3x3 subgrids. Index them by (block_row, block_col) in {0,1,2}.
+- For each subgrid:
+  - Collect its 9 values.
+  - Count frequencies of each value.
+  - Choose the value with the highest frequency (ties can be broken by first-seen; any consistent rule is fine).
+- Place that chosen value into the corresponding cell of a 3x3 result grid at (block_row, block_col).
+- Return the 3x3 result grid.
+
+5) Implementation plan (modular)
+- Helper to extract a 3x3 subgrid given a start row and start col.
+- Helper to find the most frequent element in a 3x3 list of lists.
+- Outer routine that:
+  - Initializes a 3x3 result grid with zeros.
+  - Iterates block_row and block_col from 0 to 2, computes start indices as (block_row*3, block_col*3), extracts subgrid, computes its mode, and stores it in the result.
+
+6) Notes
+- Include 0 in frequency counts (as the examples do).
+- If there are ties, a deterministic but simple rule (like first encountered max) is acceptable.
+- Time is trivial: 9 blocks × 9 elements per block.
+
+This reasoning yields a clean, simple solution that reproduces the observed outputs.

@@ -1,0 +1,21 @@
+Here’s how I’d solve it from the given I/O pairs.
+
+1) Spot the pattern
+- In every example, the top row of the output is the bottom row of the input reversed.
+- The middle row (in a 3x3) becomes the middle row reversed.
+- The bottom row of the output is the top row of the input reversed.
+- In other words, each element at position (r, c) in an R×C grid ends up at (R-1-r, C-1-c).
+
+This is exactly a 180-degree rotation (equivalently: flip horizontally and vertically).
+
+2) Turn that into an algorithm
+- Reverse each row (mirror left-right).
+- Then reverse the order of the rows (mirror top-bottom).
+- The result is the grid rotated by 180 degrees.
+
+3) Structure it cleanly
+- A small helper that reverses a single row.
+- A function that maps that helper over all rows, then reverses the list of rows.
+- The main solver returns this transformed grid.
+
+This matches all the provided inputs/outputs.

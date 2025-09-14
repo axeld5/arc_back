@@ -1,0 +1,23 @@
+Here’s how I’d solve it from the given I/O behavior:
+
+- Interpret the grid as 10 rows by 10 columns.
+- The value 2 marks “water,” 5 marks an “obstacle,” and 0 is empty.
+- Water originates only from the bottom row: every column in the last row that already has a 2 is a source that must be propagated upward.
+- For each such source column, simulate water moving upward one row at a time. Keep a running horizontal “offset” that starts at 0 for that source.
+- At each step (starting from the bottom row and moving toward the top):
+  - Look at the cell in the current row at column = (source_column + offset).
+  - If that cell is an obstacle (5), the water cannot occupy it. Instead, shift the flow one cell to the right by increasing the offset by 1, and immediately place water at the shifted position in the current row. From this point on (for all rows above), continue using the updated offset.
+  - If that cell is not an obstacle, place water in that cell.
+- This exactly matches the outputs: water forms a vertical “track” from the bottom source upward until it hits a 5; at any row where it hits a 5, the track steps one column to the right on that same row and keeps going upward in that shifted column thereafter. The obstacle itself remains intact (we do not overwrite 5).
+- Repeat this independent upward simulation for every bottom-row source column.
+- Practical implementation details to mimic the outputs precisely:
+  - Use constants for water (2) and obstacle (5).
+  - Traverse rows from bottom to top; negative indexing makes this convenient (index -1 is the last row, -2 is the one above it, etc.).
+  - Maintain a single offset per source and apply it at each row when checking/placing water.
+  - When an obstacle is detected at the current target cell, increment the offset and place water at the shifted cell in the current row (so the row that contains the obstacle shows water to its right, not on top of the obstacle).
+- Driver logic:
+  - Scan columns 0..9 on the last row.
+  - For every column that has water (2), run the described propagation.
+  - Return the mutated grid.
+
+This reasoning yields a simple in-place simulation: O(10) work per source column, with rightward deflection upon obstacles and otherwise straight upward propagation, reproducing the given outputs.

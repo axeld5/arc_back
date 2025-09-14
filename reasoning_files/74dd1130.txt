@@ -1,0 +1,18 @@
+Observation from the examples:
+- The multiset of colors is unchanged and the shape stays 3x3.
+- Rows in the input become columns in the output, preserving order:
+  - Example 1: input row1 [2,2,1] becomes output col1 [2,1,5]; input row2 [1,5,1] becomes output col2 [2,5,1]; input row3 [5,2,2] becomes output col3 [1,2,2].
+  - The same row-to-column correspondence holds in all four examples.
+- Equivalently, each cell at position (r, c) in the input appears at position (c, r) in the output. This is a reflection across the main diagonal (top-left to bottom-right), not a rotation or flip across a horizontal/vertical axis.
+
+Conclusion:
+- The task is to transpose the grid.
+
+How I would solve it:
+- Create a new grid whose height equals the input width and whose width equals the input height.
+- For every position (r, c) in the input, place that value at position (c, r) in the output.
+- Return this transposed grid.
+
+Why this matches the data:
+- In every example, the ith row of the input exactly matches the ith column of the output.
+- No recoloring, no filtering, no reordering beyond swapping indices.

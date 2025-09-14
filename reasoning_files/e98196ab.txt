@@ -1,0 +1,45 @@
+Here’s how I’d solve it from the I/O pairs.
+
+1) Spot the structure
+- Every input is an 11×11 grid.
+- Row index 5 (the 6th row) is a solid band of 5s and never shows up in the output.
+- Each output is 5 rows tall and 11 columns wide.
+
+2) Hypothesis about how rows are paired
+- The 11 input rows split naturally into:
+  - Top block: rows 0–4
+  - Middle separator: row 5 (all 5s)
+  - Bottom block: rows 6–10
+- Each output row r (for r = 0..4) combines information from input row r and input row r+6 (i.e., pair the top row with the corresponding row in the bottom block, skipping over the separator).
+
+3) Column-wise merge rule
+- Compare each output row r with input rows r and r+6:
+  - Nonzero entries from row r appear in the output at the same columns.
+  - If row r has a 0 at some column but row r+6 has a nonzero there, the output has that nonzero.
+  - If both are 0, the output is 0.
+  - If both are nonzero, the output matches the value from the top row (i.e., prefer the top entry).
+- This is exactly a “take the first nonzero between (top, bottom)” rule per column.
+- In Python terms, this is the same as using a logical-or between the two cells, because 0 is falsy and any nonzero value is truthy, and logical-or returns the first truthy operand (preserving the actual nonzero value).
+
+4) Verify with the examples
+- Example 1:
+  - Output row 0 equals input row 0 (since row 6 is all zeros).
+  - Output row 1 equals input row 7 (since row 1 is all zeros).
+  - Output row 4 shows a mix: where row 4 has 8s, those 8s appear; where row 4 is 0, the 1s from row 10 appear; when both are 0, it’s 0.
+- Examples 2 and 3 behave the same way with different nonzero labels (3, 7, 2, 1); values are not transformed—just selected.
+
+5) Algorithm
+- For each r in 0..4 (five rows to produce):
+  - For each column c in 0..(num_cols-1):
+    - Take the value from input[r][c] if it is nonzero; otherwise take input[r+6][c].
+- That’s it. The middle row (all 5s) is ignored. The offset of 6 aligns top rows with their counterparts below the separator.
+
+6) Decompose into helpers (mirroring the structure of the final code)
+- A cell-combiner that returns the first nonzero between the top and its paired bottom cell in the same column.
+- A row-combiner that applies the cell-combiner across all columns.
+- A main function that builds 5 output rows by combining row 0 with 6, 1 with 7, …, 4 with 10.
+
+This reasoning leads directly to:
+- Processing only the first 5 rows.
+- Pairing each with the row offset by +6.
+- Using a “first nonzero wins” merge per column, which Python can express naturally with a logical-or on the two cell values.

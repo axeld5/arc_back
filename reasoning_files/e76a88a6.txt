@@ -1,0 +1,35 @@
+Here’s how I would solve it from the given input/output pairs.
+
+- Identify what’s going on:
+  - 0 is background.
+  - There is exactly one “example pattern” made of nonzero digits that are not 5.
+  - There are one or more rectangular blocks of 5s that act as placeholders where the example pattern should be copied.
+  - The placeholders have the same dimensions as the example pattern.
+  - The task is to find the example pattern once, and stamp it over every 5-block of matching size.
+
+- How to find the example pattern (its location and size):
+  - Scan the grid in row-major order to find the first cell that is part of the pattern. From the examples it’s clear that 0 and 5 are not part of the pattern; everything else is.
+  - Once the top-left pattern cell is found, determine the pattern’s height by scanning downward in the same column until you hit a prohibited value (0 or 5).
+  - Determine the pattern’s width by scanning rightward in the same row until you hit a prohibited value (0 or 5).
+  - This gives you a rectangle (row, col, height, width) that defines the template to replicate.
+
+- How to replicate the template into the 5-blocks:
+  - Slide a window of size (height, width) over all positions where it could fit in the grid. In practice you only need to consider top-left anchors (row, col) such that the full rectangle stays in bounds.
+  - Use a simple anchor condition: if the top-left cell of the window is 5, treat that position as the top-left of a placeholder block and stamp the template there.
+  - To stamp, copy each cell from the template rectangle into the target window cell-by-cell.
+
+- Why the simple “anchor at any 5” rule works:
+  - The stamp is applied in-place as you scan left-to-right, top-to-bottom. After stamping at the first 5 of a block, the overwritten cells are no longer 5, so subsequent positions within the same block won’t trigger a second stamp. This avoids needing to explicitly detect the top-left of each 5-rectangle.
+
+- Putting it together:
+  - Step 1: Find the first non-(0,5) cell and measure the contiguous rectangular template by expanding down and right until hitting 0 or 5.
+  - Step 2: Iterate over all top-left candidate positions where the template could fit; if the current cell equals 5, stamp the template values there.
+  - Step 3: Return the mutated grid.
+
+- Notes and assumptions matching the examples:
+  - Only the first discovered non-(0,5) rectangle is used as the template.
+  - 0 and 5 serve as prohibited/background markers during detection of the template extents.
+  - The placeholder regions are aligned rectangles of the same size as the template, so a direct copy works.
+  - In-place stamping naturally prevents overlapping repeated pastes within the same 5-block.
+
+This reasoning produces a straightforward two-phase solution: locate the template rectangle by scanning and measuring against prohibited values, then replicate it into every position anchored by a 5 where it fits.

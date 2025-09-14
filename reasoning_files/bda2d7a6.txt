@@ -1,0 +1,10 @@
+Here's how I would solve it:
+
+- Notice each example is not doing geometry; it’s a pure color remapping applied to every cell.
+- The mapping isn’t arbitrary; it’s derived from the colors that appear along the main diagonal, but only up to the midpoint (inclusive start, exclusive midpoint). This avoids double-counting the symmetric half of the diagonal in even-sized grids.
+- Treat those diagonal colors, in order from the top-left toward the center, as a cyclic sequence. Then map each color to the one that came immediately before it in that sequence, with wrap-around (the first maps to the last).
+  - Example 1 diagonal (first half): [3, 2, 0] → mapping: 3→0, 2→3, 0→2.
+  - Example 2 diagonal (first half): [0, 7, 6] → mapping: 0→6, 7→0, 6→7.
+  - Example 3 diagonal (first half): [8, 0, 5, 8] → mapping built in order; if a color repeats in this prefix (like 8), the later occurrence overrides the earlier mapping for that color, yielding 8→5, 0→8, 5→0.
+- After constructing this mapping, replace every cell in the grid by its mapped value.
+- This works because in the given tasks, all colors present in the grid appear within that diagonal prefix, so the mapping is defined for every cell.

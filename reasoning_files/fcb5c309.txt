@@ -1,0 +1,40 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observations from the examples:
+  - The output is not the whole grid; it’s a cropped sub-rectangle.
+  - That sub-rectangle has a uniform colored border in the output.
+  - The interior of the rectangle appears to be whatever was inside that rectangle in the input, except that any cells that were the border color seem to be replaced by another color.
+  - The border color in the output looks like a color that is relatively rare in the original grid, while the border color in the input rectangle seems to be a color that is very common in the original grid.
+  - Therefore it looks like: find a rectangle whose entire perimeter consists of the most common non-zero color in the grid; then output just that rectangle but recolor every occurrence of that most common color in the rectangle to the least common non-zero color.
+
+- Inference about “background”:
+  - Zeros serve as background and are excluded when counting color frequencies.
+
+- Strategy:
+  1. Count frequencies of all non-zero colors in the grid.
+  2. Identify:
+     - most_frequent: the color with the highest count among non-zero cells.
+     - least_frequent: the color with the lowest count among those same non-zero colors.
+  3. Find the largest axis-aligned rectangle (by area) whose entire perimeter is the most_frequent color.
+     - Require at least 3x3 so there is a distinct perimeter.
+     - Enumerate all candidate rectangles by their top, left, bottom, right indices.
+     - For each rectangle, verify:
+       - Top row from left to right is entirely most_frequent.
+       - Bottom row from left to right is entirely most_frequent.
+       - Left column from top to bottom is entirely most_frequent.
+       - Right column from top to bottom is entirely most_frequent.
+     - Keep the rectangle with the maximum area that satisfies these conditions.
+  4. Build the output by cropping exactly that best rectangle from the input.
+     - For each cell in the cropped rectangle:
+       - If its value equals most_frequent, change it to least_frequent.
+       - Otherwise, keep it as-is.
+     - Note this recoloring affects the whole rectangle region (including interior), not just the border. This matches the examples where any residual instances of the dominant color inside the rectangle also flip to the rare color.
+  5. Return this cropped-and-recolored rectangle as the final output.
+
+- Why this matches the examples:
+  - The border in the original input is made of the most frequent non-zero color, which then becomes the least frequent color in the output (hence the border color flips).
+  - The chosen rectangle is the largest one satisfying the all-border constraint.
+  - Zeros (background) are preserved, and any interior cells that were the dominant color are also flipped, which aligns with the provided outputs.
+
+- Complexity notes:
+  - The rectangle search is brute-force over all O(H^2 W^2) rectangles with border checks costing O(H + W) per candidate, acceptable for small puzzle grids.

@@ -1,0 +1,24 @@
+Here’s how I would solve it, given only the I/O pairs:
+
+1) Spot the pattern
+- The input is a 3x3 grid. The output is a 9x9 grid.
+- Each single input value turns into a 3x3 block of that same value in the output.
+- Equivalently: horizontally, every value is repeated three times; vertically, every resulting row is repeated three times.
+
+2) Decompose the transformation
+- Start with the smallest unit: a single value expands to a list of three identical values.
+- Build on that for a row: for each element in the row, replace it with its tripled list, and concatenate all those lists. That turns a length-3 row into a length-9 row.
+- Build on that for the grid: for each original row, take its expanded row and duplicate that row three times vertically.
+- Collect all these rows to form the final 9x9 grid.
+
+3) Why this works on the examples
+- In the first example, the top-left 3 becomes a 3x3 block of 3s; the middle-left 7 becomes a 3x3 block placed in rows 4–6, cols 1–3; the 4s land in rows 4–6, cols 4–6; zeros fill the rest. Exactly matches the outputs.
+- In the second example, the same rule explains the placement of 3s, 2s, and zeros.
+
+4) Implementation outline
+- A helper that, given a value, returns it repeated three times.
+- A row transformer that maps each element through that helper and flattens the results into one longer row.
+- A grid transformer that maps each original row through the row transformer and then repeats that transformed row three times.
+- The main function just applies the grid transformer to the input grid.
+
+This reasoning directly leads to a solution that replicates each cell into a 3x3 block by repeating horizontally then vertically.

@@ -1,0 +1,30 @@
+Here’s how I would solve it from just the given I/O:
+
+1) Notice what the outputs represent
+- In the first example, every row looks like contiguous blocks of the same value from left to right: some number of 4s, then some 2s, then some 8s. The output is a single row [4, 2, 8]. That suggests we’re extracting the left-to-right “pattern of colors” within a row, ignoring repeated occurrences of the same color in that row.
+- In the second example, the grid contains three distinct values overall: 2, 8, 5. The output lists them as 2 on one line, 8 on the next, 5 on the next. That matches the order you’d first encounter each value if you scanned the grid row by row, left to right, top to bottom.
+- In the third example, the output is 6, 4, 2, 3 on separate lines. Again, that aligns with the first-seen order in a row-major scan.
+
+2) Hypothesis about the rule
+- For each row, compress it to its “signature”: the sequence of distinct values in the order they first appear in that row (preserving order and dropping duplicates). For example, a row like [4,4,4,2,2,8,8] becomes [4,2,8].
+- If every row’s signature is the same, output that signature once as a single row. This explains the first example’s output [4,2,8].
+- Otherwise, when the row signatures differ, the task is just to list the palette of the entire grid in the order values are first seen in a row-major traversal. Output each as its own row (a vertical list). This explains the second and third examples.
+
+3) Concrete procedure
+- Define a helper that, given a list, returns the elements without duplicates while keeping their first-appearance order. Use it:
+  - Per row: to build the “row signature”.
+  - On the entire grid flattened row-major: to build the global palette when needed.
+- Build all row signatures.
+- If all row signatures are identical, return a single row equal to that signature.
+- Otherwise, flatten the grid row by row, remove duplicates while preserving order, and return each unique value as its own 1-element row.
+
+4) Why this fits the examples
+- Example 1: Every row signature is [4,2,8], so output that one row.
+- Example 2: Row signatures differ (some rows are all 2, some include 8, later 5 appears). Fall back to global palette in first-seen order: 2, then 8, then 5; output as a column.
+- Example 3: Signatures vary across rows. Global first-seen order is 6, then 4, then 2, then 3; output vertically.
+
+That reasoning leads directly to a small solution:
+- A function to remove duplicates while preserving order,
+- A function to compute row signatures,
+- A flatten step,
+- A final decision: output the shared row signature if it exists; else output the global palette as a vertical list.

@@ -1,0 +1,22 @@
+Here’s how I would solve it from just the given I/O:
+
+- First, notice the input is a 9x9 grid of integers 0, 1, and 2. The output is always a single row with 5 entries, each 0 or 1.
+- The output vectors look like “a certain number of leading 1s, then 0s.” In the examples, they are:
+  - 1 1 0 0 0 → count = 2
+  - 1 1 1 1 0 → count = 4
+  - 1 1 1 1 0 → count = 4
+- So the task is to detect “how many of something” in the grid, then encode that count as a 5-length binary indicator with that many leading 1s (and implicitly saturating at 5 if needed).
+
+Next, what is being counted?
+- The 2s don’t seem to directly map to the output; they appear to be irrelevant/obstacles. The output only seems to correlate with the arrangement of 1s.
+- Try natural small patterns of 1s: contiguous pairs, 2x2 blocks, lines, etc. The most consistent match is counting how many 2x2 sub-squares are entirely filled with 1s.
+- Validate on the examples:
+  - For each input, slide a 2x2 window over all possible top-left positions (rows 0..7, cols 0..7). Count windows where all four cells are 1. The totals match the output counts: first grid has 2 such blocks, the other two have 4 each.
+
+Therefore the algorithm is:
+- Iterate over all 2x2 windows in the 9x9 grid by scanning top-left corners i in [0..7], j in [0..7].
+- For each position, check whether the four cells of that 2x2 window are all 1.
+- Keep a running count of how many such 2x2 all-ones blocks exist.
+- Produce a single-row output of length 5 where the first “count” entries are 1 and the remaining entries are 0. If the count exceeds 5, the output naturally becomes all 1s (saturates at 5 positions) because there are only 5 slots.
+
+This exactly reproduces the observed outputs from the inputs.

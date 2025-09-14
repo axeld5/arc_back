@@ -1,0 +1,41 @@
+Here’s how I’d solve it, based only on the given input/output pairs and the pattern they imply:
+
+1) Read the overall scene
+- Each grid has a dominant “background” color that fills most cells.
+- There is at least one coherent non-background object (a connected blob of some other color).
+- There are also one or more scattered cells of a third color that is rarer than the other colors.
+
+2) Hypothesis about what changes
+- The outputs don’t change the main non-background object(s).
+- They also don’t repaint the scattered rare-color seeds themselves.
+- Instead, the outputs draw straight, axis-aligned “bridges” of the rarest color through the background, seemingly to connect the rare-color seeds to the largest non-background object wherever they are aligned horizontally or vertically.
+- Crucially, these bridges do not overwrite any non-background object cells; they only convert background cells along the connecting lines.
+
+3) Formalize the rule
+- Determine the most common value in the grid: that’s the background color.
+- Determine the least common value in the grid: that’s the rarest color (the “ink” used for the bridges).
+- Among all connected components that are not background (4-neighborhood connectivity), find the largest one (by area). That’s the target object to connect to.
+- For every cell of the largest object and every cell containing the rarest color:
+  - If they share the same row, take the closed segment between their column indices on that row.
+  - If they share the same column, take the closed segment between their row indices on that column.
+  - Collect the union of all such segments. These are the intended bridge positions.
+- Recolor only those positions within the collected segments that are currently background; leave any non-background cells (including the object and any other colors) unchanged.
+
+4) Why this matches the examples
+- Example 1: Background is 8, largest object is the 3-blob, rarest is 4. Only the 4 that shares a row with the blob creates a horizontal segment; only background 8’s on that segment are turned to 4. The other 4 that doesn’t share a row/column with the blob is left alone.
+- Example 2: Background is 2, largest object is the 1-rectangle, rarest is 8. The single 8 aligns vertically with the object’s column, so we get a vertical segment; only background 2’s on that segment are turned to 8, stopping when hitting the object (1’s are not overwritten).
+- Example 3: Background is 1, largest object is the block of 4’s, rarest is 2. One 2 aligns vertically with the object and paints upward; another aligns horizontally and paints rightward; the 2 that doesn’t align with the object causes no change.
+- Example 4: Background is 1, largest object is the block of 5’s, rarest is 4. Each 4 that shares a row or column with some cell of the 5-object induces a segment; we paint only the background cells on those segments to 4, which matches the exact strips shown.
+
+5) Implementation sketch
+- Count values to get the most and least frequent colors.
+- Find the largest non-background connected component using a BFS/DFS flood fill with a visited mask.
+- Gather coordinates of all least-common color cells.
+- For each pair (object cell, rare-color cell) that share a row or column, add all coordinates along the straight segment between them to a set (to avoid duplicates).
+- Produce an output copy of the grid, and for every coordinate in that set, change it to the least-common color only if it is currently the background color.
+- Return the modified grid.
+
+This reasoning reproduces the exact behavior seen in all given IO pairs, including the facts that:
+- Only background is repainted.
+- Painting is constrained to straight horizontal or vertical connections between the largest non-background object and the rarest-color cells that are aligned.
+- The union of all such connections is applied.

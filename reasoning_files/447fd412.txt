@@ -1,0 +1,54 @@
+Here’s how I would solve it, starting from the input/output pairs and working backward to a general procedure.
+
+1) Interpret the colors and what they mean
+- Values: 0 = empty, 1 = black, 2 = red.
+- The black pixels in the top-left of each example form a small “prototype” shape. Inside the tight bounding box of that prototype, some cells are black and some are red; that whole pattern (both black and red) is the template we need to look for elsewhere in the grid.
+- Elsewhere in the grid there are red-only clusters with the same arrangement as the template’s red part, sometimes at different scales. Our job is to “complete” those red-only clusters by painting in the black part of the template at the same scale and position, provided doing so doesn’t conflict with anything already on the grid.
+
+2) Extract the template from the grid
+- Find one connected component of black cells (4-neighborhood).
+- Compute the minimal axis-aligned rectangle that contains that connected black component.
+- Treat all non-zero cells inside that rectangle as part of the template: partition them into two sets of offsets relative to the rectangle’s top-left corner:
+  - black_offsets = positions in the rectangle that are black
+  - red_offsets = positions in the rectangle that are red
+- Record the template’s height and width (the rectangle’s dimensions). This gives a parametric template we can scale and slide.
+
+3) Allow scaled matching
+- The examples imply the same template can appear at multiple scales. Use a small set of allowed integer scale factors, tried from largest to smallest, e.g., 3, 2, 1.
+- Scaling is nearest-neighbor block replication: each template cell expands to a scale×scale block.
+
+4) Find places that are already complete and protect them
+- First pass: For each scale and every possible top-left location where the scaled template would fit:
+  - Build the scaled sets of coordinates for red and black using the stored offsets and the scale factor.
+  - Check that in the candidate rectangle:
+    - Every scaled-red coordinate is red (2).
+    - Every scaled-black coordinate is black (1).
+    - All other cells in the rectangle are empty (0). In other words, inside the rectangle there are no extra non-zero cells beyond the scaled red/black sets.
+  - When a placement is a perfect match (i.e., a complete existing occurrence of the template), mark all its red cells as “consistent/protected.” We don’t want to use these red cells later as anchors for painting new blacks; they’re already part of a finished instance.
+
+5) Fill incomplete red-only occurrences without clashes
+- Second pass: Again, for each scale and every top-left where the scaled template fits:
+  - Skip if any black exists anywhere inside the candidate rectangle. That ensures we only fill in strictly empty regions (except reds we expect).
+  - Compute the scaled red set for this placement. Require:
+    - Every expected red cell is indeed red (2).
+    - None of those red cells are part of the protected set found in step 4 (to avoid duplicating/overlapping finished occurrences).
+  - Ensure that placing the template’s black blocks wouldn’t overwrite any red cells.
+  - Ensure there are no extra reds within the rectangle beyond the expected red set (so the interior matches the template’s red pattern exactly).
+  - If all checks pass, accept this placement as a solution: we will paint the scaled black set into the grid as black (1).
+  - After committing a placement, add its red set to the protected set so we don’t try to reuse it again.
+
+6) Boundary handling and a small padding trick
+- To avoid missing valid left-edge placements due to alignment, temporarily pad the grid on the left with a number of empty columns equal to the maximum scale. Run the whole procedure on this padded grid. When done, strip the padding.
+- This makes it possible to place scaled rectangles that otherwise would need a slight negative offset to align, without having to special-case negative indices.
+
+7) Implementation notes implied by the checks
+- Connected-component detection via BFS/queue on 4-neighborhood.
+- Use sets of coordinates for black/red offsets and for scaled placements; this makes the membership checks and unions straightforward and efficient.
+- Try larger scales first so big, clean matches get locked in before smaller ones. That matches the examples where bigger completions appear first.
+- Only paint black cells; never change existing reds. Reds are used purely as constraints/anchors and remain red in the result.
+
+8) Why this reproduces the examples
+- The initial black+red prototype defines a two-color motif.
+- Wherever the grid presents the same red pattern (at allowed scales) in an otherwise empty rectangle, we copy in the black part of the motif at the same scale.
+- Already-complete instances are detected and their red cells are protected, so we don’t create overlaps or duplicates.
+- The outputs show exactly this: existing red formations get “completed” with black blocks consistent with the original motif, at the appropriate scale, and no other parts of the grid are altered.

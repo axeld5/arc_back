@@ -1,0 +1,28 @@
+Here’s how I would solve it from the given I/O pairs:
+
+- First, notice the structural pattern:
+  - The output keeps the same grid shape.
+  - Every position that was a 5 in the input becomes a single uniform nonzero value in the output.
+  - Every position that was not a 5 becomes 0 in the output.
+  - The uniform nonzero value used is not arbitrary: it matches the smallest number present in the input that is neither 0 nor 5.
+
+- Validate this observation on the examples:
+  - Example 1: Values are {4, 5}. Smallest nonzero not 5 is 4. In the output, all 5s turn into 4, everything else is 0.
+  - Example 2: Values are {5, 6}. Smallest nonzero not 5 is 6. All 5s become 6, others are 0.
+  - Example 3: Values are {5, 9}. Smallest nonzero not 5 is 9. All 5s become 9, others are 0.
+
+- From this, the algorithm is straightforward:
+  1. Read the grid and flatten it to easily inspect all values.
+  2. Compute the set of unique numbers and filter out 0 and 5.
+  3. Take the minimum of the remaining numbers; call this the replacement value.
+  4. Build the output grid by scanning each cell:
+     - If the cell is 5, write the replacement value.
+     - Otherwise, write 0.
+
+- Assumptions:
+  - The grid contains at least one number other than 0 and 5 so that a replacement value exists (as shown in the examples).
+  - The number 5 appears where we want to place the replacement; all non-5 entries are zeroed out.
+
+This reasoning directly leads to a solution that:
+- Flattens the grid to find the smallest candidate excluding 0 and 5,
+- Then maps the grid to replace 5 with that value and everything else with 0.

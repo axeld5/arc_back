@@ -1,0 +1,13 @@
+Here’s how I would solve it:
+
+- Examine the input/output pairs element by element. The only change across all examples is that every 7 becomes a 5. All other values (1s and 8s) remain unchanged. There are no positional or structural changes; it’s a pure value-wise substitution.
+
+- So the core rule is: replace 7 with 5; leave everything else as-is. Notably, 7 → 5 can be seen as subtracting 2, but that subtraction must be conditional so other numbers aren’t altered.
+
+- Implement this as a small helper that, given a single value, returns 5 if the value is 7, otherwise returns the value unchanged. An easy way to express “7 → 5” is “if it’s 7, subtract 2.”
+
+- Apply that helper to each element of a row to transform the row.
+
+- Apply the row transformation to every row of the grid to produce the transformed grid.
+
+- The result will match all provided examples because every 7 is turned into 5 and nothing else changes.

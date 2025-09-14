@@ -1,0 +1,40 @@
+Here’s how I would solve it from the IO pairs:
+
+- Observation:
+  - Every input has exactly two non-zero cells, each with its own color/value.
+  - The output draws two symmetric “half-motifs” that extend from each colored cell toward the midpoint between them, without crossing.
+  - If the two points share a row, the motif lies horizontally on that row. If they share a column (vertical alignment), the motif is the same shape but rotated 90° (so we can solve it by transposing, applying the horizontal logic, then transposing back).
+  - From each endpoint:
+    - Draw a horizontal run toward the middle, stopping before the midpoint.
+    - At the end of that run, draw a vertical pillar of fixed height (5 cells), centered on the working row.
+    - One more column toward the middle, draw only the two extreme cells of that pillar (top and bottom of that 5-height), to create a “corner”/cap.
+  - Colors remain local to their originating endpoint; left-side parts use the left endpoint’s color, right-side parts use the right endpoint’s color.
+  - The area between the two motifs remains empty (no bridging line).
+
+- Plan:
+  1. Get grid height/width and collect the two non-zero cells as (row, col, value).
+  2. If the two points are not on the same row, transpose the grid so they will be (we’ll transpose back at the end).
+  3. Prepare an output grid of zeros with the same size as the working grid (transposed or original).
+  4. On the working grid (where the two points share a row):
+     - Fix the working row to the row of the points (call it horizontal_row).
+     - Order the two points by column as left and right, preserving each color.
+     - Compute the “halfway reach” in columns as half_distance = floor((gap + 1) / 2), where gap = right_col - left_col.
+       - This achieves symmetric behavior for both even and odd gaps.
+     - For each endpoint (processed independently and symmetrically):
+       - Choose increment = +1 for the left endpoint (walk right) or -1 for the right endpoint (walk left).
+       - Draw the horizontal run on horizontal_row:
+         - Color from start_col for (half_distance - 1) positions (so it stops one short of the middle block).
+       - Let end_col be the last column written in that run.
+       - Draw the vertical pillar centered on horizontal_row at end_col:
+         - Color rows horizontal_row-2 through horizontal_row+2 (5 cells tall).
+       - Move one more column toward the center (next_col = end_col + increment):
+         - Color only the two extreme points of that pillar (rows horizontal_row-2 and horizontal_row+2) at next_col.
+       - All writes are bounds-checked (rows and columns).
+  5. If we transposed initially, transpose the output back to the original orientation.
+  6. Return the resulting grid.
+
+- Why this matches the examples:
+  - When points share a row, you see two horizontal rails extending inward, each capped by a 5-cell vertical bar and a two-dot “corner” one column further in.
+  - The middle columns remain mostly empty; only those vertical bars and corners intrude at the inner edges.
+  - When points share a column, the exact motif appears rotated 90°, which is achieved by transposing before applying the same logic.
+  - Colors remain separated: the left-side shape uses the left color; the right-side shape uses the right color.

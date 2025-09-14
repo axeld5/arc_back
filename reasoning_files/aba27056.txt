@@ -1,0 +1,58 @@
+Here’s how I would solve it from the IO pairs, step by step, to arrive at this behavior:
+
+1) Core pattern from the examples
+- The first thing that always happens is: every empty cell inside the tight rectangle that encloses all the non-zero cells gets filled with 4. You can see this in all examples: any “holes” inside the object’s bounding box turn into 4s.
+- Then, extra 4s get extended outward from that bounding box on one preferred side, and also along two diagonals from that side’s corners. Which side to extend is not fixed; it depends on the configuration.
+
+2) Find the bounding box of the object
+- Identify all non-zero cells.
+- Compute min_row, max_row, min_col, max_col over those cells. That’s the bounding box.
+- Special case: if the grid only contains 4s (no other colors), treat 4 as the object color just to be able to compute a bounding box and proceed consistently.
+
+3) Decide which side to expand
+- For each of the four sides (top, bottom, left, right) of the bounding box, count how many cells along that side are zero (i.e., are empty along the box boundary).
+- Prefer sides that actually have room outside the bounding box (i.e., the bounding box is not already touching the grid’s outer border on that side). Sides with no room are penalized so they lose to sides with room.
+- Choose the side with the maximum number of zeros along the boundary. If needed, break ties deterministically (e.g., via a fixed ordering).
+- This selects one of U, D, L, R as the “dominant” direction to grow outward.
+
+4) Reduce to a horizontal fill when needed
+- If the best direction is Left or Right, handle it directly (horizontal logic below).
+- If the best direction is Up or Down, solve the exact same problem as a horizontal one by transposing the grid, applying the horizontal logic, and transposing back. This lets one piece of code handle both axes without duplication.
+
+5) Fill the bounding box interior with 4s
+- Before extending outward, fill every zero in the bounding box itself with 4. This matches the “interior hole filling” seen in the outputs.
+
+6) Horizontal outward fill (for Left and Right)
+- Work row by row across the bounding-box’s row range.
+- Only extend outward in a row if the boundary cell on that side is actually empty in the original grid (i.e., that row has a “gap” on the chosen side). If the boundary cell on that side is already part of the original object, skip extension for that row. This reproduces the selective extensions in the examples.
+- For Right expansion:
+  - From the right edge of the bounding box, on each eligible row, fill 4s to the right until you hit any non-zero cell or the grid edge.
+- For Left expansion:
+  - From the left edge of the bounding box, on each eligible row, fill 4s to the left until you hit any non-zero cell or the grid edge.
+- Always write into a “filled” copy so you can both (a) read the original shape when deciding eligibility, and (b) stop extensions when meeting any already placed 4.
+
+7) Add the two diagonal “rays”
+- After the horizontal outward fill, add two 45-degree diagonals from just outside the bounding box at the chosen side, painting only zeros and stopping at the grid boundary or when hitting a non-zero.
+- For Right expansion:
+  - One diagonal starts just to the right of the top edge of the box, and goes up-right (row decreases, col increases).
+  - The other starts just to the right of the bottom edge of the box, and goes down-right (row increases, col increases).
+- For Left expansion:
+  - One diagonal starts just to the left of the top edge, going up-left (row decreases, col decreases).
+  - The other starts just to the left of the bottom edge, going down-left (row increases, col decreases).
+- Start these diagonals one row in from the corners (i.e., from min_row+1 or max_row-1) to match the exact wedge shapes seen in the examples.
+
+8) Vertical cases via transpose
+- If Up or Down is the chosen direction, transpose the grid, run the same “fill bounding box + left/right + diagonals” logic, then transpose back. This reproduces upward or downward wedges and diagonals exactly like the horizontal logic would, but in the vertical orientation.
+
+9) Why this matches the examples
+- Example 1: The top side of the bounding box has the most zero boundary entries and room above, so the chosen direction is Up. Transposing lets the same left/right logic create outward 4s and diagonals that, after transposing back, appear above the object, matching the output.
+- Example 2: The left side of the 7-frame has many zero boundary cells, so we expand Left. The interior of the 7 frame is filled with 4s; then rows with left-edge gaps extend 4s leftward; the two diagonals stitch the wedge-like structure seen on the left.
+- Example 3: The bottom side has gaps, so we expand Down. Again, transposition converts it to a horizontal fill and diagonals; on transposing back, you get the downward wedge and interior 4s exactly as shown.
+
+This reasoning yields:
+- A bounding-box-based interior fill with 4.
+- A rule to pick the dominant expansion side by counting zeros on the box edges, penalizing sides at the grid boundary, and tie-breaking deterministically.
+- A unified horizontal outward-fill plus diagonal-ray procedure, reused for vertical by transposition.
+- A selective per-row outward fill that only extends where the boundary was initially empty, and two diagonals starting just outside the box corners, filling zeros only.
+
+Taken together, these steps reproduce all the given IO pairs.

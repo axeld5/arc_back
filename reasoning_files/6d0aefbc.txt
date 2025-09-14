@@ -1,0 +1,15 @@
+Here’s how I’d solve it:
+
+- Look at each input/output pair row by row. In every case, the output row is the original row followed by that same row in reverse order.
+  - Example: [1, 6, 1] becomes [1, 6, 1, 1, 6, 1]
+  - Example: [6, 8, 1] becomes [6, 8, 1, 1, 8, 6]
+- This means the transformation is a horizontal mirror of each row, not of the whole grid at once. The number of rows stays the same; the number of columns doubles.
+- So the rule is: for each row, create a mirrored version by appending its reverse to itself.
+
+Implementation plan:
+
+- Define a small helper that, given a row (a list of numbers), returns the row concatenated with its reverse.
+- For the grid, map this helper over all rows to produce the new grid.
+- Return the transformed grid.
+
+This works for any grid size, runs in linear time relative to the number of cells, and matches all provided examples exactly.

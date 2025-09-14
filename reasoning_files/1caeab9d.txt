@@ -1,0 +1,26 @@
+Here’s how I’d solve it from the examples.
+
+1) Spot the invariant from I/O
+- The columns of each colored cell (values 1, 2, 4) never change.
+- Within each color, all cells are shifted by the same vertical amount (their relative shape is preserved).
+- In every output, the topmost row of all colors lines up with the topmost row of the 1s.
+- Everything else is zeroed.
+
+So the task is: vertically align the top edges of the 2s and 4s to the top edge of the 1s, without changing columns or shapes.
+
+2) Extract the anchor and shifts
+- Find all coordinates of cells that are 1, 2, or 4.
+- For each of 1, 2, and 4, compute its topmost row (minimum row index among its cells).
+- Let the reference row be the topmost row for 1.
+- For each color n in {1, 2, 4}, compute vertical shift = (top row of 1) − (top row of n).
+
+3) Build the output
+- Create a new empty grid (same height and width) filled with zeros.
+- For each recorded cell (row, col) of each color n, place n at (row + shift, col) in the new grid.
+- Return the new grid.
+
+4) Assumptions and notes
+- We only care about the numbers 1, 2, and 4; everything else is treated as background.
+- We assume each of 1, 2, and 4 appears at least once (so “topmost row” is well-defined).
+- The examples show no overlaps after shifting; processing order doesn’t matter for these cases.
+- Height and width are taken from the input grid; the blank output grid is initialized with those dimensions.

@@ -1,0 +1,41 @@
+High-level plan that explains the observed I/O and leads to the solution:
+
+- Interpretation of the task
+  - 0 is background.
+  - 8 marks “placeholder” shapes.
+  - At least one connected non-zero blob contains actual labels (numbers other than 8). This blob is the exemplar; it defines the pattern to replicate.
+  - Every blob made entirely of 8s is a target location where we should “stamp” the exemplar’s pattern, aligned the same way inside the blob.
+
+- Segment the grid into connected components
+  - Treat any non-zero cell as foreground.
+  - Use 4-directional connectivity (up, down, left, right) to group cells into blobs.
+  - For each unvisited non-zero cell, run a flood fill/DFS to collect all cells in its component and mark them visited.
+
+- Choose the exemplar component
+  - Among the components found, pick the first one that contains at least one value different from 8.
+  - This component tells us what numbers to draw and where, relative to its own top-left corner.
+
+- Extract a reusable pattern from the exemplar
+  - Normalize coordinates by subtracting the exemplar’s minimum row and column from every cell in that component.
+  - Build a mapping from offset (dr, dc) to the value at that position in the exemplar.
+  - This “offset → value” dictionary is the template we’ll replay elsewhere.
+
+- Apply the pattern to every pure-8 component
+  - Initialize an all-zero result grid.
+  - For each component whose cells are all 8:
+    - Compute its top-left corner (min row, min col).
+    - For each cell in that component, compute its offset from its top-left.
+    - If that offset exists in the exemplar’s mapping, write the corresponding value into the same absolute position in the result grid; otherwise leave it 0.
+  - Leave all other locations as 0 so the output contains only the stamped patterns.
+
+- Why this matches the examples
+  - The exemplar’s labeled arrangement (e.g., a 2x2 block with 7,6 on top and 9,4 below; or a 2-wide row of 7s above a 3-wide row of 6s) is recorded via offsets.
+  - Every all-8 blob gets the same arrangement “transposed” into its own coordinate frame by aligning at the blob’s top-left.
+  - Cells in the 8-blob that don’t have a corresponding offset in the exemplar remain 0, so only the exemplar’s shape gets painted.
+
+- Implementation notes
+  - Use an explicit stack for DFS to avoid recursion limits.
+  - Maintain a visited matrix to avoid revisiting cells.
+  - Store components as lists of (row, col) pairs.
+  - Build a fresh result grid so reading the input isn’t affected by writing the output.
+  - Complexity is linear in the number of cells; each cell is visited at most once during component discovery, and pattern application is proportional to the size of 8-only components.

@@ -1,0 +1,36 @@
+Here’s how I’d solve it from the I/O pairs.
+
+- What the I/O shows:
+  - The grid is 12x12 with 0 as background and nonzero values (mainly 5).
+  - In the outputs, some 0-cells inside the “footprint” of a block of 5s are changed to 2.
+  - These inserted 2s always form a solid, axis-aligned square hole sitting inside the minimal bounding rectangle of a connected region of identical nonzero cells.
+  - If there is no such square hole, the grid is unchanged.
+
+- Core idea:
+  - For each connected component of a nonzero value (4-directional connectivity), compute its axis-aligned bounding box.
+  - Compare the full set of cells in that bounding box to the actual cells in the component.
+  - The “missing” cells (bbox minus component) represent internal gaps/holes inside the bbox.
+  - If those missing cells themselves form a perfect filled square (i.e., their own bounding box is a square and contains exactly all of them), then those are the cells we should mark as 2.
+  - Do this for every component and union all such square holes before writing 2s.
+
+- Steps in detail:
+  1. Scan the grid. For every unvisited nonzero cell, run a 4-connected flood fill (BFS/DFS) restricted to the same value to collect that component’s cells.
+  2. For the collected set of cells, compute the bounding box (min/max row and col).
+  3. Build the full set of coordinates that lie inside that bounding box.
+  4. Compute the difference: missing = full_bbox_set − component_set.
+  5. Decide whether missing is exactly a square:
+     - Let its bounding box have height and width. It must be height == width (square).
+     - The number of cells in missing must equal height × width (i.e., fully filled with no gaps).
+     - If so, treat those missing cells as the “incorrect square” to correct.
+  6. Accumulate all such squares from all components.
+  7. After processing all components, write 2 at every cell in the accumulated set. Leave everything else unchanged.
+
+- Notes and justifications:
+  - Use a 4-neighbor definition (up, left, down, right) to match the connectivity seen in the examples.
+  - Work per unique nonzero value so adjacent components with different values aren’t merged.
+  - Checking “square-ness” by comparing the set’s bounding box and its area guarantees the set is a solid square without needing an extra connectivity check.
+  - Doing all marking after detection avoids interfering with ongoing region discovery.
+
+- Why this matches the examples:
+  - In each example where 2s are added, the 5-region’s bounding rectangle encloses a precise square-shaped hole of 0s. Only those holes are filled with 2.
+  - When no such square hole exists, nothing changes.

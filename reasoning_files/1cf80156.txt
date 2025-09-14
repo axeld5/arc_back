@@ -1,0 +1,14 @@
+Here’s the concise plan I’d follow based on the examples:
+
+- Pattern recognition: In each example, the output is the smallest axis-aligned rectangle that contains all non-zero entries of the input grid, preserving their values and relative layout. Zeros are background and are excluded except as needed to fill the cropped rectangle.
+
+- Steps to implement:
+  1. Scan the grid and collect the coordinates (row, col) of every cell whose value is not zero.
+  2. From these coordinates, compute the minimum and maximum row indices, and the minimum and maximum column indices. These define the bounding box around all non-zero cells.
+  3. Extract the subgrid by slicing the original grid from min_row to max_row (inclusive) and, within each of those rows, from min_col to max_col (inclusive).
+  4. Return this subgrid.
+
+- Notes:
+  - Time complexity is linear in the number of cells.
+  - If there are no non-zero cells, define a sensible behavior (e.g., return an empty list or the original grid, depending on requirements).
+  - This treats any non-zero value as foreground; it works regardless of which values (1, 2, 8, etc.) appear.

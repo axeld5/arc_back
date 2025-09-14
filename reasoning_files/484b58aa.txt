@@ -1,0 +1,48 @@
+Here’s how I would solve it.
+
+1) What the IO examples tell me
+- Each grid consists of integers with 0 meaning “unknown/blank.”
+- The nonzero entries clearly form a repeating 2D pattern that tiles the whole grid.
+- The outputs are the same grids with all 0’s replaced so the entire grid is a clean repetition of a small base tile.
+- Therefore, the task is: infer the smallest repeating tile that is consistent with the known (nonzero) cells, then use that tile to fill all blanks.
+
+2) Compatibility rule
+- When comparing two cells to check if they can be part of the same repeating pattern, they are “compatible” if:
+  - They are equal, or
+  - At least one of them is 0 (unknown can match anything).
+- A concise test for “at least one is zero” is that their product is 0; since the data are nonnegative integers, product < 1 means zero appears.
+
+3) Find the horizontal period (number of columns in the base tile)
+- For each candidate column offset k from 1 up to width-1:
+  - For every row, compare each position j with j+k (for all j where both indices are in range).
+  - Require compatibility at every such pair (equal or one is zero).
+  - The first k that satisfies this across the entire grid is the horizontal period.
+- If no offset works, the period is the full width. This fallback still works because the whole grid is at least a trivial “tile.”
+
+4) Find the vertical period (number of rows in the base tile)
+- Analogously, for each candidate row offset k from 1 up to height-1:
+  - For every column, compare row i with row i+k at each column position.
+  - Again require compatibility everywhere (equal or one is zero).
+  - The first k that satisfies this is the vertical period.
+- If none works, use the full height.
+
+5) Reconstruct the base tile
+- Once we have the vertical and horizontal periods (R, C), map every known nonzero cell (i, j) into its tile coordinate (i mod R, j mod C).
+- Store the value found for that tile coordinate.
+- This aggregates all observed information into a single R x C tile. Because of the compatibility checks used to pick R and C, this mapping will not produce contradictions.
+
+6) Fill the blanks
+- For every zero cell at (i, j), look up its tile coordinate (i mod R, j mod C) and assign the corresponding stored value.
+- Nonzero cells can be left as they are; they should already match the tile by construction.
+
+7) Why this works on the examples
+- The examples have large zero blocks that sit inside an otherwise perfectly repeating texture. The period detection treats zeros as wildcards, so the zeros don’t obstruct finding the true period.
+- After recovering the minimal row and column periods, the modulo-based tile lookup fills the zero blocks with the exact repeating motif seen elsewhere.
+- If a grid had no smaller true period, the fallback to full width/height ensures the algorithm still fills from observed positions without guessing beyond the given repetition.
+
+8) Practical notes
+- The period search is linear in the size of the grid per candidate offset; in practice, it’s fast because the first valid (smallest) period is usually found early.
+- Using a dictionary keyed by (i mod R, j mod C) is a convenient way to accumulate the tile without explicitly creating a separate tile array first.
+- Allowing an alternative enumeration function is a minor abstraction that doesn’t affect the algorithm.
+
+In short: detect the smallest horizontal and vertical shifts that keep all observed entries consistent when zeros are treated as “don’t care,” fold all known values into a base tile using modulo indices, and fill every blank by referencing that tile.

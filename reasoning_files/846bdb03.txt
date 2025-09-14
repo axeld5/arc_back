@@ -1,0 +1,64 @@
+Here’s how I would solve it, based only on the given input/output pairs and the structure they imply.
+
+1) Frame detection
+- The outputs are always rectangular crops of the inputs, bounded by four corner 4’s.
+- So first, find the four cells equal to 4. Read them in row-major order (top to bottom, left to right):
+  - First 4 = top-left corner of the frame.
+  - Second 4 = top-right corner of the frame.
+  - Third 4 = bottom-left corner of the frame.
+  - Fourth 4 = bottom-right corner of the frame.
+- From those four positions, derive:
+  - start_row, start_col = top-left corner
+  - end_col = top-right’s column
+  - a_row = bottom-left’s row
+  - last_col = bottom-right’s column (not really needed separately if we trust the rectangle)
+- The subgrid to output is exactly the crop from rows [start_row..a_row] and columns [start_col..end_col].
+
+2) Interior size
+- The interior (the part we fill) excludes the top and bottom frame rows, and the left and right frame columns:
+  - interior_rows = a_row - start_row - 1
+  - interior_cols = end_col - start_col - 1
+
+3) Identify which content block to move
+- Across the examples, the interior is filled by copying a rectangular block of nonzero values found elsewhere in the grid (never in columns that contain 4’s).
+- To select the “motif” value that identifies this block, scan columns that do not contain any 4’s and take the first nonzero value you encounter. Call this the common_value. This is robust across the examples (e.g., 2 in the first, 8 in the second, etc.).
+
+4) Find the source block’s top-left anchor
+- The source block has the same dimensions as the interior (interior_rows x interior_cols) and starts at some top-left anchor (e_index, k_index).
+- To find the top edge of that block, look for the first row that contains common_value where the cell qualifies as being on a “top edge.” A cell is a valid top-edge candidate if:
+  - It is on the first row, or
+  - The cell above it is 0 (empty), or
+  - It sits directly under a 4 that itself sits above a nonzero (this special case allows recognizing a top edge that starts just under a frame corner).
+- Do this twice:
+  - Once scanning rows to get e_index (the top row of the source block),
+  - Once scanning columns to get k_index (the left column of the source block).
+
+5) Determine horizontal orientation (normal vs. mirrored)
+- The examples sometimes show a horizontal flip of the source block when inserted into the frame.
+- Use a simple local cue to decide direction: look at the cell just inside the frame below the top-left corner (start_row + 1, start_col).
+  - If that cell equals common_value, fill left-to-right (normal).
+  - Otherwise, fill right-to-left (mirror).
+- This matches the examples, where the inner “border” values just inside the frame guide the orientation.
+
+6) Move the block into the frame interior
+- For each interior row offset r in [0..interior_rows-1]:
+  - For each interior column offset c in [0..interior_cols-1]:
+    - Compute the target column inside the frame:
+      - If left-to-right: target_col = start_col + 1 + c
+      - If mirrored:      target_col = end_col - 1 - c
+    - Move the value from source cell (e_index + r, k_index + c) into target cell (start_row + 1 + r, target_col).
+    - Zero out the source cell as you move (matches the I/O where the donor region is cleared, though the final crop hides it).
+
+7) Return the framed crop
+- Finally, return the rectangular crop defined by the two frame rows/columns (inclusive). This produces the exact outputs shown:
+  - The four corners remain 4.
+  - The interior is the copied (possibly mirrored) block.
+  - The inner left/right columns of each interior row are whatever was already sitting in those positions in the input (you don’t overwrite the frame columns, you only fill the interior).
+
+Why this matches the examples
+- The four 4’s define the crop rectangle exactly as in all outputs.
+- The interior dimensions always match the block moved from elsewhere in the grid.
+- The choice of common_value by scanning a 4-free column finds the dominant content value of the block (2, 8, 7, etc.).
+- The edge test identifies the top-left anchor of that block robustly, even when it sits under a 4 corner.
+- The left/right orientation determined by the cell under the top-left 4 reproduces the mirror/no-mirror outcomes.
+- Cropping the frame area after moving the interior yields exactly the returned matrices.

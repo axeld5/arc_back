@@ -1,0 +1,13 @@
+Here’s how I would solve it:
+
+- From the examples, the output is a uniformly magnified version of the input grid. Each input cell becomes a solid square block in the output, and the relative layout is preserved.
+- The magnification factor is not fixed; it depends on the content of the grid. By checking the examples, the factor equals the number of distinct non-zero values in the input. Zeros act as background and are not counted toward this factor, but they are still expanded just like other values.
+- Therefore:
+  - Compute the set of unique values in the grid, exclude 0, and let s be the size of this set. This is the scale factor.
+  - To expand the grid by s in both dimensions, replace each element with an s-by-s block of that element. Practically:
+    - For each input row, create an “expanded row” by repeating each element s times horizontally.
+    - Then repeat that expanded row s times vertically.
+- This produces an output grid with dimensions (rows_in * s) by (cols_in * s), matching all the given examples:
+  - Example 1: distinct non-zero {6,7} → s=2 → each cell becomes 2×2 blocks → 3×3 becomes 6×6.
+  - Example 3: distinct non-zero {3,2,7} → s=3 → 3×3 becomes 9×9, etc.
+- Edge behavior: zeros remain zeros but are expanded in the same way; only non-zero values contribute to the scale factor.

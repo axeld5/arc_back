@@ -1,0 +1,31 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- Observations from the examples:
+  - All 5s remain 5 in the output.
+  - All 0s are replaced by small integers (1, 2, or 3).
+  - The number assigned to a 0 depends on which group of connected 0s it belongs to, not on its position alone.
+  - Connectivity is 4-directional (up/down/left/right). Diagonal 0s are not grouped together.
+
+- Hypothesis about the transformation on 0-clusters:
+  - Single isolated 0 becomes 3.
+  - Two connected 0s become 2.
+  - Three connected 0s become 1.
+  - Five connected 0s also become 1; six become 2; seven become 3, etc.
+  - This pattern matches the formula: value = abs(component_size − 4).
+
+- Algorithm outline:
+  1. Work on a 10x10 grid. Keep a copy of the original grid for the final result so that we don’t interfere with detection while updating values.
+  2. Iterate over every cell. When you find a 0 that hasn’t been processed, perform a flood fill (DFS or BFS) using 4-directional neighbors to discover its entire connected component.
+  3. Track visited cells so each 0 is processed exactly once.
+  4. After collecting all coordinates in the component, compute its size n and the replacement value as abs(n − 4).
+  5. Write that value into all cells of the component in the result grid.
+  6. Leave all 5s unchanged.
+  7. Return the updated grid.
+
+- Implementation details to make it robust and match the IO:
+  - Use a bounds check helper for 0 ≤ x < 10 and 0 ≤ y < 10.
+  - Use a visited set to avoid revisiting cells.
+  - The flood fill can be written recursively (DFS) or with an explicit stack/queue; either is fine since grids are small.
+  - Explore only four directions: up, down, left, right.
+
+This exactly reproduces the outputs: each zero-cluster is replaced by abs(size − 4), while all 5s stay 5.

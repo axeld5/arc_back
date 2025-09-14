@@ -1,0 +1,33 @@
+Here’s how I would solve it from the given input/output pairs:
+
+- First, notice the invariant across all examples:
+  - Each grid has exactly one 2x2 block of 8s.
+  - There are exactly four other non-zero numbers elsewhere on the grid, none of which are 8.
+  - The output zeros everything except the 2x2 region where the 8s were; that region gets replaced by the four non-8 numbers.
+  - The placement inside the 2x2 is consistent: the top row of the 2x2 comes from the first two non-8, non-zero cells encountered in a row-major scan; the bottom row comes from the next two. Within each row, the two numbers are placed left-to-right according to their original column order.
+
+- Strategy:
+  1. Scan the grid row by row (row-major order).
+  2. Collect coordinates of all cells whose values are not 0 and not 8. There should be exactly four; keep them in the order encountered.
+  3. Also find the position of the first 8 encountered in the scan; treat that as the top-left corner of the 2x2 target block.
+  4. Split the four collected coordinates into two pairs:
+     - The first two become the sources for the top row of the 2x2.
+     - The next two become the sources for the bottom row.
+  5. For each pair, order the two values left-to-right by their original column indices:
+     - If the first source column is greater than the second source column, swap the pair; otherwise keep as is.
+  6. Write the two ordered values of the first pair into the target block’s top row (two adjacent columns starting at the anchor column).
+  7. Write the two ordered values of the second pair into the target block’s bottom row.
+  8. Set the original four source positions to 0.
+
+- Implementation notes I’d follow:
+  - Use a helper to collect coordinate pairs under a predicate (e.g., “value not in {0, 8}” or “value equals 8”).
+  - Use enumerate to get both row/column indices and values during the scan.
+  - Use slice assignment to fill the two adjacent cells in each row of the 2x2.
+  - To enforce left-to-right placement within each row, compare the two source column indices and reverse the pair if the first is to the right of the second.
+  - Finally, zero out the four original positions.
+
+- Why this matches the examples:
+  - In each case, the top-left 8 of the 2x2 is taken as the anchor.
+  - The first two eligible numbers encountered form the top row; they’re ordered by their original columns.
+  - The next two form the bottom row; again ordered by original columns.
+  - All other cells are zero in the output.

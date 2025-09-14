@@ -1,0 +1,52 @@
+Here’s how I would reverse-engineer the rule from the examples and turn it into a solver.
+
+1) Infer the rule from the I/O
+- Only identical numbers are “connected.”
+- Connections are strictly orthogonal: same row or same column, never diagonal.
+- When two identical numbers lie on the same row, the entire straight segment between their columns is filled with that number.
+- When two identical numbers lie on the same column, the entire straight segment between their rows is filled with that number.
+- Importantly, the pairs used to decide connections are only the original occurrences in the input. Newly filled cells do not create new pairs. You can see this in the first example: there are 8s at (row 7, col 4) and (row 7, col 6) after vertical filling, but the cell in between (row 7, col 5) stays 0 because the solver didn’t use the newly drawn 8 at (row 7, col 6) to create a horizontal pair with (row 7, col 4).
+
+2) High-level approach
+- Work on a copy of the grid so we don’t affect which coordinates are considered “original positions.”
+- For each digit value you care about (in the samples it’s 8, but to generalize, use 1 through 9), gather all coordinates in the original grid where that digit appears.
+- For every unordered pair among those coordinates:
+  - If they share the same row, fill the contiguous run of cells between their columns (inclusive) on that row with the digit.
+  - If they share the same column, fill the contiguous run of cells between their rows (inclusive) on that column with the digit.
+- Leave everything else unchanged.
+- Return the modified copy.
+
+3) Implementation details I’d use
+- A small helper to draw a straight line along a row or a column, given:
+  - the fixed index (row for horizontal, column for vertical),
+  - the variable start/end indices (min/max of the two endpoints),
+  - and the value to write.
+- A function that, given the list of positions for one value, iterates over all i < j pairs and applies the horizontal/vertical fill when row or column matches.
+- The main function:
+  - Clones the grid.
+  - Loops values 1..9, collects positions from the original grid (not the clone), and processes the pairs onto the clone.
+  - Returns the clone.
+
+4) Why this matches the examples
+- Example 1:
+  - Row 3 has two 8s; the horizontal run gets filled between them.
+  - Column 6 has two original 8s; the vertical run gets filled between them.
+  - No horizontal fill on row 7 between col 4 and col 6, because row 7 only had one original 8 (the other 8 on col 6 was created by the vertical fill).
+- Example 2:
+  - Column 2 has two original 8s; we fill the vertical spine.
+  - Row 6 has two original 8s (col 5 and col 9); we fill that horizontal span.
+- Example 3:
+  - Row 1 has two 8s; fill horizontally.
+  - Column 1 has two 8s; fill vertically.
+  - Column 5 has two 8s; fill vertically.
+  - Row 8 has two 8s; fill horizontally.
+
+5) Complexity and safeguards
+- For each value, if there are k occurrences, we consider O(k^2) pairs; with a 10x10 grid and digits 1..9 this is trivial.
+- Always compute start/end as min/max so we can fill correctly left-to-right or top-to-bottom.
+- Only use the original grid to collect positions to avoid chaining newly drawn cells into additional fills.
+
+This reasoning yields a clean solution with:
+- a line-drawing helper (row/column switch),
+- a pair-processor for each value,
+- and a main routine that copies the grid, iterates values, collects original positions, and applies fills to the copy.

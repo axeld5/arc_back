@@ -1,0 +1,40 @@
+Here’s how I would solve it, based purely on the input/output patterns:
+
+- First, notice the structure: every puzzle has a uniform-colored frame on all four sides, with zeros at the four corners. The top row (excluding corners) is a single color, the right column (excluding corners) is a single color, and so on. The outputs always preserve this exact frame.
+
+- Also notice that inside the frame, some interior cells match one of the four frame colors. In the outputs, those interior occurrences don’t stay in place; instead, they “project” to a band one cell inside the corresponding border:
+  - If an interior cell equals the top color, a mark of that color appears in the second row at the same column.
+  - If it equals the right color, a mark appears in the penultimate column (one left from the right border) at the same row.
+  - If it equals the bottom color, a mark appears in the penultimate row at the same column.
+  - If it equals the left color, a mark appears in the second column at the same row.
+  - Values that are not one of the four border colors are ignored.
+  - Corners stay zero.
+
+- From that, the plan is:
+  1) Read height and width.
+  2) Detect the four border colors by sampling just inside the corners:
+     - Top color: top row, column 1.
+     - Right color: row 1, last column.
+     - Bottom color: bottom row, column 1.
+     - Left color: row 1, column 0.
+     These positions are stable across the examples and reflect the uniform frame colors.
+  3) Initialize a new output grid filled with zeros.
+  4) Paint the frame on the output:
+     - Fill the entire top row (excluding the two corners) with the top color.
+     - Fill the entire bottom row (excluding corners) with the bottom color.
+     - Fill the entire left column (excluding corners) with the left color.
+     - Fill the entire right column (excluding corners) with the right color.
+     - Leave corners as zeros.
+  5) Scan the interior (rows 1..height-2, cols 1..width-2). For each cell:
+     - If it equals the top color, set the output at row 1, same column, to that color.
+     - Else if it equals the right color, set the output at same row, column width-2, to that color.
+     - Else if it equals the bottom color, set the output at row height-2, same column, to that color.
+     - Else if it equals the left color, set the output at same row, column 1, to that color.
+     The mutually exclusive checks ensure each interior clue contributes to exactly one inner band, matching how the outputs look.
+  6) Return the resulting grid.
+
+- This exactly reproduces the observed behavior:
+  - The borders are preserved.
+  - Any interior occurrence of a border color is “projected” to the inner track adjacent to that border, aligned by row or column.
+  - Non-border interior values are ignored.
+  - Corners remain zero.

@@ -1,0 +1,42 @@
+Here’s how I would solve it from just the input/output pairs:
+
+- Spot the invariant:
+  - The bottom part of the grid (where the colored band(s) are) stays unchanged.
+  - The output adds thin diagonal lines of a single color above that band.
+  - That color is the rarest nonzero color present in the input (the “accent” color used in the band). In all examples, zero is abundant and the accent color is uniquely rare.
+
+- Identify the anchor line for the diagonals:
+  - Take every cell that has the rarest color.
+  - Shift each such coordinate one row upwards. This gives the row from which the diagonals start (i.e., they begin immediately above the band containing the rare color).
+
+- Choose the diagonal seeds:
+  - Among the shifted coordinates, find the smallest row index (they’ll be the same row in the examples).
+  - Use the leftmost column on that row as the seed for the up-left diagonal.
+  - Use the rightmost column on that row as the seed for the up-right diagonal.
+  - If there is only one rare-color cell, these two seeds coincide, which is fine.
+
+- Trace the diagonals:
+  - From the left seed, walk NW (row–1, col–1) step by step until you leave the grid.
+  - From the right seed, walk NE (row–1, col+1) step by step until you leave the grid.
+  - Collect all coordinates along both rays (their union).
+
+- Paint rule:
+  - For each collected coordinate, paint it with the rare color only if the current cell is zero. Do not overwrite existing nonzero cells (so the band remains intact, and diagonal crossings on nonzero cells are skipped).
+
+- Boundaries/assumptions:
+  - The grids are square, so a single size N bounds both rows and columns.
+  - Counting the “least common” color over the whole grid naturally avoids picking zero because zero is the most frequent in these examples.
+
+- Implementation outline:
+  - Flatten the grid to count frequencies and choose the least frequent color.
+  - Gather coordinates of that color; shift them all one row up to form the anchor set.
+  - Compute the start row (min) and the leftmost/rightmost columns from that set.
+  - Write a small routine to “shoot” a diagonal given a start and a direction, collecting coordinates until out of bounds.
+  - Union the NW and NE coordinates and fill zeros with the chosen color.
+  - Return the modified grid.
+
+This exactly reproduces:
+- Example 1: Single rare 4 at the bottom center → seeds coincide → add two 4s at the top corners.
+- Example 2: Single rare 3 at bottom center → two diagonals from that point → four 3s appear above, symmetric.
+- Example 3: Three rare 1s at bottom row → use leftmost and rightmost shifted seeds → two diagonals yielding two 1s at row 2 corners.
+- Example 4: Three rare 4s → seeds at the shifted leftmost/rightmost → diagonals produce a symmetric “V” of 4s above, leaving existing 2s/4s untouched.

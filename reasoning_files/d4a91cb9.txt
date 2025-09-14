@@ -1,0 +1,18 @@
+Here’s how I’d solve it from the examples:
+
+- The outputs always draw an L-shaped path of 4s that connects the 8 to the 2.
+- The vertical leg is drawn in the column where the 8 sits, from the 8’s row down/up to the 2’s row.
+- The horizontal leg is drawn in the row where the 2 sits, from the 8’s column across to the 2’s column.
+- The cells containing 8 and 2 themselves are preserved; the 4s fill everything in between. The corner at the intersection (row of 2, column of 8) is 4.
+
+Algorithm:
+1) Scan the grid to find the coordinates (row, col) of the single 8 and the single 2.
+2) Let start_row = min(row_8, row_2), end_row = max(row_8, row_2). For every row r in that inclusive range, set grid[r][col_8] to 4, except do not touch the 8’s own cell (i.e., skip r == row_8). This draws the vertical segment in the 8’s column down/up to the row of the 2.
+3) Let start_col = min(col_8, col_2), end_col = max(col_8, col_2). For every column c in that inclusive range, set grid[row_2][c] to 4, except do not touch the 2’s own cell (i.e., skip c == col_2). This draws the horizontal segment in the 2’s row across from the 8’s column to the 2.
+4) Return the modified grid.
+
+This reproduces:
+- An L whose corner is at (row_2, col_8).
+- The vertical stroke in the 8’s column between the two rows.
+- The horizontal stroke in the 2’s row between the two columns.
+- 8 and 2 remain unchanged.

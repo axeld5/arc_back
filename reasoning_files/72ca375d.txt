@@ -1,0 +1,45 @@
+Here’s how I would solve it:
+
+- Observation from the examples:
+  - The output is always a tight rectangular cutout (subgrid) from the original 10×10.
+  - It contains exactly one color (nonzero value) plus background zeros.
+  - That subgrid is left–right symmetric: every row reads the same when reversed.
+  - The chosen subgrid corresponds to one connected blob of a single color; the symmetry check is applied to the blob’s bounding rectangle with zeros preserved inside the box.
+  - When multiple blobs exist, the examples are consistent with returning the first symmetric one encountered by scanning the grid from top-left to bottom-right.
+
+- Plan:
+  1. Treat zeros as background; only colored cells (nonzero) form candidates.
+  2. Split the grid into connected components of equal value using 8-connectivity (include diagonals). The examples have diagonal adjacency that should count as connected, so use 8-neighbors rather than 4.
+  3. For each connected component, compute its tight bounding box: min/max row and min/max column over all its cells.
+  4. Extract the subgrid by slicing that rectangle directly from the original grid, preserving both the component cells and any zeros inside the box.
+  5. Check left–right symmetry of the subgrid: for every row, verify the row equals its reversal. If all rows pass, the subgrid is horizontally symmetric.
+  6. Return the first subgrid that passes the symmetry check. If none pass, return nothing.
+
+- Why this matches the given I/O:
+  - Example 1: The 6-region’s bounding box yields
+    6 6 6 6
+    0 6 6 0
+    which is row-wise palindromic. Other regions (2s, 7s) don’t yield such symmetric boxes.
+  - Example 2: The 4-region is a solid 2×2 block; its box is
+    4 4
+    4 4
+    which is symmetric. The 8s and 2s shapes aren’t horizontally symmetric in their boxes.
+  - Example 3: The 5-region’s bounding box is
+    5 0 0 5
+    5 5 5 5
+    which is symmetric. Other blobs don’t produce symmetric rectangles.
+
+- Key implementation pieces:
+  - Neighbor generator for 8 directions.
+  - BFS (or DFS) to collect all cells of the same value into one region and mark them visited, so each cell is processed once.
+  - Bounding box computation from the region’s coordinates.
+  - Subgrid extraction via slicing the original grid with that box.
+  - Symmetry check by comparing each row to its reversed version.
+  - Iterate regions in the order discovered by scanning the grid row-major to ensure deterministic “first match” behavior.
+
+- Complexity:
+  - Each cell is visited once during component labeling; extracting boxes and checking symmetry is linear in total cells; overall O(NM) for a 10×10 grid, effectively constant-time.
+
+- Edge cases:
+  - If a region’s bounding box is one column wide, it trivially passes the left–right symmetry check.
+  - If no region is symmetric, return no subgrid (or a sentinel like None).

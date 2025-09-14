@@ -1,0 +1,35 @@
+Here’s how I would solve it from the I/O pairs:
+
+- What’s invariant across examples:
+  - Each input contains at least one 2×2 monochrome block of 1s and/or 2s (equivalently, two same-valued cells aligned on the main diagonal, i.e., positions (r,c) and (r+1,c+1) with the same value).
+  - In the output, from the 1-block you get a diagonal of 1s extending up-left all the way to the grid edge.
+  - From the 2-block you get a diagonal of 2s extending down-right all the way to the grid edge.
+  - Nothing else changes.
+
+- So the transformation is: identify the “anchor” diagonal for each color and propagate along that same diagonal direction to the border.
+  - For 1s: propagate toward the top-left.
+  - For 2s: propagate toward the bottom-right.
+
+- How to find the anchor:
+  - Scan the grid in row-major order, but only up to the penultimate row and column.
+  - For each cell (r, c), check if it and its down-right neighbor (r+1, c+1) both equal the target value (either 1 or 2).
+  - The first such occurrence is the start of the diagonal for that value. Return (r, c). If none is found, skip that value.
+
+- How to propagate:
+  - For 1s: starting from the found (r, c), repeatedly step to (r-1, c-1) while within bounds, and write 1s at each step. We don’t need to alter the starting cells of the 2×2 block; they’re already 1. This paints the up-left diagonal exactly as seen in the outputs.
+  - For 2s: starting from the found (r, c), repeatedly step to (r+1, c+1) while within bounds, and write 2s at each step. Again, the seed 2×2 area is already present; we extend it down-right to the border.
+
+- Order of operations:
+  - Apply the 1-extension first, then the 2-extension. In the provided examples, the paths don’t conflict, and this order reproduces the outputs exactly.
+
+- Why this matches the examples:
+  - Example 1: The 1-block at rows 2–3, cols 2–3 yields 1s at (1,1) and (0,0); the 2-block at rows 6–7, cols 4–5 yields 2s at (8,6) and (9,7).
+  - Example 2: The 1-block at rows 7–8, cols 6–7 extends up-left to (1,0). The 2-block at rows 0–1, cols 2–3 extends down-right to (7,9).
+  - Example 3: The 1-block at rows 5–6, cols 3–4 extends up-left to (2,0), and the 2-block at rows 2–3, cols 5–6 extends down-right to (6,9).
+
+- Implementation plan:
+  - Write a helper that scans for the first pair of equal target values aligned on the main diagonal and returns its top-left coordinate.
+  - Write two propagation helpers: one that walks up-left and writes 1s, and another that walks down-right and writes 2s, both with bound checks.
+  - In the solver, run the finder and propagator for 1, then for 2, and return the mutated grid.
+
+This minimal logic reproduces all given I/O exactly.

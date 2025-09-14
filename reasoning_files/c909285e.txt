@@ -1,0 +1,28 @@
+Here’s how I’d solve it from just the I/O behavior:
+
+- First, notice that each output is a cropped submatrix from the input, always a square with a constant “frame” value around its border: 3 in the first task, 2 in the second, 6 in the third.
+
+- That border value is not the background 0; it’s a non-zero value that appears far less often than the others in the full matrix. In each example, that “rare” value forms full rows/columns that act like a rectangular frame in the big grid. So the output looks like the minimal rectangle that encloses every occurrence of that rare value, with the interior kept as-is.
+
+- So the rule I infer:
+  1) Among non-zero values, find the least frequent value in the entire matrix. Ignore zeros so the background doesn’t dominate the frequency.
+  2) Compute the minimal bounding box that contains all occurrences of this target value:
+     - top = index of the first row that contains the value
+     - bottom = index of the last row that contains the value
+     - left = smallest column index (between top and bottom rows) where the value occurs
+     - right = largest column index (between top and bottom rows) where the value occurs
+  3) Return the submatrix defined by those inclusive bounds [top..bottom] × [left..right].
+
+- Why this matches the examples:
+  - In the first input, 3 is the rarest non-zero. Its occurrences form a rectangular border; the minimal rectangle enclosing all 3s yields exactly the 7×7 output with 3s on the border and the original interior preserved.
+  - In the second input, 2 is the rarest; bounding all 2s likewise gives the shown 7×7 block with 2s on the border.
+  - In the third input, 6 is the rarest; bounding all 6s yields the 7×7 block bordered by 6s.
+
+- Implementation outline:
+  - Build a frequency map over all non-zero elements by flattening the matrix.
+  - Pick the key with the smallest count.
+  - Find top/bottom by scanning rows to see if the target appears.
+  - For left/right, scan columns but only within the row range [top..bottom] to ensure you capture the minimal horizontal extent where the target appears.
+  - Slice the matrix using those bounds and return it.
+
+This explains the cropping behavior and reproduces the outputs across the provided cases.

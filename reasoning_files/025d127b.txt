@@ -1,0 +1,29 @@
+Here’s how I would solve it from the given I/O:
+
+- First, infer the rule from the examples:
+  - For each non-zero color, treat its pixels as one shape, independent of other colors.
+  - Every pixel of that color moves one step to the right, except pixels that lie on the shape’s bottommost row or the shape’s rightmost column; those pixels stay in place.
+  - This exactly matches both examples: interior pixels shift right by one; the bottom edge and right edge act as anchors.
+
+- Translate that into a per-color procedure:
+  1. Collect all distinct non-zero values in the grid. We’ll process each color separately.
+  2. For the current color, find all its coordinates.
+  3. Determine the color’s bottom boundary and right boundary by taking:
+     - max_row = maximum row index among its pixels
+     - max_col = maximum column index among its pixels
+  4. Create a new blank grid (all zeros) we’ll use to place the moved pixels for this color.
+  5. For each pixel (r, c) of this color:
+     - If r < max_row and c < max_col, move it to (r, c+1).
+     - Otherwise (if it is on the bottommost row or the rightmost column), keep it at (r, c).
+  6. After computing the moved positions for this color, write them into an accumulating result grid. Only write non-zero cells.
+
+- Do this independently for every color and overlay the results onto a single output grid. Since the examples don’t create collisions between colors after moving, simple overwriting of non-zeros into the result grid suffices.
+
+- Implementation outline in plain terms:
+  - Flatten the grid to find unique non-zero values.
+  - For each value, gather its positions, compute max_row and max_col, and produce a temporary grid where each of its pixels is either shifted right by one (if not on bottom/right boundary) or left in place (if on bottom/right boundary).
+  - Merge all temporary grids into the final grid by copying non-zero entries.
+
+This yields exactly the shown outputs:
+- In the first example, both the 6-shape and 2-shape have their interior pixels shifted right by one, with their bottom rows and rightmost columns anchored.
+- In the second example, the 8-shape’s interior shifts right by one, while the bottom border and the far-right border remain fixed.

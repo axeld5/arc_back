@@ -1,0 +1,31 @@
+Here’s how I would solve it from the input/output pairs and arrive at the approach behind the solver:
+
+- First, notice the dominant structure: every example has thick, uninterrupted bands of 5s that remain intact in the output. So 5 is the background and must be preserved exactly. Anything non-5 is “content.”
+
+- The non-5 pixels form blobs that touch even diagonally, and the outputs look like we are extracting a “prototype” blob and stamping an enlarged, axis-aligned version of it at the top-left, while keeping all original 5s in place. This suggests:
+  - Use 8-connectivity for segmentation.
+  - Identify connected components of non-5 pixels.
+
+- Which blob becomes the prototype? The outputs show a single uniform block of some color(s) repeated in a 4-thick manner, and across the four tasks it matches choosing a blob with the simplest internal makeup. A robust proxy for “simplest” from the examples is: choose the object with the fewest distinct colors in it (smallest color palette). That explains why a single-color object gets picked when there are mixed-color blobs around.
+
+- To ensure the stamped prototype is anchored neatly at the top-left corner without gaps or offsets, normalize the chosen object’s coordinates: translate it so its top-most and left-most pixel becomes (0, 0).
+
+- The block thickness in the outputs is consistent across tasks: each pixel of the prototype becomes a larger solid square. From the examples, a constant upscale factor fits all cases; a factor of 4 reproduces the width of the bars you see in the outputs. So magnify the normalized prototype by expanding each pixel into a 4x4 block.
+
+- Paint that enlarged, normalized prototype directly onto the original canvas. Because it is normalized to (0, 0), it lands at the top-left corner in the final image.
+
+- Finally, to faithfully keep the bands of 5s as they originally were (and avoid overwriting them during painting), reapply all pixels that were 5 in the input back onto the canvas. This ensures the global structure of 5s is preserved exactly, matching the outputs.
+
+- Implementation details to make this work:
+  - Background detection: the most common color in the grid is 5 in all examples; in general take the most frequent color.
+  - Segmentation: BFS/DFS with 8-neighborhood to form connected components of non-background cells. Store each object as a set of (color, (i, j)).
+  - Palette size of an object: number of distinct colors in that component.
+  - Normalization: subtract the component’s min row and min col from all its coordinates.
+  - Upscaling: for each pixel in the normalized object, add a k×k block of that color (k = 4) at the corresponding magnified coordinates.
+  - Painting: write the upscaled pixels onto a copy of the original grid.
+  - Preservation of 5s: record all positions that were 5 in the original and restore them at the end.
+
+This sequence of steps explains the transformation in every given example:
+- Non-5 details vanish except for the single chosen prototype, which appears as a large, clean block at the top-left after magnification.
+- The thick horizontal (and vertical, where present) bands of 5 remain untouched across the whole width/height.
+- The enlarged prototype has uniform, fat stripes consistent with a fixed-scale pixel replication.

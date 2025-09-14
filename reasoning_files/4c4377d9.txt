@@ -1,0 +1,17 @@
+Here’s how I would solve it:
+
+- From the examples, the output always consists of two blocks of equal size.
+- The first block is the input in reverse order; the second block is the input in its original order.
+- Nothing inside each row changes—only the ordering of the rows does—so the transformation is a simple mirror/duplication around the boundary between the two blocks.
+
+So the plan:
+- Treat the input as a sequence.
+- Create a reversed copy of that sequence.
+- Concatenate the reversed copy with the original sequence.
+- Return/print that concatenation.
+
+That’s exactly the pattern shown:
+- Output lines 1..n are the input lines n..1.
+- Output lines n+1..2n are the input lines 1..n.
+
+Wrap this in a helper that just applies “reverse then concatenate” to the provided input.

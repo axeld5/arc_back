@@ -1,0 +1,28 @@
+Here’s the high-level approach I’d infer from the input/output pairs and implement to match them:
+
+- Treat the most frequent value in the grid as background. Everything else is “foreground.”
+
+- Partition the foreground into 4-connected components (up, down, left, right). Note that a single component may contain multiple non-background colors; keep each component as a set of its cells and remember which distinct values it contains.
+
+- Among the non-background colors, find an “anchor” color that appears in more than one component (i.e., is shared across components). Choose the one that is most common by number of components it appears in. This “preferred” color acts as a registration mark for all components.
+
+- For any component, define its anchor square using only the cells of the preferred color inside that component:
+  - Compute the min row/col of those anchor-color cells.
+  - Compute the span in rows and columns; set the component’s scale s to the maximum of those spans, plus 1. This gives a top-left corner and a square side length s for that component’s anchor.
+
+- Identify one component to serve as the prototype for the pattern to replicate. Among components, look for one where the count of non-preferred cells within the component is larger than s² (the area of its anchor square), and pick the one with the smallest s. This ensures we select the smallest component that still has a “dense” non-anchor pattern.
+
+- From this prototype component, extract a mask: take all non-preferred cells in the component and record their offsets relative to the prototype’s anchor square top-left. These offsets form the pattern to be stamped elsewhere.
+
+- For each component:
+  - Recompute its anchor square (top-left and scale s).
+  - Determine that component’s “accent” color: a color present in the component that is neither background nor the preferred color (there should be exactly one such non-preferred color per component in these tasks).
+  - Stamp the prototype mask around this component at its scale: for each offset (di, dj) in the mask, compute the destination top-left as (comp_top + di*s, comp_left + dj*s), then fill the s×s block at that position with the component’s accent color. Clip to the grid boundaries if needed.
+
+- Write all painted blocks into a copy of the original grid to produce the final result.
+
+Intuition:
+- The preferred (anchor) color defines alignment and scale within each component.
+- A single component provides the relative layout (mask) of where non-anchor color patches should go.
+- That mask is applied to every component, scaled by each component’s anchor-square size and colored with that component’s own non-anchor color.
+- This reproduces the observed expansions/tilings in the outputs across the examples.

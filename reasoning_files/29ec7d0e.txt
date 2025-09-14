@@ -1,0 +1,46 @@
+Here’s how I’d solve it from the given input/output examples.
+
+1) What the task seems to be
+- Each grid shows a repeating pattern of small integers across both rows and columns.
+- Zeros are “holes” (unknowns) that should be filled in by the underlying periodic pattern.
+- The output is the same grid with every zero replaced so that the whole grid becomes a clean tiling of a minimal repeating block.
+- Therefore: treat 0 as “don’t care”, recover the smallest horizontal and vertical periods consistent with the non-zero entries, then tile those values to fill the whole grid.
+
+2) Detect the horizontal period (width of the smallest repeating block)
+- For a given row and a candidate shift k, the row is k-periodic at every position j where both positions are known if row[j] = row[j+k]. If either side is 0, we don’t enforce equality (0 = unknown).
+- Extend this to the whole grid: a shift k is acceptable if for every row, and for every aligned pair (j, j+k) that exists, the pair is either equal or one is 0.
+- Scan k from 1 up to the number of columns. The first k that satisfies this “equal-or-unknown” condition across the whole grid is the horizontal period. If nothing smaller matches, the period is the full width.
+- This gives the minimal repeating width while tolerating sparse zeros.
+
+3) Detect the vertical period (height of the smallest repeating block)
+- Do the exact same thing, but down the columns instead of across rows.
+- Easiest way: check the condition on the transposed grid (treat columns like rows).
+- Again, find the smallest k (now in the vertical direction) with the “equal-or-unknown” property across all aligned pairs. If nothing smaller works, the period is the full height.
+
+4) Build the base tile from the known entries
+- Now we know the tile size: height = vertical period, width = horizontal period.
+- Every grid position (r, c) belongs to a residue class in the tile at (r % height, c % width).
+- Iterate all cells. For every non-zero value v at (r, c), save v into a dictionary keyed by (r % height, c % width). This gathers the canonical values for each tile cell from the evidence in the grid.
+- The examples are consistent, so each tile coordinate is backed by at least one known value and different evidences don’t conflict.
+
+5) Fill in the zeros
+- Iterate the grid again. Whenever you see a zero at (r, c), replace it by the saved value at key (r % height, c % width) from the dictionary.
+- Non-zero values stay as they are.
+
+6) Why this works on the examples
+- The rows and columns in the outputs clearly repeat with a small period (e.g., [1 2 3 4 5], [1 3 5 2 4], etc., or [1 2 … 6], [1 2 … 7], [1 2 … 8]).
+- The zeros in the inputs are located in positions that are entirely determined by the periodicity seen elsewhere. Treating zeros as unknowns allows finding the true period even when some entries are missing.
+- Once the minimal horizontal and vertical periods are recovered, copying the base tile across the grid fills all holes exactly as in the outputs.
+
+7) Implementation sketch (at a high level)
+- Helper to decide if two aligned cells are consistent: they’re consistent if they’re equal or at least one is zero.
+- Function to find the first (smallest) shift k for which all aligned pairs in all rows satisfy the helper (do this on rows for horizontal period, and on the transposed grid for vertical period).
+- Build a map from tile coordinates (r % H, c % W) to the known non-zero value.
+- Replace zeros using that map, indexing by modulo to tile across the grid.
+
+8) Assumptions and notes
+- Inputs are consistent: for each tile coordinate there exists at least one non-zero witness, and witnesses do not contradict each other.
+- If no smaller period exists, default to the full dimension in that direction.
+- Complexity is linear in grid size times the search over candidate periods; in practice fast given small widths/heights.
+
+That’s the reasoning that leads to a solution that reproduces the shown outputs: find minimal horizontal/vertical periods while treating zeros as wildcards, learn the base tile from non-zero evidence, and fill the grid by tiling that base.

@@ -1,0 +1,28 @@
+Here’s how I would solve it:
+
+1) Infer the rule from the I/O pairs
+- Changes happen independently per column; no values move left/right.
+- Within a column, all non-zero entries are “packed” upward, preserving their original top-to-bottom order.
+- The number of non-zero values per column is unchanged; zeros fill the remaining cells below.
+- Both 1s and 2s are treated the same (they’re just “non-zero” elements).
+
+2) High-level algorithm
+- Create a new grid of the same shape, initialized with zeros.
+- For each column:
+  - Scan the original grid from top to bottom and collect all non-zero values in that column in order.
+  - Write those collected values back into the same column of the new grid starting at the top row (row 0), sequentially.
+  - Leave any remaining rows in that column as zeros.
+
+3) Decompose into simple steps/helpers
+- A helper that, given a column index, returns the list of non-zero entries in that column in top-to-bottom order.
+- A helper that fills a given column of the result grid with a provided list of elements starting from the top, leaving the rest as zeros.
+- A driver that initializes the zero grid, loops over columns, uses the two helpers, and returns the transformed grid.
+
+4) Keep it flexible
+- Allow the row/column iteration to be parameterized by an iterator (e.g., a function like range or reversed(range)) so the same logic could easily compress in the opposite direction if needed. Default to top-to-bottom.
+
+5) Complexity and properties
+- Time: O(rows * cols).
+- Space: O(rows * cols) for the output grid.
+- Stable compaction per column: the relative order of non-zero elements is preserved.
+- Works for any non-zero values, not tied to specific numbers.

@@ -1,0 +1,29 @@
+Here’s how I’d solve it:
+
+- From the I/O pairs, it’s clear each digit is transformed independently of its position. Identical rows map to identical rows, and the mapping is consistent across all examples. So this is a pure digit substitution (a permutation of 0–9).
+
+- Extract the mapping from the examples:
+  - From 3 1 2 -> 4 5 6, we get 3→4, 1→5, 2→6.
+  - From 2 3 8 -> 6 4 9, we confirm 2→6, 3→4, and get 8→9.
+  - From 5 8 6 -> 1 9 2, we get 5→1, 8→9 (consistent), 6→2.
+  - From 9 4 2 -> 8 3 6, we get 9→8, 4→3, 2→6 (consistent).
+
+- Collate the full mapping for digits 0–9. The examples don’t show 0 or 7, so the simplest consistent choice is to leave them unchanged:
+  - 0→0
+  - 1→5
+  - 2→6
+  - 3→4
+  - 4→3
+  - 5→1
+  - 6→2
+  - 7→7
+  - 8→9
+  - 9→8
+
+- Implement this as a lookup table indexed by the digit (i.e., an array of length 10 in index order 0..9). Then:
+  - A small helper maps a single digit by indexing the table.
+  - Another helper maps a row by applying the digit-mapper to each element in the row.
+  - The solver maps the whole grid by applying the row-mapper to each row.
+  - Provide a short alias to the solver for convenience.
+
+- This approach reproduces all the given outputs and generalizes to any grid of digits using the same substitution.

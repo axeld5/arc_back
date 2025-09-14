@@ -1,0 +1,27 @@
+Here’s how I would solve it:
+
+- First, notice the shape change: every example turns a 3x3 input into a 6x6 output. That suggests the output is just the input doubled in width and height by mirroring.
+
+- Check the top-left 3x3 block of each output: it matches the input exactly.
+
+- Check the top-right 3x3 block: it’s the top-left block mirrored left-to-right. For instance, the first output’s first row goes from “5 3 4” to “5 3 4 4 3 5”, which is the row followed by its reverse.
+
+- Check the bottom-left 3x3 block: it’s the top-left block mirrored top-to-bottom. The block of rows appears again but in reverse order.
+
+- Check the bottom-right 3x3 block: it’s a mirror in both directions (equivalently, the horizontal mirror of the bottom-left, or the vertical mirror of the top-right).
+
+- This suggests a simple two-step construction:
+  1) For each input row, create a horizontally symmetric row by appending that row’s reverse. This doubles the width.
+  2) After doing this for all rows, create vertical symmetry by appending the list of these widened rows in reverse order. This doubles the height.
+
+- Sanity checks against all examples:
+  - The first row of the output is always the first input row followed by its reverse.
+  - The last row of the output is always the first output row repeated (since vertically mirrored).
+  - The central “seam” is just adjacency—no special handling; we don’t drop or duplicate any middle element beyond the straightforward concatenations.
+
+- This generalizes: for any h×w grid, the result is a (2h)×(2w) grid whose quadrants are: original, horizontal mirror, vertical mirror, and both mirrors.
+
+That reasoning leads directly to:
+- A helper that mirrors a row horizontally by concatenating it with its reverse.
+- Applying that helper to each row to build the top half.
+- Then mirroring the list of rows to build the bottom half.

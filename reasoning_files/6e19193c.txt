@@ -1,0 +1,44 @@
+Here’s how I would solve it, based only on the given input/output pairs and the pattern they suggest:
+
+- Observation:
+  - The inputs contain 10x10 grids with zeros and a single nonzero color (e.g., 7 or 9).
+  - In both examples, there are places where a 2x2 block has three identical nonzero values and one zero – an “L” with a missing corner.
+  - The outputs don’t fill that missing corner. Instead, they shoot a straight diagonal “ray” outward from that missing corner, away from the 2x2 block, painting that color until the grid boundary.
+  - The diagonal direction depends on which corner is missing:
+    - Missing top-left → extend up-left
+    - Missing top-right → extend up-right
+    - Missing bottom-left → extend down-left
+    - Missing bottom-right → extend down-right
+
+- Strategy:
+  - Scan every 2x2 sub-block in the grid. For a 10x10 grid that’s i,j in [0..8].
+  - For each 2x2 block, collect its four values.
+  - If exactly three cells are nonzero, all equal, and one cell is zero, then we’ve found the “L with a missing corner”.
+    - Identify which of the four positions (0..3) is zero. Index the block as:
+      - 0: (i, j)
+      - 1: (i, j+1)
+      - 2: (i+1, j)
+      - 3: (i+1, j+1)
+    - From that zero index, derive the diagonal direction:
+      - If the zero is in the top row (index 0 or 1), row step = -1 (go up). Else row step = +1 (go down).
+      - If the zero is in the left column (index 0 or 2), col step = -1 (go left). Else col step = +1 (go right).
+    - Compute the starting cell for the ray: it is one step outside the 2x2 block, starting from the missing corner in the derived direction. Concretely:
+      - Missing corner row offset inside the block = zero_index // 2 (0 for top, 1 for bottom)
+      - Missing corner col offset inside the block = zero_index % 2 (0 for left, 1 for right)
+      - Start row = i + (row offset) + row step
+      - Start col = j + (col offset) + col step
+    - From that starting cell, march in that diagonal direction while staying inside the grid, painting the color found in the three matching cells. Do not fill the missing corner itself; only paint the ray outside the block.
+  - Important implementation detail: read the 2x2 patterns from the original grid, but write painting results into a separate copy. This avoids newly painted cells from creating or destroying patterns as you scan.
+
+- Why this matches the examples:
+  - For each L-shaped 2x2 of 7s/9s with a missing corner, the output shows a diagonal of the same number starting just beyond that corner and continuing until the edge, in the correct direction.
+  - The missing corner remains zero in the outputs.
+  - Multiple such 2x2 triggers can coexist; handling them independently and writing to a copy reproduces both outputs.
+
+- Complexity:
+  - O(n^2) for scanning all 2x2 blocks, plus O(n) worst-case per ray (bounded by grid size), which is fine for 10x10.
+
+- Small engineering touches:
+  - Keep the grid size implicit at 10 or derive from the input.
+  - Encapsulate direction computation from the zero corner, and encapsulate the “paint along a diagonal until boundary” operation.
+  - Optionally parameterize the iteration range if needed, but default scanning 0..8 for i,j is correct for 10x10.

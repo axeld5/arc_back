@@ -1,0 +1,44 @@
+Here’s how I would solve it from just the input/output pairs:
+
+1) Spot the invariant “frame” made of 8s
+- In both examples there are full rows entirely of 8s, and full columns entirely of 8s.
+- Those all-8 rows/columns act like horizontal and vertical “bars” that partition the grid.
+- Importantly, there are at least two all-8 rows and two all-8 columns. The output uses the first and last such rows/columns as boundaries; everything else remains unchanged.
+
+2) Identify the boundaries
+- Find all row indices where every cell is 8. Let the topmost of these be min_row and the bottommost be max_row.
+- Find all column indices where every cell is 8. Let the leftmost be min_col and the rightmost be max_col.
+
+3) Observe how zeros are turned into region labels
+- The outputs only change cells that were zero in the input; 8s remain 8s.
+- The zero-cells are filled with specific numbers depending on their location relative to the “frame”:
+  - Above the top 8-row and between the two 8-columns: fill with 2.
+  - Between the two 8-rows and left of the left 8-column: fill with 4.
+  - Between the two 8-rows and between the two 8-columns: fill with 6.
+  - Between the two 8-rows and right of the right 8-column: fill with 3.
+  - Below the bottom 8-row and between the two 8-columns: fill with 1.
+- All other areas (like the corners outside both the rows and columns of 8s) remain 0, matching the outputs.
+
+4) Turn that into a decision function
+- For a given cell (r, c) that is currently zero:
+  - if r < min_row and min_col < c < max_col → 2
+  - elif min_row < r < max_row and c < min_col → 4
+  - elif min_row < r < max_row and min_col < c < max_col → 6
+  - elif min_row < r < max_row and c > max_col → 3
+  - elif r > max_row and min_col < c < max_col → 1
+  - else → leave as 0
+- Note the use of strict inequalities inside the “between” regions so that the 8-rows and 8-columns themselves are not overwritten.
+
+5) Apply to the grid
+- Compute min_row, max_row, min_col, max_col as described.
+- Create a copy of the grid.
+- For each cell that is zero, assign the value according to the decision function above.
+- Return the modified grid.
+
+This exactly reproduces the given outputs:
+- The top inner band between the two 8-columns gets 2s.
+- The left inner band between the 8-rows gets 4s.
+- The central rectangle gets 6s.
+- The right inner band between the 8-rows gets 3s.
+- The bottom inner band between the two 8-columns gets 1s.
+- 8s remain untouched, and corner areas remain 0s.

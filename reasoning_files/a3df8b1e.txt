@@ -1,0 +1,29 @@
+Here’s how I’d solve it from the I/O:
+
+- First, notice each output row has exactly one 1 (a one-hot row), and every output row is nonzero even though inputs are mostly zeros. So the task is to place a single 1 in each row according to a rule, ignoring existing values.
+
+- Look at which column the 1 appears in for each row:
+  - For 2 columns: from bottom to top, the 1 walks across columns 0→1→0→1… (a ping-pong).
+  - For 3 columns: from bottom to top, it goes 0→1→2→1→0→1→2→1→0→1 (zigzag between the edges).
+  - For 4 columns: from bottom to top, it goes 0→1→2→3→2→1→0→1→2→3 (again a zigzag, bouncing off the sides).
+
+- The starting position is always the bottom-left cell (last row, column 0). From there, the 1 moves one row up at every step and one column horizontally:
+  - Start moving right (direction = +1).
+  - If the next horizontal step would leave the grid (i.e., column would be <0 or ≥cols), flip the horizontal direction (bounce) and take the horizontal step in the new direction.
+  - Always move up one row at each step.
+  - Stop when you’ve gone above the top row.
+
+- So the algorithm is:
+  - Let r = last row index, c = 0, dir = +1.
+  - While r is within the grid:
+    - Set grid[r][c] = 1.
+    - Compute tentative next column c + dir.
+      - If that next column is in bounds, set c to it.
+      - Otherwise, flip dir (dir = -dir) and move c by the new dir (this models the bounce).
+    - Move r up by 1 row (r -= 1).
+  - Return the modified grid.
+
+- This produces exactly the shown outputs for 2, 3, and 4 columns:
+  - It walks diagonally up-right until hitting the right edge, then diagonally up-left until hitting the left edge, and so on, placing a 1 in each visited cell, one per row.
+
+- Complexity is linear in the number of rows; no extra memory besides a few indices.

@@ -1,0 +1,35 @@
+Here’s how I would solve it based on the input/output pairs:
+
+- Observation from examples:
+  - The input grids are 10x10 and contain 0s and 5s.
+  - The output grids replace all original 5s with either 1 or 2.
+  - 2 marks the 5-cells that belong to a connected component of exactly size 6.
+  - 1 marks 5-cells in any other component size.
+  - 0s remain 0s.
+  - Connectivity is 4-directional (up, down, left, right), not diagonal.
+
+- Approach:
+  - Traverse the grid cell by cell.
+  - When I hit a non-zero cell that hasn’t been visited, perform a flood-fill (BFS) to collect all cells in its connected component, but only including cells with the same value (here, 5).
+  - Keep a global visited matrix so each cell is processed once.
+  - Record the list of cells in each discovered component. If its size is exactly 6, add its cells to a “size-6” bucket; otherwise add them to an “other” bucket.
+
+- Flood-fill (component discovery):
+  - Use a queue (BFS) starting from the current cell.
+  - Explore only in four directions.
+  - Mark cells as visited as soon as they are enqueued to avoid duplicates.
+  - Collect the coordinates in a list; this will be the component.
+
+- Marking the result:
+  - Initialize a new grid of zeros.
+  - Convert the two buckets to sets for O(1) membership checks.
+  - For each cell in the grid:
+    - If it’s in the “size-6” set, write 2.
+    - Else if it’s in the “other” set, write 1.
+    - Else copy the original grid value (this preserves zeros; if other values existed, they would be kept).
+
+- Notes:
+  - This runs in linear time in the number of cells: each cell is enqueued/visited at most once.
+  - The iteration order is standard row-major, but you could parameterize it (e.g., with a function like range) to change traversal order if needed.
+  - Using BFS with a deque and a directions list keeps the component search simple and efficient.
+  - Separating the logic into three parts—scan-and-discover, BFS to get a component, and final marking—keeps the solution clean.

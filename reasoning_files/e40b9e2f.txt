@@ -1,0 +1,39 @@
+Here’s how I would solve it:
+
+- What the IO pairs show
+  - There’s a compact core of nonzero cells (a 3x3 block in examples 1 and 3, a 2x2 block in example 2) that remains unchanged.
+  - Every other nonzero cell gets “completed” into a 4-fold rotationally symmetric set around the center of that core: the original stays, and its 90°, 180°, 270° rotations appear at the corresponding positions, as long as those target cells are empty.
+  - If a rotated target is already filled, we don’t overwrite it. The center core cells are never moved or replicated.
+
+- Identify the core (“hub”)
+  - Compute the bounding box of all nonzero cells and its center; this is used to bias the hub toward the middle of the shape.
+  - Slide both a 3x3 and a 2x2 window over the grid and score each window:
+    - Density: number of nonzero cells inside the window divided by its area (prefer higher).
+    - Size: prefer 3x3 over 2x2 when densities tie.
+    - Proximity: prefer the window whose center is closest to the bounding-box center (smaller squared distance).
+    - If still tied, prefer the topmost-leftmost window.
+  - The chosen window is the hub; we keep cells inside it unchanged and use its geometric center as the rotation center.
+
+- Rotation model
+  - Treat each cell as a unit square centered at (row+0.5, col+0.5). The hub’s center is similarly at (top+a half, left+a half), i.e., window top-left plus k/2.
+  - A 90° counterclockwise rotation around the hub center maps a point (y, x) to:
+    - y’ = hub_y − (x − hub_x)
+    - x’ = hub_x + (y − hub_y)
+  - Round back to the nearest cell coordinates. Repeating this 3 times gives the 90°, 180°, and 270° positions.
+
+- Populate the symmetry
+  - Start with a copy of the input grid.
+  - Collect all foreground cells outside the hub.
+  - For each such cell, do up to three rotations (90°, then 180°, then 270°), and for each:
+    - If the target is inside the grid and currently background, set it to the original cell’s color.
+    - Otherwise leave it as is (no overwriting, and hub cells are skipped entirely).
+
+- Edge cases
+  - If there are no nonzero cells, return the grid unchanged.
+
+- Why this matches the examples
+  - Example 1: The densest 3x3 near the shape’s center is the hub; 4s and 7s outside it are rotated into a symmetric cross, hub remains unchanged.
+  - Example 2: The 2x2 of 6s is the hub; the 3s and the extra 6 get completed into fourfold symmetry around that 2x2.
+  - Example 3: The 3x3 of 8s is the hub; the lone 9 is copied into the three other corners symmetric around the hub center.
+
+In short: find the most central, densest 3x3/2x2 block to serve as a fixed hub; then for every non-hub nonzero cell, add its three rotated counterparts around the hub center, filling only empty cells.

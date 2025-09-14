@@ -1,0 +1,17 @@
+Here’s how I would solve it from the examples:
+
+- The input is a 3-row grid with 2 values per row.
+- Look at how each row transforms horizontally in the output. For a row like [0, 8], the corresponding output row is [8, 0, 0, 8]. That’s the original row mirrored around its center: take the row reversed, then append the original row. This doubles the width and creates a horizontal palindrome per row.
+- Do this for each of the 3 input rows to form a 3×4 “block”.
+
+- Now examine the vertical structure of the 9-row output: it’s the 3-row block stacked three times, but with the top and bottom being the block in reverse row order.
+  - Top 3 rows: the block in reverse (rows 3, 2, 1).
+  - Middle 3 rows: the block in original order (rows 1, 2, 3).
+  - Bottom 3 rows: again the block in reverse (rows 3, 2, 1).
+
+- So the full algorithm:
+  1) For each input row, create a horizontally mirrored row by reversing the row and concatenating it with the original row.
+  2) Collect these three mirrored rows as the transformed block.
+  3) Build the final grid by concatenating: the block reversed, then the block, then the block reversed.
+
+This exactly matches all given input/output pairs: width doubles via horizontal mirroring, and height triples by stacking the block in a vertical palindrome.

@@ -1,0 +1,28 @@
+Here’s how I would solve it.
+
+- What the IO is telling me
+  - The output is always a 3x3 grid.
+  - The inputs are larger, but the nonzero entries live only in certain rows/columns, and the 3x3 output looks like a “max projection” of those nonzeros onto 3x3 positions.
+  - Across the examples, the pattern you see in the output is the strongest value that can land on each of the 3x3 positions if you “fold/overlay” the input onto a 3x3 canvas in all ways a 2x2 tile can align with it.
+
+- Key idea
+  - Build a 3x3 accumulator initialized to zeros.
+  - Consider a 2x2 stencil. Place that stencil over the 3x3 canvas in every possible alignment that could occur when you slide the stencil by phases of 2 cells (both row-wise and column-wise) and also allow it to sit slightly “before” the 3x3 region so edge cells from the big grid can wrap onto the 3x3 indices.
+  - For each such placement, for each of the 4 cells in the 2x2 stencil, update the corresponding cell in the 3x3 accumulator with the maximum between what’s already there and the value from the original grid at the same absolute coordinates (using negative indices to wrap from the end). After you’ve tried all alignments, the 3x3 accumulator contains the desired output.
+
+- Why a 2x2 stencil and why these placements?
+  - The inputs exhibit a 2-by-2 periodic structure (values occupy two adjacent rows/cols per “band” and the middle region is zeros). If you want to compress that onto a 3x3 target while preserving the strongest signal at each position, you need to examine every phase a 2x2 block can have relative to the 3x3 positions.
+  - Along each axis, there are four relevant offsets for the top-left corner of that 2x2 stencil: a coarse shift of either 0 or -2 (to pull in the far edge via wrap), plus a fine shift of 0 or +1 (to capture the two rows/cols inside the 2x2). That’s 4 choices per axis, so 16 total alignments.
+
+- How to enumerate those 16 alignments
+  - Treat the configuration index from 0 to 15 as four bits. Use two bits for the row offset and two bits for the column offset.
+  - For rows: one bit decides whether you do a large negative shift by 2, the other bit decides whether you add a small +1. That yields row offsets in {-2, -1, 0, 1}.
+  - Do the same for columns, yielding column offsets in {-2, -1, 0, 1}.
+  - Each pair of offsets defines where the 2x2 stencil sits relative to the 3x3 frame.
+
+- The update step for a single placement
+  - For the 2x2 stencil cells (local rows 0..1 and local cols 0..1), compute the effective global row = row_offset + local_row and effective global col = col_offset + local_col.
+  - Use those effective coordinates both to read from the input grid and to write into the 3x3 accumulator (taking the maximum). Negative effective indices wrap to the end, which cleanly “folds” the far edges of the input into the 3x3 positions without extra bounds-checking logic.
+
+- Result
+  - After processing all 16 placements, each of the 9 cells in the 3x3 accumulator has seen all input cells that can overlay onto it under any 2x2 phase alignment, and we’ve kept the maximum among them. This matches the example outputs: the 3x3 result is the per-position maxima of the folded overlays, reproducing those plus-like patterns and values 2,3,4,8 exactly where they should appear.

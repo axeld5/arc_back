@@ -1,0 +1,56 @@
+Here’s how I would solve it from the given input/output pairs.
+
+1) Observe the transformation pattern
+- The outputs consist of small, fixed “motifs” that get stamped around certain colors:
+  - Plus: center cell, with same-colored arms on up, down, left, right
+  - X: center cell, with same-colored arms on the four diagonals
+  - Horizontal bar: center cell, with same-colored cells on left and right only
+  - Vertical bar: center cell, with same-colored cells on up and down only
+- Each motif has two colors: a center color and a rim color (the arms).
+- The relation “which center color gets which shape and rim color” is consistent within a puzzle and is inferable from the input whenever a clean prototype of the motif appears.
+
+2) Learn the motif mapping from the input
+- Scan only interior cells (ignore the border to avoid out-of-bounds).
+- For each nonzero cell as a potential center, look at its 8-neighborhood:
+  - Plus prototype: the four orthogonal neighbors (up, down, left, right) are equal and nonzero; the four diagonal neighbors are zero.
+  - X prototype: the four diagonal neighbors are equal and nonzero; the four orthogonals are zero.
+  - Horizontal prototype: left and right are equal and nonzero; up and down are zero.
+  - Vertical prototype: up and down are equal and nonzero; left and right are zero.
+- When a prototype is found, record two mappings:
+  - Center-to-motif: center_color -> (shape_kind, rim_color)
+  - Rim-to-motif: rim_color -> (shape_kind, center_color)
+- The reverse mapping lets us later infer missing centers from rims alone.
+
+Examples seen in the IO:
+- In the second task, “4 8 4” with the 8 in the middle and 4s left/right (and zeros above/below) is a horizontal prototype: center=8, rim=4.
+- In the third task, a 3 with 1s above and below (and zeros left/right) is a vertical prototype: center=3, rim=1.
+
+3) Produce the output by stamping motifs
+- Start with a copy of the input as the output grid.
+- Pass 1 (stamp by center color):
+  - For every interior cell whose color appears as a learned center color, stamp its motif at that position:
+    - Set the center cell to the center color (keeps it as-is).
+    - Place the rim color in the appropriate neighbors depending on the shape (plus, X, horizontal, or vertical).
+- This step explains, for example, how a lone center (like an 8) grows “4” arms left and right in the second task.
+
+4) Fill additional motifs inferred from rims alone
+- After stamping by centers, some motifs may be implied by rim patterns even when the center is missing in the input.
+- Pass 2 (stamp by rim pattern):
+  - For every interior zero cell, check the same four prototype conditions but using the input’s neighborhood colors:
+    - If the local neighborhood matches a plus/X/h/v rim pattern of a color R, and R is a known rim color with a learned shape, then stamp the motif using:
+      - rim color = R
+      - center color = the center paired with R in the learned mapping
+  - Only stamp if the shape implied by the neighborhood matches the shape learned for that rim color.
+- This explains, for example, how “4 ? 4” with zeros above/below turns into “4 8 4” by inferring the missing 8 center (second task), or how “8 ? 8” horizontally becomes “8 2 8” (third task).
+
+5) Implementation details to keep it robust
+- Always avoid the border (indices 1..H-2 and 1..W-2) so neighbor checks are safe.
+- When detecting prototypes, require the “other” neighbors to be zero so we only learn from unambiguous clean examples.
+- Use the forward mapping (center->shape+rim) to stamp from centers everywhere they appear.
+- Use the reverse mapping (rim->shape+center) to fill in motifs when only the rim pattern is present.
+- The output is just the input with these motifs consistently stamped.
+
+This two-phase learn-and-stamp approach exactly reproduces the behavior in the examples:
+- It learns which color acts as a center, which as the rim, and which shape ties them together.
+- It stamps motifs at every occurrence of the learned center colors.
+- It also completes motifs where the rim configuration alone implies a missing center.

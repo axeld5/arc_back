@@ -1,0 +1,44 @@
+Here’s how I would solve it from the given input/output pairs.
+
+1) What pattern do the examples show?
+- Identify the densest line of non-zeros: both examples emphasize a single row and a single column getting filled.
+- The chosen row and chosen column are the ones with the most non-zero entries.
+- The row gets filled with the most common non-zero value already present in that row.
+- The column gets filled with the most common non-zero value already present in that column.
+- At the intersection of that row and column, a third value is used that is different from both of those two “mode” values.
+- The rest of the grid stays zero.
+
+2) How to pick which row and column?
+- Count non-zero entries per row and per column.
+- Choose the row with the highest count; if there’s a tie, pick the smallest index.
+- Do the same for the column.
+
+3) How to choose what to fill them with?
+- For the chosen row: take the mode (most frequent) among its non-zero values. If the row has no non-zero values, don’t fill it.
+- For the chosen column: take the mode among its non-zero values. If the column has no non-zero values, don’t fill it.
+
+4) How to set the intersection cell?
+- Use a value distinct from both the row’s chosen value and the column’s chosen value.
+- Prefer a value that already appears somewhere in the input grid but isn’t one of those two. If none exists, use a fixed fallback (e.g., 4) unless that equals one of the two; if so, pick the first small positive integer not equal to them.
+
+5) How to build the output:
+- Start with a 6×6 grid of zeros (the examples are 6×6).
+- If the chosen column had any non-zero in the input, fill every cell in that output column with the column’s mode.
+- If the chosen row had any non-zero in the input, fill every cell in that output row with the row’s mode.
+- If both row and column were filled, overwrite their intersection with the “third” value as described.
+
+6) Why this matches the examples:
+- Example 1:
+  - Densest column is the one with 8s; densest row is the one with 2s.
+  - Fill that column with 8s, the row with 2s.
+  - Intersection becomes 4 (a value different from both 2 and 8).
+- Example 2:
+  - Densest column has 8s; densest row has 2s.
+  - Fill that column with 8s, that row with 2s.
+  - Intersection becomes 4 again (distinct from 2 and 8).
+
+7) Implementation details I’d use:
+- Use a Counter to compute the mode among non-zeros for the chosen line.
+- Count non-zeros by simple summation of truthy values.
+- Tie-break by smallest index when choosing the max-count row/column.
+- Construct the result grid and apply row/column fills, then adjust the intersection with the distinct “third” value chosen by the rule above.

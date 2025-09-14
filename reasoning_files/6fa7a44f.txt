@@ -1,0 +1,9 @@
+Here’s how I’d solve it:
+
+- From the examples, the pattern is: take the entire input exactly as-is, then append a mirrored copy where the lines appear in reverse order. In other words, output = original input + reversed input.
+- The easiest way to achieve this without parsing lines or numbers is to treat the whole input as one raw string (including newline characters). If you reverse the entire string, the newline characters will ensure the visual effect is that lines appear in reverse order.
+- So the plan:
+  - Write a small helper that returns the input string reversed (e.g., by iterating from the end to the start or using a reverse-slicing trick).
+  - Build a second helper that concatenates the original string with its reversed version.
+  - The solver simply applies that mirror function to the given input string and returns the result.
+- This approach directly reproduces the observed Input/Output pairs by duplicating the input and placing a reversed copy after it, with no need for line splitting or extra formatting.

@@ -1,0 +1,22 @@
+Here’s how I would solve it:
+
+- Infer the rule from the examples: whenever a grid cell contains a nonzero value, the output places that same value along both diagonals that pass through that cell, extending in all four diagonal directions until the edge of the grid. If there are multiple nonzero “seed” cells, the final grid is just the union of all such diagonal writes.
+
+- Important subtlety: don’t let newly written diagonal values act as new seeds. Only original nonzero cells should generate diagonals. So first read seed positions from the original input, and write results into a separate working copy of the grid.
+
+- Algorithm outline:
+  - Make a deep copy of the input grid to write into.
+  - For each cell (r, c) in the original grid:
+    - If it’s nonzero (value v), walk outward from (r, c) in the four diagonal directions:
+      - up-left, up-right, down-right, down-left.
+    - For each direction, keep stepping one cell at a time while indices remain within bounds; at each step, write v into the working grid.
+  - Return the working grid.
+
+- Implementation details to mind:
+  - Represent the four diagonal step directions as row/col deltas: (-1, -1), (-1, 1), (1, 1), (1, -1).
+  - Use while loops to advance along a diagonal until you hit the grid boundary.
+  - Use the original grid to identify seeds; write updates to the copy.
+  - Grid size is square, so a single length/bounds check suffices.
+
+- Complexity:
+  - At most, for each seed you walk O(n) cells per direction, four directions, so O(4n) per seed; scanning for seeds is O(n^2). The overall is O(n^2) in the typical single-seed cases shown.

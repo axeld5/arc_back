@@ -1,0 +1,48 @@
+Here’s how I would solve it, working backward from the input/output pairs and the goal of “extracting something” from each grid.
+
+1) Hypothesis from the examples
+- The outputs are smaller rectangular grids cut out from the inputs.
+- They are not arbitrary submatrices; the extracted regions look like the interior of a rectangular “frame” (ring) present in the input.
+- The natural interpretation: find the largest axis-aligned rectangle whose entire border (perimeter) is made of the same, nonzero value v, and then return the interior (everything strictly inside that border). If no such rectangle exists, return [[0]].
+
+2) What exactly must be checked for a candidate rectangle
+Given a top-left corner (r1, c1) and a value v = grid[r1][c1] (and v != 0), if we choose a width w ≥ 2 and height h ≥ 2:
+- The top edge must be v for w contiguous cells: cells (r1, c1..c1+w-1).
+- The left edge must be v for h contiguous cells: cells (r1..r1+h-1, c1).
+- The right edge must be v for h contiguous cells: cells (r1..r1+h-1, c2 = c1+w-1).
+- The bottom edge must be v for w contiguous cells: cells (r2 = r1+h-1, c1..c1+w-1).
+
+3) How to check borders quickly
+Brute-force checking each border for every candidate rectangle would be too slow. A standard trick is to precompute, for each cell:
+- right[r][c]: how many consecutive same-valued cells extend to the right starting at (r, c), including itself.
+- down[r][c]: how many consecutive same-valued cells extend downward from (r, c), including itself.
+These can be computed in a single reverse pass from bottom-right to top-left, so each entry uses already-computed neighbors.
+
+With these, border checks become O(1):
+- Top edge is valid up to width right[r1][c1].
+- Right edge is valid up to height down[r1][c2].
+- Left edge is valid up to height down[r1][c1].
+- Bottom edge is valid up to width right[r2][c1].
+
+4) Enumerating candidates efficiently
+- For each cell (r1, c1) with v != 0, let max_w = right[r1][c1]. Try widths w from 2 to max_w, set c2 = c1 + w - 1.
+- The vertical edges’ heights are limited by both sides: max_h = min(down[r1][c1], down[r1][c2]). Try heights h from 2 to max_h, set r2 = r1 + h - 1.
+- For each (w, h), the only remaining border to confirm is the bottom edge: check right[r2][c1] ≥ w. If true, then the full perimeter is v.
+- Track the rectangle with the maximum area w*h. If there’s a tie, keep the first encountered (or any consistent tie-breaking).
+
+5) What to return
+- After finding the best rectangle (r1, c1, r2, c2), return the interior submatrix: rows r1+1..r2-1, columns c1+1..c2-1 (i.e., remove the border of thickness 1).
+- If no rectangle is found, return [[0]].
+- Note: If either width or height is 2, the interior width/height is zero; depending on requirements, that returns empty rows. In the spec implied by the examples, we only care about cases where the interior is non-empty; otherwise default [[0]] is fine when no frame exists.
+
+6) Why this works and is fast
+- The reverse dynamic programming for right and down makes border validation constant time per rectangle.
+- Enumeration loops are straightforward and prune impossible sizes early via max_w and max_h.
+- Complexity is acceptable for grids of the sizes shown: O(mn) to precompute, and in the worst case trying multiple widths and heights per start cell, but each trial is O(1) to validate.
+
+7) Edge conditions handled
+- Ignore v == 0 for the border value, matching examples that don’t produce frames of zeros.
+- If no valid rectangular frame exists, return [[0]].
+- Slicing the interior is a simple submatrix extraction between the borders.
+
+In short: detect the largest rectangular frame whose perimeter is a uniform nonzero value by using precomputed horizontal and vertical run-lengths, then slice out and return the rectangle’s interior.

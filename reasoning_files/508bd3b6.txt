@@ -1,0 +1,37 @@
+Here’s how I’d reverse‑engineer a solver from the I/O pairs.
+
+1) Normalize orientation
+- The “2”s always form a solid straight band (sometimes a full row, sometimes a full column, sometimes at the bottom, etc.). The outputs consistently place the new marks relative to that band “just below” it.
+- To make the logic uniform, rotate the grid until the very first row is entirely 2s. Keep track of the inverse rotation so we can rotate the result back at the end.
+
+2) Find the baseline row to start placing
+- Let start_row be the first row index below the top 2-band, i.e., the first row that is not all 2s. That’s where the apex of the pattern will sit.
+
+3) Understand the target pattern
+- The outputs place exactly one mark per column, forming a symmetric V (chevron) whose apex touches start_row.
+- If a is the “assembly column” (center of the V), then the row for each column c is:
+  r = start_row + |c − a|
+- This produces the exact chevron seen: one point at the apex (c = a), then moving one row down per step as you move left/right from a.
+- Preexisting 8s lie on that V and are preserved (not overwritten); other cells on the V become 3s.
+
+4) Infer the assembly column from the 8s
+- The 8s appear on the intended V. For an 8 located at (r, c) below the 2-band, the V equation gives:
+  r = start_row + |c − a|  ⇒  |c − a| = r − start_row
+  Hence a ∈ { c − (r − start_row), c + (r − start_row) }.
+- Each 8 “votes” for these two possible a values. Tally all votes across all 8s and pick the most common a (clamped to valid column range). If there are no 8s, fall back to a reasonable default such as the middle column.
+
+5) Place the V
+- For every column c, compute r = start_row + |c − a|. If r is within the grid, set that cell to 3 unless it is already 8 (leave 8 as is).
+
+6) Undo normalization
+- Rotate the constructed grid back using the inverse of the normalization rotation.
+
+7) Notes and edge cases
+- If multiple rows at the top are all 2s, start_row skips all of them.
+- If the V would go past the bottom, ignore out-of-bounds rows.
+- Time complexity is linear in the number of cells; the tallying of candidate centers is cheap.
+
+This procedure explains all three examples:
+- Example 1: The 2-band is vertical, so we rotate to make it the top row, infer a from the two 8s, draw a symmetric V, then unrotate back.
+- Example 2: The 2-band is at the bottom; after normalization it becomes the top band. Multiple 8s vote for a center column, producing a wide V that, after unrotation, appears as paired diagonals.
+- Example 3: The 2-band is on the left; rotation normalizes it to the top, the three 8s constrain the center, and the V is placed accordingly while leaving the 8s intact.

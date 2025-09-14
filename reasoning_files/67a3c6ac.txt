@@ -1,0 +1,21 @@
+Here’s how I would solve it:
+
+1) Look for a simple, position-based transformation that holds across all examples. Check whether rows are preserved, columns are preserved, or if the grid is rotated/flipped.
+
+2) Compare each input row to its corresponding output row:
+- In the first example, row 1 goes from “6 6 6 2” to “2 6 6 6”; that’s exactly the row reversed. The same holds for every row.
+- In the second, take row 1: “7 7 7 6 6 6 2” becomes “2 6 6 6 7 7 7”; again a simple reversal. All rows follow this.
+- In the third, row 1: “1 2 7 1 1 1” becomes “1 1 1 7 2 1”; reversed. Every row matches this pattern.
+
+3) Check that the order of rows themselves is unchanged (row i maps to row i). Only the order within each row is flipped. So it’s a horizontal mirror (left-right flip), not a vertical flip or rotation.
+
+4) Conclude the rule: For each row in the grid, reverse the sequence of elements. Do this independently for every row. Dimensions are preserved.
+
+5) Implementation plan:
+- Write a small helper that takes a single row (a list) and returns it reversed.
+- Apply that helper to every row of the grid to produce a new grid.
+- The main solver just returns the list of reversed rows.
+
+6) This approach is data-agnostic (works for any symbols), handles any grid size (including empty rows or empty grids), and runs in linear time in the number of cells.
+
+7) Quick mental validation on the provided examples confirms exact matches.

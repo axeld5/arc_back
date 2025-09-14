@@ -1,0 +1,27 @@
+Here’s how I’d solve it, based purely on the input/output patterns:
+
+- First, notice the structure in every input: all nonzero entries form a tight 2×2 block somewhere inside the grid. The output keeps that original block unchanged and additionally paints four 2×2 patches near the four “quadrants” of the board. Each painted patch is filled with one of the four corner values from the original 2×2 block, and those values are sent to the diagonally opposite quadrant:
+  - original top-left value goes to the bottom-right quadrant,
+  - original top-right value goes to the bottom-left quadrant,
+  - original bottom-left value goes to the top-right quadrant,
+  - original bottom-right value goes to the top-left quadrant.
+
+- To reproduce that systematically:
+  1. Collect all coordinates whose values are nonzero. From these, compute the bounding box: min and max row indices and min and max column indices. Because the nonzeros form a 2×2 block, these corners directly identify the four corner cells.
+  2. Read the four corner values: top-left, top-right, bottom-left, bottom-right.
+  3. For each of these four values, paint a 2×2 patch at an offset of exactly two rows and two columns from the top-left of the original block:
+     - place the top-left corner’s value at (min_row + 2, min_col + 2),
+     - place the top-right corner’s value at (min_row + 2, min_col − 2),
+     - place the bottom-left corner’s value at (min_row − 2, min_col + 2),
+     - place the bottom-right corner’s value at (min_row − 2, min_col − 2).
+     The ±2 displacement matches the size of the original 2×2 block: you’re “mirroring” each corner’s value across the block to the opposite side, and then painting a block of the same size there.
+
+- While painting a 2×2 patch at a target start (r, c), fill all four cells (r, c), (r+1, c), (r, c+1), (r+1, c+1) with that value. If any of these positions falls outside the grid (e.g., when the target start is negative or too close to the border), skip the out-of-bounds cells and only fill the in-bounds ones. This clipping behavior explains why in some outputs you see partial 2×2 patches near the edges.
+
+- Return the modified grid after placing all four patches. The approach does not assume a 6×6 size; it uses the grid’s actual dimensions and clips accordingly.
+
+- Implementation details I’d use:
+  - A helper to list all nonzero positions.
+  - A helper to compute min/max row/col among those positions.
+  - A helper to paint a 2×2 patch at a given start coordinate with boundary checks.
+  - Extract the corner values using the bounding box and then place them at the four target positions computed via the ±2 offsets.

@@ -1,0 +1,40 @@
+Here’s how I would reason my way to a solver from just the I/O pairs.
+
+1) What the outputs say about the rule
+- Nonzero numbers never change, and they “radiate” outward, but only on a checkerboard-like pattern: every other cell is filled, producing gaps of zeros at odd “rings.”
+- Where two sources compete, the boundary cells that are equally close to both stay zero. That’s why you see clean zero stripes or seams between regions.
+- With multiple nonzero cells of the same value touching, they act as one source with a single center: the spread respects a center somewhere in the middle of the blob, not from each cell individually.
+- The “rings” are square-shaped (aligned to the grid), not diamond-shaped. Along a row or column from a source, you see values placed every two cells. That’s consistent with using Chebyshev distance (L∞) for parity, not Manhattan (L1), to decide which “rings” get filled.
+- However, the competition between different sources (which source owns a cell) behaves like a Voronoi partition under Manhattan distance: the seams between regions look like L1 bisectors. Where distances tie, the cell remains zero.
+
+2) From those observations, derive the mechanics
+- First identify each connected cluster of identical nonzero values using 4-directional adjacency (up, down, left, right). Each such cluster acts as a single “seed.”
+- Compute a single representative center for each cluster. The I/O indicates a stable, grid-aligned center that doesn’t depend on averaging fractional coordinates. Using the middle of the cluster’s bounding box gives that behavior and matches the outputs: take min/max row and col of the cluster, and use the integer midpoint (floor of the average).
+- For every cell in the grid, decide which cluster (if any) should try to color it:
+  - Compute the Manhattan distance from the cell to each cluster’s center.
+  - If there’s a unique minimum, the cell belongs to that cluster; if there’s a tie, leave it zero (unassigned).
+- Now apply the checkerboard/ring rule relative to that chosen center:
+  - Compute the Chebyshev distance (max of absolute row and column differences) from the cell to the center.
+  - Only color the cell if that Chebyshev distance is even. Otherwise, leave it zero. This creates the alternating “even shells” pattern you see in the outputs.
+
+3) Why these exact choices fit all examples
+- 4-neighbor BFS grouping is needed because some inputs can have multi-cell clusters, and the outputs spread from a single middle point for such clusters.
+- Bounding-box midpoint produces an integer center aligned to the grid, consistent with the symmetry in the outputs; using an average of all cells could yield non-integer centers and different tie structures.
+- Manhattan distance for ownership matches the straight seams and tie-zero zones visible between competing regions.
+- Chebyshev distance for parity exactly reproduces the “every other square ring” effect, especially evident along straight rows/columns radiating from a source.
+
+4) Algorithm outline
+- Scan the grid. For each unseen nonzero cell, run a BFS (4-neighbor) to collect the full connected component (same value).
+- For each component, compute its axis-aligned bounding box; take the integer midpoint as the center and record (value, center_row, center_col).
+- For each cell in the grid:
+  - Compute Manhattan distances to all centers and find the minimum.
+  - If that minimum is not unique, skip this cell.
+  - Otherwise, let (value, center) be the closest cluster. Compute Chebyshev distance from the cell to that center. If that distance is even, write value into the cell; if odd, leave it zero.
+- Return the transformed grid.
+
+5) Notes and edge cases
+- Single-cell clusters naturally center on their own coordinate.
+- Ties at equal Manhattan distance intentionally remain zero; this yields clean zero seams in the outputs.
+- The approach runs in linear time in the grid size: BFS over all cells plus one pass to assign cells, times the number of centers for distance checks.
+
+That reasoning leads directly to a solution that reproduces all given I/O: group nonzero seeds into clusters, place one center per cluster, do a Manhattan-based Voronoi assignment with tie-as-zero, then gate placement by even Chebyshev radius to get the alternating ring pattern.

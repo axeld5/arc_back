@@ -1,0 +1,55 @@
+Here’s how I’d solve it from the IO pairs:
+
+1) Recognize the structure
+- Each output is a fully filled, perfectly repeating 2D pattern.
+- Each input is the same pattern but with rectangular regions replaced by zeros.
+- Zeros behave like “unknowns” or “don’t-care” entries. They do not contradict any nonzero value in the same location of the true pattern.
+- Therefore, the task is to:
+  a) infer the smallest repeating tile (row period and column period),
+  b) reconstruct that base tile from the observed nonzero entries,
+  c) tile it across the whole grid to fill all zeros.
+
+2) Matching rule with unknowns
+- When checking if two cells “match,” treat zeros as wildcards:
+  - Two cells match if they’re equal, or if at least one of them is zero.
+- This lets us compare noisy/erased parts against clean parts without rejecting a correct period.
+
+3) Find the period along one axis
+- We need the smallest vertical period (rows) and the smallest horizontal period (columns).
+- For one axis (say rows), do this:
+  - Consider candidate periods from 1 up to the maximum plausible period on that axis.
+  - For each candidate period p, compare each line with the line shifted by p along that axis.
+  - Only compare positions where both lines exist; ignore comparisons that would go out of bounds.
+  - Require that all such aligned pairs “match” under the wildcard rule.
+  - The first p that satisfies this is the period on that axis.
+- Repeat the same logic with the other axis (columns) by comparing columns shifted by candidate periods.
+- If no shift works, fall back to using the full size on that axis as the period.
+
+4) Accessing lines cleanly
+- To implement comparisons generically, it helps to abstract “get a line”:
+  - If we’re testing row periodicity, a line is a row vector.
+  - If we’re testing column periodicity, a line is a column vector.
+- When a shifted index falls outside the grid, treat the missing line as empty so the comparison for that pair makes no contribution (we only compare where both exist).
+
+5) Reconstruct the base tile
+- After finding row_period and column_period, the repeating tile is the subgrid defined by those periods.
+- Build a mapping from tile coordinates to observed values:
+  - For each nonzero cell at (r, c), compute its position within the tile as (r mod row_period, c mod column_period).
+  - Store that value in a dictionary keyed by this tile coordinate.
+- Because the solution is consistent in the examples, all observed values that map to the same tile coordinate agree; if multiple observations land on the same tile coordinate, they should be identical or at least not contradict (thanks to the nature of the IO).
+
+6) Fill the grid using the tile
+- Walk the entire grid:
+  - If a cell is zero, determine its tile coordinate (r mod row_period, c mod column_period) and fill it with the corresponding tile value from the dictionary.
+  - Nonzero cells can be left as-is.
+- This reproduces the completed periodic pattern seen in the outputs.
+
+7) Edge behavior and assumptions
+- If the grid is empty or degenerate, just return it.
+- The approach assumes that for every tile coordinate there is at least one observed nonzero somewhere in the grid, so the tile dictionary is complete. This is consistent with the provided examples.
+- The minimal period detection ensures we get the smallest repeating unit rather than a multiple of it.
+
+Putting it all together:
+- Detect row and column periods by scanning shifts and matching with wildcard semantics.
+- Extract the base tile by recording nonzero values at coordinates reduced modulo the detected periods.
+- Fill all zeros by tiling that base pattern across the grid.

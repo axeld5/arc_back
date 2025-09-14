@@ -1,0 +1,35 @@
+Here’s how I would solve it.
+
+1) Infer the rule from the examples
+- Each input is a rectangular grid of numbers, mostly 0s with some 8s.
+- The output is a square matrix with 8s on the diagonal and 0s elsewhere.
+- Its size matches the number of distinct connected groups (“islands”) of 8s in the input.
+- Connectivity appears to be 4-directional (up, down, left, right), not diagonal. This is consistent with the shapes in the examples.
+
+So the task reduces to:
+- Count how many 4-connected components of nonzero cells exist in the input grid.
+- Return a k-by-k identity matrix scaled by 8, where k is that count.
+
+2) Counting islands (connected components)
+- Traverse every cell of the grid.
+- When encountering a nonzero cell (an 8), that indicates a new island. Increment a counter.
+- Then perform a flood fill (DFS or BFS) from that cell to visit all 4-neighbor-connected nonzero cells, marking them as visited so they won’t be counted again.
+- The simplest in-place marking is to set visited cells to 0 (i.e., “sink” the island).
+- The flood fill explores neighbors only in the four cardinal directions, with bounds checking.
+
+3) Building the output
+- After finishing the scan, let k be the number of islands found.
+- Construct a k-by-k matrix where the diagonal entries are 8 and all off-diagonal entries are 0.
+
+4) Implementation details I’d use
+- Determine row and column counts from the grid.
+- Use a helper function that, given a cell, zeroes it and recursively (or iteratively) zeroes all reachable 4-neighbors that are nonzero.
+- Iterate rows and columns with simple ranges; count and sink islands as you go.
+- Create the final matrix with two nested loops (or a comprehension), placing 8 when row index equals column index, otherwise 0.
+
+5) Complexity and behavior
+- Time complexity is linear in the number of cells (each cell is visited at most once).
+- Space complexity is bounded by recursion/stack depth for the flood fill (or by the queue size if using BFS).
+- The input grid is modified (islands are sunk). If mutation is undesirable, make a copy first.
+
+This exactly explains why the outputs in the examples are 4x4, 3x3, and 2x2 identity matrices with 8s: those inputs contain 4, 3, and 2 islands respectively under 4-connectivity.

@@ -1,0 +1,34 @@
+Here’s how I’d solve it from the given I/O pairs.
+
+1) Read the grid and find all connected components
+- Use 4-neighbor connectivity (up, left, down, right).
+- Track visited cells.
+- For each unvisited nonzero cell, BFS/DFS to collect the full component: its color and the set of its coordinates.
+
+2) Identify the “frame” component of color 5
+- Among the components of color 5, look for one that is exactly a rectangular border:
+  - Compute the bounding box (min_row, min_col, max_row, max_col) of the component.
+  - Construct the border set of that box (top edge, bottom edge, left edge, right edge).
+  - If the component’s cells equal that border set, that’s our frame.
+- Take the interior of this frame by shrinking the bounding box by one on all sides.
+
+3) Extract the prototype pattern from inside the frame
+- Inside the interior rectangle, collect all nonzero cells (regardless of color). This set is the shape we want to match elsewhere.
+- Determine the pattern’s color as the color of any one cell from this interior set (the examples show this is the intended target color).
+
+4) Normalize the prototype shape for position-invariant matching
+- To compare shapes regardless of where they are placed, translate the pattern’s coordinates so that its top-left cell sits at (0, 0). In practice: subtract the minimum row and minimum column within the set from all coordinates.
+
+5) Find all components that match the prototype shape
+- For each connected component found in step 1 (of any color), normalize its coordinates the same way (shift by its own top-left).
+- If a component’s normalized set equals the normalized prototype, it’s a match.
+
+6) Recolor all matches to the prototype color
+- For every matched component, set all its cells to the prototype color extracted in step 3.
+
+7) Return the modified grid
+
+Why this matches the I/O:
+- The 5’s form a rectangular frame. The interior of that frame shows the “model” shape and also tells us the intended color. In the examples, that interior shape (e.g., a cross of 2s, a 3x3 of 3s) appears elsewhere in the grid in other colors; those instances are recolored to the prototype’s color.
+- Using connected components and normalization ensures we match the same shape anywhere on the grid, regardless of absolute position.
+- Verifying the frame by checking that a 5-component equals the border of its bounding box avoids picking arbitrary 5 regions.

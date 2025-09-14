@@ -1,0 +1,23 @@
+Here's how I would solve it:
+
+- Look at the examples and identify the transformation. In every case, the number of rows stays the same, but each row in the output is the original row followed by itself.
+  - Example: 0 5 0 becomes 0 5 0 0 5 0
+  - This happens for every row, regardless of row length or values.
+
+- So the operation is horizontal duplication: tile the grid 1-by-2 along the columns.
+  - For each row, create a new row that is the concatenation of the row with itself.
+  - Keep the order of rows unchanged.
+
+- Algorithm:
+  - Initialize an empty result list.
+  - For each row in the input grid:
+    - Form a new row by taking the row twice in sequence.
+    - Append this new row to the result.
+  - Return the result.
+
+- This runs in linear time in the number of elements (O(rows * columns)), and uses linear extra space for the output.
+
+- Edge cases:
+  - Empty grid: returns empty grid.
+  - Empty rows: remain empty (duplicating an empty row is still empty).
+  - Works for any numeric values; nothing is altered except duplicating the sequence.

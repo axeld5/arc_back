@@ -1,0 +1,26 @@
+Here’s how I would reverse‑engineer the transformation from the I/O pairs and arrive at the algorithm:
+
+1) Notice the “symmetrization” by comparing pairs (i, j) and (j, i)
+- In every output, for many off‑diagonal positions the value becomes the larger of the two values seen in the corresponding symmetric positions of the input.
+- Example checks (pick any pair where one side is clearly larger or zero): if A[i][j] = 0 and A[j][i] = k, the output at (i, j) becomes k, and likewise at (j, i) becomes k. This strongly suggests we first take the element‑wise maximum between the matrix and its transpose.
+
+2) Zeros disappear and get replaced by a single, globally chosen value
+- Outputs contain no zeros, even when both symmetric inputs were zero.
+- The replacement is not local; all zeros everywhere are replaced by the same number, and that number matches the most common non‑zero label in that particular transformed grid. You can verify:
+  - In the second dataset, 5 is visibly the most prevalent non‑zero label after the symmetrization step, and every zero becomes 5.
+  - In the third dataset, 4 is overwhelmingly frequent and all zeros become 4.
+- So: after the max-with-transpose step, compute the most frequent non‑zero value across the whole grid, and replace every 0 with that value.
+- If there were a tie, choosing the larger label is consistent with how these problems are typically resolved; this also matches how the examples behave.
+
+3) The main diagonal is forced to a single constant equal to the top‑left value
+- In all outputs, the main diagonal entries are identical and equal to the value at (0, 0) of the final grid.
+- That top‑left value is just whatever ends up at (0, 0) after the earlier steps (in these examples, it coincides with the original top‑left because max-with-transpose doesn’t change it and it’s not zero).
+- So: set every diagonal cell (i, i) to the grid’s top‑left value.
+
+Putting it together, the transformation pipeline that matches all the examples is:
+- Transpose the grid.
+- For each position (i, j), take the maximum of the original and transposed values (i.e., max(grid[i][j], grid[j][i])).
+- On that combined grid, find the most frequent non‑zero number (break ties by preferring the larger number).
+- Replace all zeros with that most frequent value.
+- Set the main diagonal entries to the (0, 0) value of the current grid.
+- Return the resulting grid.

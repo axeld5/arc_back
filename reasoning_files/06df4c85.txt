@@ -1,0 +1,35 @@
+Here’s how I would solve it from the given input/output pairs:
+
+Observations
+- Each grid has a dominant “background” value that forms the regular lattice/separators (e.g., 8 in the first group, 1 in the second group, 4 in the third). It is clearly the most frequent value.
+- Non-background colors appear multiple times, often aligned within the same row and/or the same column.
+- The transformation connects identical colors:
+  - If a color appears at least twice in the same row, the output fills the entire horizontal span between the leftmost and rightmost occurrences with that color.
+  - If a color appears at least twice in the same column, the output fills the entire vertical span between the topmost and bottommost occurrences with that color.
+- Single occurrences in a row/column are not extended.
+- When these spans would “cross” the background separators, the final output preserves those separators at their original positions. This implies we can temporarily overwrite background during filling, but must restore it afterward at its original coordinates.
+
+Algorithm
+1. Scan the grid once to:
+   - Count how many times each value appears.
+   - Record the list of coordinates for each value.
+2. Identify the background as the value with the highest frequency.
+3. Work on a copy of the grid so we don’t mutate the input.
+4. For each non-background value:
+   - Group its coordinates by row. For every row where the value appears at least twice, fill the entire interval from the minimum to the maximum column where it appears in that row.
+   - Group its coordinates by column. For every column where the value appears at least twice, fill the entire interval from the minimum to the maximum row where it appears in that column.
+   - This draws straight horizontal and vertical connectors for that color.
+5. After all non-background fills are done, restore the background at every cell where it originally occurred. This keeps the gridlines/separators intact and matches the examples where runs get “broken” at separator positions.
+
+Why this matches the examples
+- First group (background 8): colors like 2 and 3 get connected across rows and/or columns; the dense 8 rows/columns remain unchanged because we restore them at the end.
+- Second group (background 1): 9’s that appear in multiple blocks in the same row are horizontally bridged, but the background 1’s reappear at their original spots, so the long fill becomes a pattern of repeated 9-pairs separated by 1’s. 2’s and 8’s similarly form vertical spans where they align in the same columns across multiple rows.
+- Third group (background 4): 3’s and 2’s form extended bars along rows and columns wherever they have multiple aligned occurrences; background 4 lines stay.
+
+Implementation notes
+- Use a dictionary to count occurrences per value and another to store positions per value.
+- For each color, build maps row->list of columns and col->list of rows to decide where to fill.
+- Only fill when a row (or column) has at least two occurrences, using the min and max indices to define the span.
+- Finally, reapply the background at its original coordinates.
+
+This produces the exact fills seen in the outputs while preserving the background separators.

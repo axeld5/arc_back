@@ -1,0 +1,34 @@
+Here’s how I would solve it from the IO pairs:
+
+- What is invariant across outputs?
+  - The output is a square with a red border (value 2).
+  - The side length of the output square matches the red square present somewhere in the input.
+  - The interior of that red border is partitioned into a 3×3 grid of equal-sized blocks.
+  - A single non-black, non-red color from the input (e.g., 8, 1, 4) is used to fill some of those 3×3 blocks, forming a magnified version of a small “mask” seen in the input.
+
+- What’s in the input?
+  - There is exactly one red hollow square (border 2’s) whose side length dictates the output size.
+  - There is exactly one other color besides black (0) and red (2). Its pixels form a small pattern somewhere else in the input.
+  - The shape of that other color, when aligned to its top-left pixel, is to be expanded into the 3×3 blocks inside the red frame.
+
+- Plan:
+  1. Locate all red cells (value 2). From their min row and max row, compute the side length of the red square. Because the red square is axis-aligned with thickness 1, the side length is bottom_row - top_row + 1.
+  2. Compute the interior cell count per dimension: side_len - 2. This interior is split evenly into 3 blocks per side, so block_size = (side_len - 2) // 3.
+  3. Collect all cells that are neither black nor red. There should be exactly one color among these; record that color and the list of its coordinates.
+  4. Normalize these coordinates by subtracting the top-left coordinate of this colored set (its min row and min col). This yields relative positions (rr, cc) that define the small mask anchored at (0, 0). Each such relative position indicates which of the 3×3 blocks to fill.
+  5. Initialize the output as a square of the same side length, filled with black. Draw the red border on the outermost rows and columns.
+  6. For each colored pixel from the input:
+     - Convert its normalized position (rr, cc) into the corresponding interior block. The block’s top-left in the output is at row 1 + rr*block_size, col 1 + cc*block_size.
+     - Fill that entire block_size × block_size area with the unique color.
+  7. Return the constructed output grid.
+
+- Why this matches the examples:
+  - Example 1: The red square in the input determines an 8×8 output. The unique color is 8; its pixels form a small pattern that, when normalized to its top-left, expands to filled 3×3 blocks, giving the shown arrangement inside the red border.
+  - Example 2: The unique color is 1. Its small diagonal-ish mask becomes filled interior blocks inside the 5×5 red frame.
+  - Example 3: The unique color is 4. The large red frame dictates the output size; the 4’s shape near the bottom is expanded into the 3×3 interior as shown, with the rest black.
+
+- Key assumptions enforced:
+  - Exactly one red square border exists and defines the output size.
+  - Exactly one non-black, non-red color exists.
+  - The interior size is divisible by 3 so the 3×3 blocks are equal.
+  - The mask’s origin is taken as the top-left colored pixel, and every colored pixel corresponds to one interior block to fill.

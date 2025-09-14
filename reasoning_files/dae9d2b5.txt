@@ -1,0 +1,24 @@
+Here’s how I would solve it, given just the I/O pairs:
+
+- First, notice every input is a 3x6 grid and every output is a 3x3 grid. That suggests the 6 columns are really two side-by-side 3x3 blocks: a left half (cols 0–2) and a right half (cols 3–5). The output corresponds to the left half’s shape.
+
+- The outputs only contain 0 or 6. The inputs contain 0, 3, or 4. The actual value (3 vs 4) does not propagate; instead, any nonzero presence becomes 6 in the output. So we’re normalizing “any signal” to 6.
+
+- Compare each output cell (r, c) to the two corresponding input cells at (r, c) and (r, c+3). In all examples:
+  - If either of those input cells is nonzero, the output at (r, c) is 6.
+  - If both are zero, the output at (r, c) is 0.
+  This is exactly a logical OR across the two halves, then mapping True → 6 and False → 0.
+
+- A simple way to compute that is to add the left and right values: if the sum is greater than 0, write 6; otherwise 0. Doing addition and thresholding is an easy proxy for “OR of nonzero.”
+
+- Implementation-wise, two neat details make it concise:
+  - Iterate rows 0–2 and columns 0–2. For each (r, c), combine the value in the left half with the value in the right half at (r, c+3).
+  - You can do this in-place by updating the left half cell: add the right half value into it, then if the result is positive, set it to 6; if zero, leave it 0. After processing, the left 3 columns already contain the desired 3x3 result.
+  - Finally, return just the left 3 columns (the 3x3 submatrix). Optionally, accept a row-index range so you can control which rows you process (defaults to all three rows).
+
+- Why this matches all examples:
+  - Anywhere you see a 6 in the output, at least one of the corresponding input cells (left or right half) was nonzero.
+  - Anywhere you see a 0 in the output, both corresponding input cells were 0.
+  - The specific input values 3 and 4 are treated uniformly; they’re just “on.” The output is a standardized “on” value of 6.
+
+In short: treat the grid as two 3x3 halves; for each cell in the left half, check the OR with its counterpart in the right half; write 6 if either is nonzero, else 0; and return the left 3x3 block.

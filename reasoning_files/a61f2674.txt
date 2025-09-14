@@ -1,0 +1,36 @@
+Here’s how I would solve it, based strictly on the Input/Output behavior:
+
+1) What the output is doing
+- Only the number of non-zero entries in each column matters; the values (5s) are treated just as “present vs absent.”
+- The final grid keeps exactly two columns non-zero:
+  - The column with the largest number of non-zero cells is filled with 1s, bottom-aligned, with a height equal to that count.
+  - The column with the smallest positive number of non-zero cells is filled with 2s, bottom-aligned, with a height equal to that (positive) count.
+- All other cells are zeroed.
+- If multiple columns tie for min or max, the leftmost one is chosen (first index). The “min” excludes columns with zero count.
+- The filling is bottom-aligned (i.e., the lowest rows in that column are filled).
+
+2) Plan of attack
+- For each column (0..8), count how many cells are > 0 across all 9 rows. Collect these counts in a list of length 9.
+- After counting, reset the entire grid to zeros (clear every column).
+- Find the minimum positive count and its first column index; fill that column bottom-up with the value 2 for exactly “min count” cells.
+- Find the maximum count and its first column index; fill that column bottom-up with the value 1 for exactly “max count” cells.
+- Return the modified grid.
+
+3) Helper operations to keep it clean
+- A function to count non-zero elements in a given column by scanning 9 rows and incrementing when a cell > 0.
+- A function to clear a column by setting its 9 entries to 0.
+- A function to fill the bottom part of a column with a given value for a given count. Bottom-alignment is achieved by writing starting at the last row and moving upwards (e.g., using negative indexing or by computing row indices from the end).
+
+4) Edge cases and tie-breaking
+- Ignore zero-count columns when picking the “min” column.
+- If the min and max turn out to be the same column (possible in a degenerate tie), filling the “min” (2s) first and then the “max” (1s) would overwrite that column with 1s, which is acceptable per the rule of “max column gets 1s.”
+- The examples show at least one positive column always exists; if none did, you’d end up clearing the grid and not filling anything.
+
+5) Implementation notes
+- Use a fixed 9-iteration loop for rows and for columns.
+- Optionally accept an iterable factory (like a “range provider”) so the iteration sequence is pluggable for testing; default to the normal range over 9.
+- Use the first occurrence of min and max (standard index-of behavior) to break ties.
+
+This exact procedure reproduces the shown outputs:
+- Example 1: counts per column identify col 2 as max and col 8 as min positive; fill col 2 with eight 1s bottom-aligned and col 8 with three 2s bottom-aligned.
+- Example 2: counts identify col 4 as max (all nine rows) and col 2 as min (two rows); fill accordingly.

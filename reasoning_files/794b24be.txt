@@ -1,0 +1,19 @@
+Here’s how I would “cheat” from the I/O pairs and land on that solution:
+
+- First, scan the examples and check whether the output depends on where the 1s are in the input. It doesn’t: different placements with the same number of 1s produce the same output. So the output depends only on the count of 1s.
+
+- Next, tabulate the outputs by the number of 1s:
+  - 1 one → top row is [2, 0, 0], rest zeros.
+  - 2 ones → top row is [2, 2, 0], rest zeros.
+  - 3 ones → top row is [2, 2, 2], rest zeros.
+  - 4 ones → top row is [2, 2, 2], and additionally the center cell (middle row, middle column) is 2.
+
+- Notice these four cases are fixed templates. Predefine them once. To make the templates concise/reusable, define:
+  - a “full top” row [2, 2, 2]
+  - an “empty” row [0, 0, 0]
+  - the special middle row [0, 2, 0] used only in the 4-ones case
+  - and the partial tops [2, 0, 0] and [2, 2, 0] for the 1- and 2-ones cases.
+
+- Organize the four templates in a list ordered from the most filled case to the least (or vice versa). Then compute the number of 1s in the input grid and select the corresponding template. Using an index like (4 − count_of_ones) neatly maps counts 4, 3, 2, 1 to indices 0, 1, 2, 3.
+
+- Return that chosen 3x3 template as the answer.

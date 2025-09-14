@@ -1,0 +1,45 @@
+Here’s how I would solve it from the examples:
+
+1) What the outputs are doing
+- Only the nonzero “seed” cells matter; zeros are background.
+- Each distinct nonzero value is replicated in vertical stripes at fixed column intervals across the whole grid (every row in those columns is filled with that value).
+- In tall grids (more rows than columns), the final pattern is horizontal stripes; that’s the same as making vertical stripes in a transposed grid and then transposing back.
+
+2) Normalize orientation
+- If the grid is taller than it is wide, transpose it first so I can always “paint” vertical stripes; after filling, transpose back to get horizontal stripes in the original tall orientation.
+
+3) Find the seeds
+- Collect all positions (row, col) of nonzero cells, grouped by value (e.g., all the 2s, all the 8s, etc.).
+- Also keep a combined list of all nonzero positions regardless of value.
+
+4) Decide the stripe spacing
+- Look at the minimum and maximum column indices among all nonzero positions. The natural span is (max_col - min_col).
+- To ensure stripes of different values don’t clash, use a period that is strictly larger than any difference between seed columns. Doubling the span achieves that: step = 2 * (max_col - min_col).
+- If there’s only one nonzero column (span = 0), clamp the step to 1 so we still propagate.
+
+5) Where each value’s stripes start
+- For each distinct value, take the leftmost column where it appears; that column is the offset for that value’s stripe family.
+
+6) Paint the stripes
+- For each value:
+  - Starting at its leftmost seed column, fill every step-th column to the right (start_col, start_col + step, start_col + 2*step, …) across the entire height with that value.
+- Because the step is larger than any difference between seed columns, different values’ stripe columns never coincide, so there’s no conflict.
+
+7) Undo normalization
+- If I transposed at the start, transpose back to restore the original orientation.
+
+8) Zeros remain zeros
+- Only the chosen stripe columns change; everything else stays 0.
+
+Why this matches the examples
+- Wide grids produce alternating vertical lanes for the different values at a fixed periodicity determined by twice the seed-column span.
+- Tall grids become horizontal lanes after the transpose-back.
+- Multiple values interleave without overlap because the period is larger than any pairwise seed-column distance.
+- A single seed propagates from its column across all later columns (step = 1).
+
+This leads directly to:
+- A helper to transpose.
+- A pass to collect nonzero positions per value.
+- A global step computed from min/max seed columns (with a minimum of 1).
+- For each value, compute its start column as its leftmost seed and fill columns at that stride.
+- Optionally transpose back at the end.
