@@ -68,7 +68,7 @@ for problem_id in eval_data:
     user_content = {"role":"user", "content":""}
     user_content["content"] = _format_induction_prompt(problem)
     test_problems["conversations"].append([user_content])
-print(eval_data)
+print(test_problems)
 """
 
 with open('data.json', 'w') as f:
