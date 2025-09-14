@@ -44,7 +44,7 @@ def _format_code_solution(problem_id):
     solver_path = f"remapped_solvers/{problem_id}.py"
     with open(solver_path, 'r') as f:
         solver_code = f.read()
-    solution = """{reasoning}
+    solution = f"""{reasoning}
     Here's the code that solves the problem:
     ```python
     {solver_code}
