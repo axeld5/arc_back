@@ -62,7 +62,7 @@ for problem_id in data:
     train_problems["conversations"].append([user_content, assistant_content])
     train_problems["arrays"].append(problem["train"])
 
-test_problems = {"conversations":[]}
+test_problems = {"conversations":[], "arrays":[]}
 eval_data = list_evaluation_problems()
 for problem_id in eval_data:
     problem = load_evaluation_problem(problem_id)
