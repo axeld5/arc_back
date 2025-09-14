@@ -31,10 +31,10 @@ def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
 
 def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
-    for elem in problem['train']:
+    for i, elem in enumerate(problem['train']):
         pb_input ="\n".join(grid_to_row_strings(elem['input']))
         pb_output = "\n".join(grid_to_row_strings(elem['output']))
-        input_output_pairs += f"Input:\n{pb_input}\nOutput:\n{pb_output}\n\n"
+        input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
     return PROMPT_INDUCTION.format(input=input_output_pairs)
 
 def _format_code_solution(problem_id):
