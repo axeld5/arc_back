@@ -167,7 +167,10 @@ model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 inputs = tokenizer.apply_chat_template(messages, tokenize = True, add_generation_prompt = True, return_tensors = "pt").to("cuda")
 outputs = model.generate(input_ids = inputs, max_new_tokens = 8192, use_cache = True)
-print(outputs)
+generated_tokens = outputs[:, inputs.shape[-1]:]
+decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+print(decoded[0])
+print(check_value(decoded[0], problem["test"][0]["output"]))
 """
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
