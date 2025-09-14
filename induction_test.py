@@ -48,8 +48,7 @@ def _format_code_solution(problem_id):
     Here's the code that solves the problem:
     ```python
     {solver_code}
-    ```
-    """
+    ```"""
     return solution
 
 train_problems = {"conversations":[]}
