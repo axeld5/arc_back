@@ -19,10 +19,6 @@ if os.getenv("HF_TOKEN"):
     except Exception:
         pass
 
-data = list_training_problems()
-problem_id = data[0]
-example = load_training_problem(problem_id)
-
 PROMPT_INDUCTION = (
     "Solve the following problem\n\n"
     "Given input/output pairs:\n{input}\n"
@@ -33,57 +29,40 @@ PROMPT_INDUCTION = (
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
     return [' '.join(map(str, row)) for row in grid]
 
-def _format_induction_prompt(problem, placeholder_rows: str, task_id: str) -> str:
+def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
     for elem in problem['train']:
         pb_input ="\n".join(grid_to_row_strings(elem['input']))
         pb_output = "\n".join(grid_to_row_strings(elem['output']))
         input_output_pairs += f"Input:\n{pb_input}\nOutput:\n{pb_output}\n\n"
-    return PROMPT_INDUCTION.format(task_id=task_id, input=input_output_pairs, placeholder=placeholder_rows)
+    return PROMPT_INDUCTION.format(input=input_output_pairs)
 
+def _format_code_solution(problem_id):
+    reasoning_path = f"reasoning_files/{problem_id}.txt"
+    with open(reasoning_path, 'r') as f:
+        reasoning = f.read()
+    solver_path = f"remapped_solvers/{problem_id}.py"
+    with open(solver_path, 'r') as f:
+        solver_code = f.read()
+    solution = """{reasoning}
+    Here's the code that solves the problem:
+    ```python
+    {solver_code}
+    ```
+    """
+    return solution
 
 train_problems = {"conversations":[]}
-test_problems = {"conversations":[]}
-problem = load_training_problem(data[0])
-for sample in problem["train"]:
-    for _ in range(30):
-        grid_input = sample["input"]
-        grid_output = sample["output"]
-        augmented_grids = apply_augmentations_to_grids(
-            [grid_input, grid_output], 
-            assign_random_augmentations()
-        )
-        generated_grid = "\n".join(grid_to_row_strings(create_placeholder(example, augmented_grids[1])))
-        formatted_prompt = _format_single_prompt(augmented_grids[0], generated_grid, problem_id)
-        formatted_output = "\n".join(grid_to_row_strings(augmented_grids[1]))
-        train_problem = []
-        user_content = {"role":"user", "content":""}
-        user_content["content"] = formatted_prompt
-        assistant_content = {"role":"assistant", "content":""}
-        assistant_content["content"] = formatted_output
-        train_problem.append(user_content)
-        train_problem.append(assistant_content)
-        train_problems["conversations"].append(train_problem)
-for sample in problem["test"]:
-    for _ in range(30):
-        grid_input = sample["input"]
-        grid_output = sample["output"]
-        augmented_grids = apply_augmentations_to_grids(
-            [grid_input, grid_output], 
-            assign_random_augmentations()
-        )
-        generated_grid = "\n".join(grid_to_row_strings(create_placeholder(example, augmented_grids[1])))
-        formatted_prompt = _format_single_prompt(augmented_grids[0], generated_grid, problem_id)
-        formatted_output = "\n".join(grid_to_row_strings(augmented_grids[1]))
-        test_problem = []
-        user_content = {"role":"user", "content":""}
-        user_content["content"] = formatted_prompt
-        assistant_content = {"role":"assistant", "content":""}
-        assistant_content["content"] = formatted_output
-        test_problem.append(user_content)
-        test_problem.append(assistant_content)
-        test_problems["conversations"].append(test_problem)
-
+data = list_training_problems()
+problem_id = data[0]
+problem = load_training_problem(problem_id)
+user_content = {"role":"user", "content":""}
+user_content["content"] = _format_induction_prompt(problem)
+assistant_content = {"role":"assistant", "content":""}
+assistant_content["content"] = _format_code_solution(problem_id)
+train_problems["conversations"].append([user_content, assistant_content])
+print(train_problems)
+"""
 with open('data.json', 'w') as f:
     json.dump(train_problems, f)
 with open('test_problems.json', 'w') as f:
@@ -106,8 +85,7 @@ def run_sft(
     learning_rate: float = 8e-5,
     num_train_epochs: int = 300,
     use_compile: bool = False,
-):
-    """Run minimal SFT on the singled-out dataset with LoRA."""        
+):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
     attn_impl = pick_attn_impl()
@@ -304,12 +282,6 @@ def reward_function_diff(
     expected_output: List[str],
     **kwargs: Any
 ) -> List[float]:
-    """
-    For each (completion, expected) pair:
-      - If either string is not a valid grid -> reward = -1.0
-      - If grid shapes differ -> reward = -1.0
-      - Otherwise -> reward = (# cells that differ) / (rows * cols)
-    """
     rewards: List[float] = []
     for completion, expected in zip(completions, expected_output, strict=False):
         if not check_array(completion) or not check_array(expected):
@@ -641,3 +613,4 @@ generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_value(decoded[0], parse_grid_from_string(test_problems["conversations"][0][1]["content"])))
+"""
