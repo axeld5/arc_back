@@ -159,7 +159,7 @@ print(messages)
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen2.5-3B-Instruct",
-        max_seq_length = 2048,
+        max_seq_length = 8192,
         dtype = torch.bfloat16,
         load_in_4bit = True,
     )
