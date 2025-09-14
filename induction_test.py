@@ -1,6 +1,6 @@
 import json
 from typing import *
-from loader import load_training_problem, list_training_problems
+from loader import load_training_problem, list_training_problems, load_evaluation_problem, list_evaluation_problems
 
 
 import unsloth
@@ -53,15 +53,24 @@ def _format_code_solution(problem_id):
 
 train_problems = {"conversations":[]}
 data = list_training_problems()
-problem_id = data[0]
-problem = load_training_problem(problem_id)
-user_content = {"role":"user", "content":""}
-user_content["content"] = _format_induction_prompt(problem)
-assistant_content = {"role":"assistant", "content":""}
-assistant_content["content"] = _format_code_solution(problem_id)
-train_problems["conversations"].append([user_content, assistant_content])
-print(train_problems)
+for problem_id in data:
+    problem = load_training_problem(problem_id)
+    user_content = {"role":"user", "content":""}
+    user_content["content"] = _format_induction_prompt(problem)
+    assistant_content = {"role":"assistant", "content":""}
+    assistant_content["content"] = _format_code_solution(problem_id)
+    train_problems["conversations"].append([user_content, assistant_content])
+
+test_problems = {"conversations":[]}
+eval_data = list_evaluation_problems()
+for problem_id in eval_data:
+    problem = load_evaluation_problem(problem_id)
+    user_content = {"role":"user", "content":""}
+    user_content["content"] = _format_induction_prompt(problem)
+    test_problems["conversations"].append([user_content])
+print(eval_data)
 """
+
 with open('data.json', 'w') as f:
     json.dump(train_problems, f)
 with open('test_problems.json', 'w') as f:
