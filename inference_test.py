@@ -148,7 +148,7 @@ PROMPT_V2 = (
 
 import numpy as np
 
-problem_id = "c909285e"
+problem_id = "6f8cd79b"
 problem = load_training_problem(problem_id)
 sample_data = problem["test"][0]["input"]
 content = _format_single_prompt(sample_data, "\n".join(grid_to_row_strings(np.zeros((3, 3)).astype(int))), problem_id)
