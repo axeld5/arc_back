@@ -163,7 +163,7 @@ base_model, tokenizer = FastLanguageModel.from_pretrained(
         load_in_4bit = True,
     )
 from peft import PeftModel
-model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft")
+model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
 inputs = tokenizer.apply_chat_template(messages, tokenize = True, add_generation_prompt = True, return_tensors = "pt").to("cuda")
 outputs = model.generate(input_ids = inputs, max_new_tokens = 8192, use_cache = True)
