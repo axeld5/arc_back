@@ -151,8 +151,10 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     load_in_4bit = True,
 )
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
+inputs = tokenizer.apply_chat_template(messages, tokenize = True, add_generation_prompt = True, return_tensors = "pt").to("cuda")
+
 text_streamer = TextStreamer(tokenizer)
-outputs = model.generate(**messages, streamer = text_streamer, max_new_tokens = 64)
+outputs = model.generate(input_ids = inputs, streamer = text_streamer, max_new_tokens = 8192, use_cache = True)
 print(outputs)
 """
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
