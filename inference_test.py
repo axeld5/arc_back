@@ -142,32 +142,24 @@ messages = [
             {"role": "user", "content": content},
 ]
 print(messages)
-from transformers import AutoModelForCausalLM, AutoTokenizer
-from peft import PeftModel
-
-base_id = "Qwen/Qwen2.5-3B-Instruct"
-adapter_path = "qwen3_4b_singled_out_rl/final"   # or ..._sft/final
-
-tok = AutoTokenizer.from_pretrained(base_id, use_fast=True)
-base = AutoModelForCausalLM.from_pretrained(
-    base_id,
-    torch_dtype=torch.bfloat16,
-    device_map="auto",
+from unsloth import FastLanguageModel
+model, tokenizer = FastLanguageModel.from_pretrained(
+    model_name = "qwen3_4b_singled_out_rl/final", # YOUR MODEL YOU USED FOR TRAINING
+    max_seq_length = 8192,
+    dtype = torch.bfloat16,
+    load_in_4bit = True,
 )
-model = PeftModel.from_pretrained(base, adapter_path)
-model.eval()
-
-inputs = tok.apply_chat_template(
-    [{"role":"user","content":sample_data}],
-    add_generation_prompt=True,
-    return_tensors="pt",
-).to(model.device)
+FastLanguageModel.for_inference(model) # Enable native 2x faster inference
+text_streamer = unsloth.TextStreamer(tokenizer)
+outputs = model.generate(**messages, streamer = text_streamer, max_new_tokens = 64)
+print(outputs)
+"""
 outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tok.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 print(check_value(decoded[0], problem["test"][0]["output"]))
-"""FastLanguageModel.for_inference(model)
+FastLanguageModel.for_inference(model)
 inputs = tokenizer.apply_chat_template(
     messages,
     tokenize = True,

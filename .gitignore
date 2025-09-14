@@ -206,3 +206,5 @@ Thumbs.db
 logs/
 
 old_code/
+remapped_solvers/
+reasoning_files/
