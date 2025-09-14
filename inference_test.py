@@ -145,7 +145,7 @@ print(messages)
 from unsloth import FastLanguageModel
 from transformers import TextStreamer
 model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "qwen3_4b_singled_out_rl/final", # YOUR MODEL YOU USED FOR TRAINING
+    model_name = "qwen3_4b_singled_out_sft/final", # YOUR MODEL YOU USED FOR TRAINING
     max_seq_length = 8192,
     dtype = torch.bfloat16,
     load_in_4bit = True,
