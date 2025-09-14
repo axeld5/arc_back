@@ -143,6 +143,7 @@ messages = [
 ]
 print(messages)
 from unsloth import FastLanguageModel
+from transformers import TextStreamer
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name = "qwen3_4b_singled_out_rl/final", # YOUR MODEL YOU USED FOR TRAINING
     max_seq_length = 8192,
@@ -150,7 +151,7 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     load_in_4bit = True,
 )
 FastLanguageModel.for_inference(model) # Enable native 2x faster inference
-text_streamer = unsloth.TextStreamer(tokenizer)
+text_streamer = TextStreamer(tokenizer)
 outputs = model.generate(**messages, streamer = text_streamer, max_new_tokens = 64)
 print(outputs)
 """
