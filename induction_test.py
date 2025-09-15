@@ -26,6 +26,40 @@ PROMPT_INDUCTION = (
     "OUTPUT:"
 )
 
+def evaluate_prediction(input_array, output_array, response):
+    try:
+        start_marker = "```python"
+        end_marker = "```"
+        start_idx = response.find(start_marker)
+        if start_idx == -1:
+            print(f"No Python code block found in response")
+            return False
+        start_idx += len(start_marker)
+        end_idx = response.find(end_marker, start_idx)
+        if end_idx == -1:
+            print(f"No closing code block marker found")
+            return False
+        code = response[start_idx:end_idx].strip()
+        local_namespace = {}
+        exec(code, local_namespace)
+        if 'p' not in local_namespace:
+            print(f"Function 'p' not found in generated code")
+            return False
+        predicted_output = local_namespace['p'](input_array)
+        if predicted_output == output_array:
+            print(f"✓ Correct prediction for input/output pair")
+            return True
+        else:
+            print(f"✗ Incorrect prediction for input/output pair")
+            print(f"Expected: {output_array}")
+            print(f"Got: {predicted_output}")
+            return False
+            
+    except Exception as e:
+        print(f"Error executing generated code: {e}")
+        print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
+        return False
+
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
     return [' '.join(map(str, row)) for row in grid]
 
@@ -39,12 +73,14 @@ def _format_induction_prompt(problem) -> str:
 
 def _format_code_solution(problem_id):
     reasoning_path = f"reasoning_files/{problem_id}.txt"
-    with open(reasoning_path, 'r') as f:
+    with open(reasoning_path, 'r', encoding='utf-8') as f:
         reasoning = f.read()
     solver_path = f"remapped_solvers/{problem_id}.py"
-    with open(solver_path, 'r') as f:
+    with open(solver_path, 'r', encoding='utf-8') as f:
         solver_code = f.read()
-    solution = f"""{reasoning}
+    solution = f"""<think>
+    {reasoning}
+    </think>
     Here's the code that solves the problem:
     ```python
     {solver_code}
@@ -54,6 +90,7 @@ def _format_code_solution(problem_id):
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
 for problem_id in data:
+    print(f"Processing problem {problem_id}")
     problem = load_training_problem(problem_id)
     user_content = {"role":"user", "content":""}
     user_content["content"] = _format_induction_prompt(problem)
@@ -70,7 +107,6 @@ for problem_id in eval_data:
     user_content["content"] = _format_induction_prompt(problem)
     test_problems["conversations"].append([user_content])
     test_problems["arrays"].append(problem["train"])
-print(test_problems)
 
 with open('data.json', 'w') as f:
     json.dump(train_problems, f)
@@ -90,7 +126,7 @@ def pick_attn_impl() -> str:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "Qwen/Qwen2.5-3B-Instruct",
+    base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 10,
     use_compile: bool = False,
@@ -99,7 +135,7 @@ def run_sft(
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
     attn_impl = pick_attn_impl()
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen2.5-Coder-3B-Instruct",
+        model_name = "unsloth/Qwen3-4B-Instruct-2507",
         max_seq_length = 8192,
         dtype = compute_dtype,
         load_in_4bit = True,
@@ -209,36 +245,8 @@ decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
 
 arrays = raw["arrays"][0]
+
 for inp_out in arrays:
     input_array = inp_out["input"]
     output_array = inp_out["output"]
-    try:
-        response = decoded[0]
-        start_marker = "```python"
-        end_marker = "```"
-        start_idx = response.find(start_marker)
-        if start_idx == -1:
-            print(f"No Python code block found in response")
-            continue
-        start_idx += len(start_marker)
-        end_idx = response.find(end_marker, start_idx)
-        if end_idx == -1:
-            print(f"No closing code block marker found")
-            continue
-        code = response[start_idx:end_idx].strip()
-        local_namespace = {}
-        exec(code, local_namespace)
-        if 'p' not in local_namespace:
-            print(f"Function 'p' not found in generated code")
-            continue
-        predicted_output = local_namespace['p'](input_array)
-        if predicted_output == output_array:
-            print(f"✓ Correct prediction for input/output pair")
-        else:
-            print(f"✗ Incorrect prediction for input/output pair")
-            print(f"Expected: {output_array}")
-            print(f"Got: {predicted_output}")
-            
-    except Exception as e:
-        print(f"Error executing generated code: {e}")
-        print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
+    evaluate_prediction(input_array, output_array, decoded[0])
