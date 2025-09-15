@@ -128,7 +128,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 10,
+    num_train_epochs: int = 5,
     use_compile: bool = False,
 ):      
 
@@ -242,8 +242,10 @@ inputs = tokenizer.apply_chat_template(
             tokenize = True,
             add_generation_prompt = True, # Must add for generation
             return_tensors = "pt",
+            enable_thinking = True, # Enable thinking
         ).to("cuda")
-outputs = model.generate(input_ids = inputs, max_new_tokens = 5000, use_cache = True)
+outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+temperature = 0.6, top_p = 0.95, top_k = 20, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
