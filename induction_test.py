@@ -140,6 +140,7 @@ def run_sft(
         max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
+        attn_implementation = "sdpa",   # ← key change
     )
 
     model = FastLanguageModel.get_peft_model(
@@ -168,7 +169,7 @@ def run_sft(
 
     args = SFTConfig(
         output_dir=output_dir,
-        per_device_train_batch_size = 16,
+        per_device_train_batch_size = 4,
         gradient_accumulation_steps = 4,
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
