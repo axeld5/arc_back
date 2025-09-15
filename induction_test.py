@@ -136,9 +136,10 @@ def run_sft(
     attn_impl = pick_attn_impl()
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen3-4B-Instruct-2507",
-        max_seq_length = 8192,
+        max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
+        device_map={'':torch.cuda.current_device()}
     )
 
     model = FastLanguageModel.get_peft_model(
@@ -191,7 +192,7 @@ def run_sft(
         tokenizer=tokenizer,
         train_dataset=dataset,
         dataset_text_field="text",
-        max_seq_length=8192,
+        max_seq_length=20000,
     )
         
     print("[sft] Starting training...")
@@ -208,7 +209,7 @@ run_sft("data.json")
 
 model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
-        max_seq_length = 8192,
+        max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
         fast_inference = True,
@@ -239,7 +240,7 @@ inputs = tokenizer.apply_chat_template(
             add_generation_prompt = True, # Must add for generation
             return_tensors = "pt",
         ).to("cuda")
-outputs = model.generate(input_ids = inputs, max_new_tokens = 4096, use_cache = True)
+outputs = model.generate(input_ids = inputs, max_new_tokens = 5000, use_cache = True)
 generated_tokens = outputs[:, inputs.shape[-1]:]
 decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
 print(decoded[0])
