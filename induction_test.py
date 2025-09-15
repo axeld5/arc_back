@@ -214,7 +214,8 @@ model, tokenizer = FastLanguageModel.from_pretrained(
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
-        fast_inference = True
+        fast_inference = True,
+        attn_implementation = "sdpa",
     )
 
 model = FastLanguageModel.get_peft_model(
