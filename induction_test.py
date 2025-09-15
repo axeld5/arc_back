@@ -136,22 +136,16 @@ class UnslothFixedTrainer(SFTTrainer):
 
         if labels is not None:
             unwrapped_model = self.accelerator.unwrap_model(model)
-            if hasattr(unwrapped_model, '_get_name') and 'unsloth' in
-  unwrapped_model._get_name().lower():
-                loss = self.label_smoother(outputs, labels,
-  shift_labels=True)
+            if hasattr(unwrapped_model, '_get_name') and 'unsloth' in unwrapped_model._get_name().lower():
+                loss = self.label_smoother(outputs, labels, shift_labels=True)
             else:
                 loss = self.label_smoother(outputs, labels)
         else:
-            loss = outputs["loss"] if isinstance(outputs, dict) else
-  outputs[0]
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
 
-        # 🔧 KEY FIX: Clone the loss tensor before in-place operations
         if hasattr(loss, 'clone'):
-            loss = loss.clone()  # Converts view tensor to independent 
-  tensor
+            loss = loss.clone()
 
-        # Now safe for DDP gradient scaling
         if self.accelerator.num_processes > 1:
             loss = loss * self.accelerator.num_processes
 
