@@ -123,34 +123,6 @@ def pick_attn_impl() -> str:
             return "sdpa"
     return "sdpa"
 
-class UnslothFixedTrainer(SFTTrainer):
-    def compute_loss(self, model, inputs, return_outputs=False, 
-  **kwargs):
-        """Fixed compute_loss that handles Unsloth's view tensor issue"""
-        if self.label_smoother is not None and "labels" in inputs:
-            labels = inputs.pop("labels")
-        else:
-            labels = None
-
-        outputs = model(**inputs)
-
-        if labels is not None:
-            unwrapped_model = self.accelerator.unwrap_model(model)
-            if hasattr(unwrapped_model, '_get_name') and 'unsloth' in unwrapped_model._get_name().lower():
-                loss = self.label_smoother(outputs, labels, shift_labels=True)
-            else:
-                loss = self.label_smoother(outputs, labels)
-        else:
-            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
-
-        if hasattr(loss, 'clone'):
-            loss = loss.clone()
-
-        if self.accelerator.num_processes > 1:
-            loss = loss * self.accelerator.num_processes
-
-        return (loss, outputs) if return_outputs else loss
-
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
@@ -217,7 +189,7 @@ def run_sft(
         max_grad_norm=None,
     )
     
-    trainer = UnslothFixedTrainer(
+    trainer = SFTTrainer(
         model=model,
         args=args,
         tokenizer=tokenizer,
