@@ -131,8 +131,6 @@ def run_sft(
     num_train_epochs: int = 10,
     use_compile: bool = False,
 ):      
-    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
-    torch.cuda.set_device(local_rank)
 
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -142,7 +140,6 @@ def run_sft(
         max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
-        device_map = {"": local_rank},
     )
 
     model = FastLanguageModel.get_peft_model(
@@ -211,16 +208,12 @@ def run_sft(
 run_sft("data.json")
 
 
-local_rank = int(os.environ.get("LOCAL_RANK", "0"))
-torch.cuda.set_device(local_rank)
-
 model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
-        fast_inference = True,
-        device_map = {"": local_rank},
+        fast_inference = True
     )
 
 model = FastLanguageModel.get_peft_model(
