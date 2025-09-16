@@ -128,7 +128,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 5,
+    num_train_epochs: int = 20,
     use_compile: bool = False,
 ):      
 
@@ -231,28 +231,38 @@ model = FastLanguageModel.get_peft_model(
 
 with open("data.json") as f:
     raw = json.load(f)
-sample_data = raw["conversations"][0][0]["content"]
-messages = [
-    {"role": "user", "content": sample_data},
-]
-from unsloth.chat_templates import get_chat_template
-FastLanguageModel.for_inference(model)
-inputs = tokenizer.apply_chat_template(
-            messages,
-            tokenize = True,
-            add_generation_prompt = True, # Must add for generation
-            return_tensors = "pt",
-            enable_thinking = True, # Enable thinking
-        ).to("cuda")
-outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-temperature = 0.6, top_p = 0.95, top_k = 20, use_cache = True)
-generated_tokens = outputs[:, inputs.shape[-1]:]
-decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-print(decoded[0])
 
-arrays = raw["arrays"][0]
-
-for inp_out in arrays:
-    input_array = inp_out["input"]
-    output_array = inp_out["output"]
-    evaluate_prediction(input_array, output_array, decoded[0])
+total_valid = 0
+for k in range(len(raw["conversations"])):
+    sample_data = raw["conversations"][k][0]["content"]
+    messages = [
+        {"role": "user", "content": sample_data},
+    ]
+    arrays = raw["arrays"][k]
+    for p in range(10):
+        FastLanguageModel.for_inference(model)
+        inputs = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize = True,
+                    add_generation_prompt = True, # Must add for generation
+                    return_tensors = "pt",
+                    enable_thinking = True, # Enable thinking
+                ).to("cuda")
+        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+        temperature = 0.6, top_p = 0.95, top_k = 20, use_cache = True)
+        generated_tokens = outputs[:, inputs.shape[-1]:]
+        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        print(decoded[0])
+        cnt = 0
+        for inp_out in arrays:
+            input_array = inp_out["input"]
+            output_array = inp_out["output"]
+            if evaluate_prediction(input_array, output_array, decoded[0]):
+                cnt += 1
+        if cnt == len(arrays):
+            print(f"✓ {problem_id}")
+            total_valid += 1
+            break
+        else:
+            print(f"✗ {problem_id}")
+print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
