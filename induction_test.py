@@ -128,7 +128,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 20,
+    num_train_epochs: int = 5,
     use_compile: bool = False,
 ):      
 
@@ -234,6 +234,8 @@ with open("data.json") as f:
 
 total_valid = 0
 for k in range(len(raw["conversations"])):
+    if k > 0:
+        break
     sample_data = raw["conversations"][k][0]["content"]
     messages = [
         {"role": "user", "content": sample_data},
@@ -266,3 +268,136 @@ for k in range(len(raw["conversations"])):
         else:
             print(f"✗ {problem_id}")
 print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
+
+"""
+def reward_function_diff(
+    completions: List[str],
+    expected_output: List[str],
+    **kwargs: Any
+) -> List[float]:
+    rewards: List[float] = []
+    for completion, expected in zip(completions, expected_output, strict=False):
+        value = completion[0]["content"]
+        if not check_array(value):
+            rewards.append(-1.0)
+            continue
+        comp_grid = parse_grid_from_string(value)
+        exp_grid = parse_grid_from_string(expected)
+        if comp_grid is None or exp_grid is None or not same_shape(comp_grid, exp_grid):
+            rewards.append(-0.5)
+            continue
+        rows = len(exp_grid)
+        cols = len(exp_grid[0]) if rows else 0
+        diffs = 0
+        for r in range(rows):
+            for c in range(cols):
+                if comp_grid[r][c] != exp_grid[r][c]:
+                    diffs += 1
+        if diffs != 0:
+            rewards.append(0.5 * (1 - diffs / (rows * cols)))
+        else:
+            rewards.append(1)
+    return rewards
+
+def convert_conversations(raw_json):
+    result = []
+    for convo in raw_json["conversations"]:
+        # Expecting [ {"role":"user"}, {"role":"assistant"} ]
+        user_msg = convo[0]["content"]
+        assistant_msg = convo[1]["content"]
+        result.append({
+            "prompt": [
+                {"role": "user", "content": user_msg}
+            ],
+            "expected_output": assistant_msg
+        })
+    return result
+
+def run_rl(
+    #base_model: str,
+    #lora_path: str,
+    #dataset_path: str,
+    output_dir: str = "qwen3_4b_singled_out_rl",
+    learning_rate: float = 1e-5,
+    num_train_epochs: int = 1,
+    grad_accum: int = 4,
+    num_generations: int = 4,
+):
+    from datasets import Dataset
+    from trl import GRPOConfig, GRPOTrainer
+    from unsloth import FastLanguageModel
+    import torch
+    max_seq_length = 8192 # Can increase for longer reasoning traces
+    lora_rank = 128 # Larger rank = smarter, but slower
+    
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = "qwen3_4b_singled_out_sft/final",
+        max_seq_length = max_seq_length,
+        load_in_4bit = False, # False for LoRA 16bit
+        fast_inference = True, # Enable vLLM fast inference
+        max_lora_rank = lora_rank,
+        gpu_memory_utilization = 0.2, # Reduce if out of memory
+    )
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r=128,
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+                          "gate_proj", "up_proj", "down_proj",],
+        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is 
+        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    )
+    with open("data.json") as f:
+        raw = json.load(f)
+    converted = convert_conversations(raw)
+    dataset = Dataset.from_list(converted)  
+    print(dataset)
+    print("num examples:", len(dataset))  # should be > 0
+    from vllm import SamplingParams
+    vllm_sampling_params = SamplingParams(
+        stop = [tokenizer.eos_token],
+        include_stop_str_in_output = True,
+    )
+    
+    from trl import GRPOConfig, GRPOTrainer
+    training_args = GRPOConfig(
+        use_vllm=True,
+        importance_sampling_level="sequence",
+        loss_type="grpo",
+        output_dir=output_dir,
+        per_device_train_batch_size=1,
+        gradient_accumulation_steps=grad_accum,
+        beta=0.04,
+        epsilon=3e-4,
+        max_steps=500,
+        learning_rate=learning_rate,
+        lr_scheduler_type="cosine",
+        logging_steps=10,
+        save_steps=200,
+        optim="paged_adamw_8bit",
+        report_to="none",
+        num_generations=4,
+        max_prompt_length=4096,
+        max_completion_length=2048,
+        remove_unused_columns=False,
+        ddp_find_unused_parameters=False,
+    )
+    trainer = GRPOTrainer(
+        model = model,
+        processing_class = tokenizer,
+        reward_funcs = [
+            reward_function_diff
+        ],
+        args = training_args,
+        train_dataset = dataset,
+    )
+    trainer.train()
+    trainer.save_model(os.path.join(output_dir, "final"))
+    try:
+        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+    except Exception:
+        pass
+    return os.path.join(output_dir, "final")
+
+run_rl()"""
