@@ -231,8 +231,7 @@ for k in range(len(raw["conversations"])):
         messages,
         tokenize = True,
         add_generation_prompt = True,
-        return_tensors = "pt",
-        enable_thinking = True,
+        return_tensors = "pt"
     ).to("cuda")
     for p in range(10):
         outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
