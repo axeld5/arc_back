@@ -2,10 +2,8 @@ import json
 from typing import *
 from loader import load_training_problem, list_training_problems, load_evaluation_problem, list_evaluation_problems
 
-
 import unsloth
 import os
-import platform
 import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
@@ -113,16 +111,6 @@ with open('data.json', 'w') as f:
 with open('test_problems.json', 'w') as f:
     json.dump(test_problems, f)
 
-def pick_attn_impl() -> str:
-    if platform.system() == "Linux":
-        try:
-            import importlib
-            importlib.import_module("flash_attn")
-            return "flash_attention_2"
-        except Exception:
-            return "sdpa"
-    return "sdpa"
-
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
@@ -208,25 +196,24 @@ def run_sft(
 
 run_sft("data.json")
 
-
 model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
-        max_seq_length = 20000,
-        dtype = torch.bfloat16,
-        load_in_4bit = True,
-        fast_inference = True,
-        attn_implementation = "sdpa",
-    )
+    model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
+    max_seq_length = 20000,
+    dtype = torch.bfloat16,
+    load_in_4bit = True,
+    fast_inference = True,
+    attn_implementation = "sdpa",
+)
 
 model = FastLanguageModel.get_peft_model(
     model,
     r=128,
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                           "gate_proj", "up_proj", "down_proj",],
-    lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-    lora_dropout = 0, # Supports any, but = 0 is optimized
-    bias = "none",    # Supports any, but = "none" is 
-    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    lora_alpha = 32,
+    lora_dropout = 0,
+    bias = "none",
+    use_gradient_checkpointing = "unsloth",
 )
 FastLanguageModel.for_inference(model)
 
@@ -249,7 +236,7 @@ for k in range(len(raw["conversations"])):
     ).to("cuda")
     for p in range(10):
         outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-        temperature = 0.6, top_p = 0.95, top_k = 20, use_cache = True)
+        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
         generated_tokens = outputs[:, inputs.shape[-1]:]
         decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
         print(decoded[0])
