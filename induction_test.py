@@ -219,37 +219,35 @@ model, tokenizer = FastLanguageModel.from_pretrained(
     )
 
 model = FastLanguageModel.get_peft_model(
-        model,
-        r=128,
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
+    model,
+    r=128,
+    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                           "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is 
-        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+    lora_alpha = 32,  # Best to choose alpha = rank or rank*2
+    lora_dropout = 0, # Supports any, but = 0 is optimized
+    bias = "none",    # Supports any, but = "none" is 
+    use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
 )
+FastLanguageModel.for_inference(model)
 
 with open("data.json") as f:
     raw = json.load(f)
 
 total_valid = 0
 for k in range(len(raw["conversations"])):
-    if k > 0:
-        break
     sample_data = raw["conversations"][k][0]["content"]
     messages = [
         {"role": "user", "content": sample_data},
     ]
     arrays = raw["arrays"][k]
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize = True,
+        add_generation_prompt = True,
+        return_tensors = "pt",
+        enable_thinking = True,
+    ).to("cuda")
     for p in range(10):
-        FastLanguageModel.for_inference(model)
-        inputs = tokenizer.apply_chat_template(
-                    messages,
-                    tokenize = True,
-                    add_generation_prompt = True, # Must add for generation
-                    return_tensors = "pt",
-                    enable_thinking = True, # Enable thinking
-                ).to("cuda")
         outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
         temperature = 0.6, top_p = 0.95, top_k = 20, use_cache = True)
         generated_tokens = outputs[:, inputs.shape[-1]:]
