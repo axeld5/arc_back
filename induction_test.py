@@ -84,7 +84,7 @@ def _format_code_solution(problem_id):
     {solver_code}
     ```"""
     return solution
-
+"""
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
 for problem_id in data:
@@ -194,27 +194,17 @@ def run_sft(
         pass    
     return os.path.join(output_dir, "final")
 
-run_sft("data.json")
+run_sft("data.json")"""
 
-model, tokenizer = FastLanguageModel.from_pretrained(
-    model_name = "qwen3_4b_singled_out_sft/final", # or choose "unsloth/Llama-3.2-1B-Instruct"
-    max_seq_length = 20000,
-    dtype = torch.bfloat16,
-    load_in_4bit = True,
-    fast_inference = True,
-    attn_implementation = "sdpa",
-)
-
-model = FastLanguageModel.get_peft_model(
-    model,
-    r=128,
-    target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj",],
-    lora_alpha = 32,
-    lora_dropout = 0,
-    bias = "none",
-    use_gradient_checkpointing = "unsloth",
-)
+from unsloth import FastLanguageModel
+base_model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = "unsloth/Qwen3-4B-Instruct-2507",
+        max_seq_length = 20000,
+        dtype = torch.bfloat16,
+        load_in_4bit = True,
+    )
+from peft import PeftModel
+model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
 FastLanguageModel.for_inference(model)
 
 with open("data.json") as f:
@@ -222,6 +212,7 @@ with open("data.json") as f:
 
 total_valid = 0
 for k in range(len(raw["conversations"])):
+    print(f"Processing problem {k}")
     sample_data = raw["conversations"][k][0]["content"]
     messages = [
         {"role": "user", "content": sample_data},
@@ -246,11 +237,11 @@ for k in range(len(raw["conversations"])):
             if evaluate_prediction(input_array, output_array, decoded[0]):
                 cnt += 1
         if cnt == len(arrays):
-            print(f"✓ {problem_id}")
+            print(f"✓ problem {k}")
             total_valid += 1
             break
         else:
-            print(f"✗ {problem_id}")
+            print(f"✗ problem {k}")
 print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
 """
