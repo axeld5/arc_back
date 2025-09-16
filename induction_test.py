@@ -84,7 +84,7 @@ def _format_code_solution(problem_id):
     {solver_code}
     ```"""
     return solution
-"""
+
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
 for problem_id in data:
@@ -116,7 +116,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 5,
+    num_train_epochs: int = 20,
     use_compile: bool = False,
 ):      
 
@@ -194,7 +194,7 @@ def run_sft(
         pass    
     return os.path.join(output_dir, "final")
 
-run_sft("data.json")"""
+run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
