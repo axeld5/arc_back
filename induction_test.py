@@ -49,8 +49,17 @@ def evaluate_prediction(input_array, output_array, response):
             return True
         else:
             print(f"✗ Incorrect prediction for input/output pair")
-            print(f"Expected: {output_array}")
-            print(f"Got: {predicted_output}")
+            import difflib
+            expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
+            got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
+            diff = '\n'.join(difflib.unified_diff(
+                expected_str.splitlines(keepends=True),
+                got_str.splitlines(keepends=True),
+                fromfile='Expected',
+                tofile='Got',
+                lineterm=''
+            ))
+            print(f"Diff:\n{diff}")
             return False
             
     except Exception as e:
@@ -114,9 +123,9 @@ with open('test_problems.json', 'w') as f:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen3-14B",
+    base_model: str = "unsloth/Qwen3-8B",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 20,
+    num_train_epochs: int = 40,
     use_compile: bool = False,
 ):      
 
@@ -150,7 +159,6 @@ def run_sft(
         raw["conversations"],
         tokenize = False,
     )
-    print(data[0])
     import pandas as pd
     data = pd.Series(data)
     data.name = "text"
@@ -201,7 +209,7 @@ run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen3-14B",
+        model_name = "unsloth/Qwen3-8B",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
