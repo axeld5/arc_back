@@ -87,7 +87,7 @@ def _format_code_solution(problem_id):
 
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
-for problem_id in data:
+for problem_id in data[:5]:
     print(f"Processing problem {problem_id}")
     problem = load_training_problem(problem_id)
     user_content = {"role":"user", "content":""}
@@ -107,7 +107,7 @@ for problem_id in eval_data:
     test_problems["arrays"].append(problem["train"])
 
 with open('data.json', 'w') as f:
-    json.dump(train_problems[:5], f)
+    json.dump(train_problems, f)
 with open('test_problems.json', 'w') as f:
     json.dump(test_problems, f)
 
