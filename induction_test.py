@@ -254,7 +254,7 @@ for k in range(len(raw["conversations"])):
         temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
         generated_tokens = outputs[:, inputs.shape[-1]:]
         decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        print(decoded[p])
+        print(decoded[0])
         cnt = 0
         for inp_out in arrays:
             input_array = inp_out["input"]
