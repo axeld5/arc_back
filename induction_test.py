@@ -114,7 +114,7 @@ with open('test_problems.json', 'w') as f:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen2.5-7B-Instruct",
+    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 20,
     use_compile: bool = False,
@@ -144,7 +144,6 @@ def run_sft(
         raw = json.load(f)
     data = tokenizer.apply_chat_template(
         raw["conversations"],
-        tokenize = False,
     )
     import pandas as pd
     data = pd.Series(data)
