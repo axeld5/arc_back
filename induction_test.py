@@ -107,14 +107,14 @@ for problem_id in eval_data:
     test_problems["arrays"].append(problem["train"])
 
 with open('data.json', 'w') as f:
-    json.dump(train_problems, f)
+    json.dump(train_problems[:5], f)
 with open('test_problems.json', 'w') as f:
     json.dump(test_problems, f)
 
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
+    base_model: str = "unsloth/Qwen2.5-7B-Coder-Instruct",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 20,
     use_compile: bool = False,
@@ -244,47 +244,45 @@ for k in range(len(raw["conversations"])):
             print(f"✗ problem {k}")
 print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
-"""
-def reward_function_diff(
+def evaluate_code_validity(
     completions: List[str],
-    expected_output: List[str],
+    arrays: List[str],
     **kwargs: Any
 ) -> List[float]:
     rewards: List[float] = []
-    for completion, expected in zip(completions, expected_output, strict=False):
+    for completion, array_list in zip(completions, arrays, strict=False):
         value = completion[0]["content"]
-        if not check_array(value):
+        start_marker = "```python"
+        end_marker = "```"
+        start_idx = value.find(start_marker)
+        if start_idx == -1:
             rewards.append(-1.0)
             continue
-        comp_grid = parse_grid_from_string(value)
-        exp_grid = parse_grid_from_string(expected)
-        if comp_grid is None or exp_grid is None or not same_shape(comp_grid, exp_grid):
-            rewards.append(-0.5)
+        start_idx += len(start_marker)
+        end_idx = value.find(end_marker, start_idx)
+        if end_idx == -1:
+            rewards.append(-1.0)
             continue
-        rows = len(exp_grid)
-        cols = len(exp_grid[0]) if rows else 0
-        diffs = 0
-        for r in range(rows):
-            for c in range(cols):
-                if comp_grid[r][c] != exp_grid[r][c]:
-                    diffs += 1
-        if diffs != 0:
-            rewards.append(0.5 * (1 - diffs / (rows * cols)))
+        for inp_out in array_list:
+            input_array = inp_out["input"]
+            output_array = inp_out["output"]
+            if not evaluate_prediction(input_array, output_array, value):
+                rewards.append(-0.5)
+                break
         else:
-            rewards.append(1)
+            rewards.append(1.0)
     return rewards
 
 def convert_conversations(raw_json):
     result = []
-    for convo in raw_json["conversations"]:
+    for convo, array_list in zip(raw_json["conversations"], raw_json["arrays"]):
         # Expecting [ {"role":"user"}, {"role":"assistant"} ]
         user_msg = convo[0]["content"]
-        assistant_msg = convo[1]["content"]
         result.append({
             "prompt": [
                 {"role": "user", "content": user_msg}
             ],
-            "expected_output": assistant_msg
+            "arrays": array_list
         })
     return result
 
@@ -302,7 +300,7 @@ def run_rl(
     from trl import GRPOConfig, GRPOTrainer
     from unsloth import FastLanguageModel
     import torch
-    max_seq_length = 8192 # Can increase for longer reasoning traces
+    max_seq_length = 20000 # Can increase for longer reasoning traces
     lora_rank = 128 # Larger rank = smarter, but slower
     
     model, tokenizer = FastLanguageModel.from_pretrained(
@@ -362,7 +360,7 @@ def run_rl(
         model = model,
         processing_class = tokenizer,
         reward_funcs = [
-            reward_function_diff
+            evaluate_code_validity
         ],
         args = training_args,
         train_dataset = dataset,
@@ -375,4 +373,37 @@ def run_rl(
         pass
     return os.path.join(output_dir, "final")
 
-run_rl()"""
+run_rl()
+
+for k in range(len(raw["conversations"])):
+    print(f"Processing problem {k}")
+    sample_data = raw["conversations"][k][0]["content"]
+    messages = [
+        {"role": "user", "content": sample_data},
+    ]
+    arrays = raw["arrays"][k]
+    inputs = tokenizer.apply_chat_template(
+        messages,
+        tokenize = True,
+        add_generation_prompt = True,
+        return_tensors = "pt"
+    ).to("cuda")
+    for p in range(10):
+        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
+        generated_tokens = outputs[:, inputs.shape[-1]:]
+        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        print(decoded[0])
+        cnt = 0
+        for inp_out in arrays:
+            input_array = inp_out["input"]
+            output_array = inp_out["output"]
+            if evaluate_prediction(input_array, output_array, decoded[0]):
+                cnt += 1
+        if cnt == len(arrays):
+            print(f"✓ problem {k}")
+            total_valid += 1
+            break
+        else:
+            print(f"✗ problem {k}")
+print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
