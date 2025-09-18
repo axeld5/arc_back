@@ -206,10 +206,10 @@ def run_sft(
         pass    
     return os.path.join(output_dir, "final")
 
-#run_sft("data.json")
+run_sft("data.json")
 
 from unsloth import FastLanguageModel
-"""base_model, tokenizer = FastLanguageModel.from_pretrained(
+base_model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen3-8B",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
@@ -217,8 +217,8 @@ from unsloth import FastLanguageModel
     )
 from peft import PeftModel
 model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
-FastLanguageModel.for_inference(model)"""
-
+FastLanguageModel.for_inference(model)
+"""
 from vllm import LLM, SamplingParams
 import torch
 model_id = "Qwen/Qwen3-4B-Instruct-2507"
@@ -229,7 +229,7 @@ llm = LLM(
     #quantization="bitsandbytes"
 )
 sampling_params = SamplingParams(temperature=0.7, top_p=0.8, top_k=20, min_p=0, max_tokens=5000)
-
+"""
 with open("data.json") as f:
     raw = json.load(f)
 
@@ -237,24 +237,23 @@ total_valid = 0
 for k in range(len(raw["conversations"])):
     print(f"Processing problem {k}")
     sample_data = raw["conversations"][k][0]["content"]
-    #messages = [
-    #    {"role": "user", "content": sample_data},
-    #]
-    prompts = [sample_data]*10
+    messages = [
+        {"role": "user", "content": sample_data},
+    ]
+    #prompts = [sample_data]*10
     arrays = raw["arrays"][k]
-    """inputs = tokenizer.apply_chat_template(
+    inputs = tokenizer.apply_chat_template(
         messages,
         tokenize = True,
         add_generation_prompt = True,
         return_tensors = "pt"
-    ).to("cuda")"""
-    decoded = llm.generate(prompts, sampling_params)
-    for p in range(10):
-        #outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-        #temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
-        #generated_tokens = outputs[:, inputs.shape[-1]:]
-        #decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        
+    ).to("cuda")
+    #decoded = llm.generate(prompts, sampling_params)
+    for p in range(5):
+        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
+        generated_tokens = outputs[:, inputs.shape[-1]:]
+        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
         print(decoded[p])
         cnt = 0
         for inp_out in arrays:
@@ -338,14 +337,19 @@ def run_rl(
         gpu_memory_utilization = 0.2, # Reduce if out of memory
     )
     model = FastLanguageModel.get_peft_model(
+        
         model,
-        r=128,
+        r = 32,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj",],
+                        "gate_proj", "up_proj", "down_proj",],
         lora_alpha = 32,  # Best to choose alpha = rank or rank*2
         lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is 
+        bias = "none",    # Supports any, but = "none" is optimized
+        # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+        random_state = 3407,
+        use_rslora = False,   # We support rank stabilized LoRA
+        loftq_config = None,  # And LoftQ
     )
     with open("data.json") as f:
         raw = json.load(f)
