@@ -199,6 +199,7 @@ def run_sft(
     trainer.train()
     print("[sft] Saving final adapter...")
     trainer.save_model(os.path.join(output_dir, "final"))
+    model.save_pretrained_merged("model", tokenizer, save_method = "merged_4bit",)
     try:
         tokenizer.save_pretrained(os.path.join(output_dir, "final"))
     except Exception:
@@ -208,7 +209,7 @@ def run_sft(
 run_sft("data.json")
 
 from unsloth import FastLanguageModel
-base_model, tokenizer = FastLanguageModel.from_pretrained(
+"""base_model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen3-8B",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
@@ -216,7 +217,18 @@ base_model, tokenizer = FastLanguageModel.from_pretrained(
     )
 from peft import PeftModel
 model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
-FastLanguageModel.for_inference(model)
+FastLanguageModel.for_inference(model)"""
+
+from vllm import LLM, SamplingParams
+import torch
+model_id = "model"
+llm = LLM(
+    model=model_id,
+    dtype=torch.bfloat16,
+    trust_remote_code=True,
+    quantization="bitsandbytes"
+)
+sampling_params = SamplingParams(temperature=0.7, top_p=0.8, top_k=20, min_p=0, max_tokens=5000)
 
 with open("data.json") as f:
     raw = json.load(f)
@@ -225,22 +237,25 @@ total_valid = 0
 for k in range(len(raw["conversations"])):
     print(f"Processing problem {k}")
     sample_data = raw["conversations"][k][0]["content"]
-    messages = [
-        {"role": "user", "content": sample_data},
-    ]
+    #messages = [
+    #    {"role": "user", "content": sample_data},
+    #]
+    prompts = [sample_data]*10
     arrays = raw["arrays"][k]
-    inputs = tokenizer.apply_chat_template(
+    """inputs = tokenizer.apply_chat_template(
         messages,
         tokenize = True,
         add_generation_prompt = True,
         return_tensors = "pt"
-    ).to("cuda")
+    ).to("cuda")"""
+    decoded = llm.generate(prompts, sampling_params)
     for p in range(10):
-        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
-        generated_tokens = outputs[:, inputs.shape[-1]:]
-        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        print(decoded[0])
+        #outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+        #temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
+        #generated_tokens = outputs[:, inputs.shape[-1]:]
+        #decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+        
+        print(decoded[p])
         cnt = 0
         for inp_out in arrays:
             input_array = inp_out["input"]
