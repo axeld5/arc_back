@@ -87,7 +87,7 @@ def _format_code_solution(problem_id):
 
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
-for problem_id in data[:5]:
+for problem_id in data[:20]:
     print(f"Processing problem {problem_id}")
     problem = load_training_problem(problem_id)
     user_content = {"role":"user", "content":""}
