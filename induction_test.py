@@ -201,7 +201,7 @@ run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen3-14B",,
+        model_name = "unsloth/Qwen3-14B",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
