@@ -220,7 +220,7 @@ FastLanguageModel.for_inference(model)"""
 
 from vllm import LLM, SamplingParams
 import torch
-model_id = "model"
+model_id = "qwen3_4b_singled_out_sft/final"
 llm = LLM(
     model=model_id,
     dtype=torch.bfloat16,
