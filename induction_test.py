@@ -125,7 +125,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-8B",
     learning_rate: float = 8e-5,
-    num_train_epochs: int = 40,
+    num_train_epochs: int = 5,
     use_compile: bool = False,
 ):      
 
@@ -198,14 +198,15 @@ def run_sft(
     print("[sft] Starting training...")
     trainer.train()
     print("[sft] Saving final adapter...")
-    trainer.save_model(os.path.join(output_dir, "final"))
+    model.save_pretrained(os.path.join(output_dir, "final"))
+    model.save_pretrained_merged(os.path.join(output_dir, "vllm"), tokenizer, save_method = "merged_16bit",)
     try:
         tokenizer.save_pretrained(os.path.join(output_dir, "final"))
     except Exception:
         pass    
     return os.path.join(output_dir, "final")
 
-#run_sft("data.json")
+run_sft("data.json")
 
 from unsloth import FastLanguageModel
 """base_model, tokenizer = FastLanguageModel.from_pretrained(
@@ -220,7 +221,7 @@ FastLanguageModel.for_inference(model)"""
 
 from vllm import LLM, SamplingParams
 import torch
-model_id = "qwen3_4b_singled_out_sft/final"
+model_id = "qwen3_4b_singled_out_sft/vllm"
 llm = LLM(
     model=model_id,
     dtype=torch.bfloat16,
