@@ -24,31 +24,36 @@ PROMPT_INDUCTION = (
     "OUTPUT:"
 )
 
-def evaluate_prediction(input_array, output_array, response):
+def evaluate_prediction(input_array, output_array, response, debug=False):
     try:
         start_marker = "```python"
         end_marker = "```"
         start_idx = response.find(start_marker)
         if start_idx == -1:
-            print(f"No Python code block found in response")
+            if debug:
+                print(f"No Python code block found in response")
             return False
         start_idx += len(start_marker)
         end_idx = response.find(end_marker, start_idx)
         if end_idx == -1:
-            print(f"No closing code block marker found")
+            if debug:
+                print(f"No closing code block marker found")
             return False
         code = response[start_idx:end_idx].strip()
         local_namespace = {}
         exec(code, local_namespace)
         if 'p' not in local_namespace:
-            print(f"Function 'p' not found in generated code")
+            if debug:
+                print(f"Function 'p' not found in generated code")
             return False
         predicted_output = local_namespace['p'](input_array)
         if predicted_output == output_array:
-            print(f"✓ Correct prediction for input/output pair")
+            if debug:
+                print(f"✓ Correct prediction for input/output pair")
             return True
         else:
-            print(f"✗ Incorrect prediction for input/output pair")
+            if debug:
+                print(f"✗ Incorrect prediction for input/output pair")
             import difflib
             expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
             got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
@@ -59,11 +64,13 @@ def evaluate_prediction(input_array, output_array, response):
                 tofile='Got',
                 lineterm=''
             ))
-            print(f"Diff:\n{diff}")
+            if debug:
+                print(f"Diff:\n{diff}")
             return False
             
     except Exception as e:
-        print(f"Error executing generated code: {e}")
+        if debug:
+            print(f"Error executing generated code: {e}")
         print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         return False
 
@@ -253,12 +260,12 @@ for k in range(len(raw["conversations"])):
         temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
         generated_tokens = outputs[:, inputs.shape[-1]:]
         decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        print(decoded[0])
+        code_resolution = decoded[0]
         cnt = 0
         for inp_out in arrays:
             input_array = inp_out["input"]
             output_array = inp_out["output"]
-            if evaluate_prediction(input_array, output_array, decoded[0]):
+            if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
                 cnt += 1
         if cnt == len(arrays):
             print(f"✓ problem {k}")
@@ -290,7 +297,7 @@ def evaluate_code_validity(
         for inp_out in array_list:
             input_array = inp_out["input"]
             output_array = inp_out["output"]
-            if not evaluate_prediction(input_array, output_array, value):
+            if not evaluate_prediction(input_array, output_array, value, debug=True):
                 rewards.append(-0.5)
                 break
         else:
@@ -424,12 +431,12 @@ for k in range(len(raw["conversations"])):
         temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
         generated_tokens = outputs[:, inputs.shape[-1]:]
         decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        print(decoded[0])
+        code_resolution = decoded[0]
         cnt = 0
         for inp_out in arrays:
             input_array = inp_out["input"]
             output_array = inp_out["output"]
-            if evaluate_prediction(input_array, output_array, decoded[0]):
+            if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
                 cnt += 1
         if cnt == len(arrays):
             print(f"✓ problem {k}")
