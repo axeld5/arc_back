@@ -221,12 +221,12 @@ FastLanguageModel.for_inference(model)"""
 
 from vllm import LLM, SamplingParams
 import torch
-model_id = "qwen3_4b_singled_out_sft/vllm"
+model_id = "Qwen/Qwen3-4B-Instruct-2507"
 llm = LLM(
     model=model_id,
     dtype=torch.bfloat16,
     trust_remote_code=True,
-    quantization="bitsandbytes"
+    #quantization="bitsandbytes"
 )
 sampling_params = SamplingParams(temperature=0.7, top_p=0.8, top_k=20, min_p=0, max_tokens=5000)
 
