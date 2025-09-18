@@ -114,7 +114,7 @@ with open('test_problems.json', 'w') as f:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
+    base_model: str = "unsloth/Qwen3-14B",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 20,
     use_compile: bool = False,
@@ -132,13 +132,17 @@ def run_sft(
 
     model = FastLanguageModel.get_peft_model(
         model,
-        r=128,
+        r = 32,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                          "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  
-        lora_dropout = 0, 
-        bias = "none",     
-        use_gradient_checkpointing = "unsloth", 
+                        "gate_proj", "up_proj", "down_proj",],
+        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
+        lora_dropout = 0, # Supports any, but = 0 is optimized
+        bias = "none",    # Supports any, but = "none" is optimized
+        # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
+        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+        random_state = 3407,
+        use_rslora = False,   # We support rank stabilized LoRA
+        loftq_config = None,  # And LoftQ
     )
     with open("data.json") as f:
         raw = json.load(f)
@@ -146,6 +150,7 @@ def run_sft(
         raw["conversations"],
         tokenize = False,
     )
+    print(data[0])
     import pandas as pd
     data = pd.Series(data)
     data.name = "text"
@@ -156,12 +161,13 @@ def run_sft(
 
     args = SFTConfig(
         output_dir=output_dir,
-        per_device_train_batch_size = 4,
-        gradient_accumulation_steps = 4,
+        dataset_text_field = "text",
+        per_device_train_batch_size = 2,
+        gradient_accumulation_steps = 4, # Use GA to mimic batch size!
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
         warmup_ratio=0.1,
-        lr_scheduler_type="cosine",
+        lr_scheduler_type="linear",
         fp16=not use_bf16,
         bf16=use_bf16,
         logging_steps=25,
@@ -169,7 +175,7 @@ def run_sft(
         save_total_limit=2,
         report_to="none",
         remove_unused_columns=False,
-        optim="paged_adamw_8bit",
+        optim="adamw_8bit",
         ddp_find_unused_parameters=False,
         max_grad_norm=None,
     )
@@ -179,8 +185,6 @@ def run_sft(
         args=args,
         tokenizer=tokenizer,
         train_dataset=dataset,
-        dataset_text_field="text",
-        max_seq_length=20000,
     )
         
     print("[sft] Starting training...")
@@ -197,7 +201,7 @@ run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen2.5-Coder-7B-Instruct",
+        model_name = "unsloth/Qwen3-14B",,
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
