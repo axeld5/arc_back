@@ -199,7 +199,6 @@ def run_sft(
     trainer.train()
     print("[sft] Saving final adapter...")
     model.save_pretrained(os.path.join(output_dir, "final"))
-    model.save_pretrained_merged(os.path.join(output_dir, "vllm"), tokenizer, save_method = "merged_16bit",)
     try:
         tokenizer.save_pretrained(os.path.join(output_dir, "final"))
     except Exception:
