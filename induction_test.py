@@ -144,6 +144,7 @@ def run_sft(
         raw = json.load(f)
     data = tokenizer.apply_chat_template(
         raw["conversations"],
+        tokenize = False,
     )
     import pandas as pd
     data = pd.Series(data)
