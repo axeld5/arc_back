@@ -199,14 +199,13 @@ def run_sft(
     trainer.train()
     print("[sft] Saving final adapter...")
     trainer.save_model(os.path.join(output_dir, "final"))
-    model.save_pretrained_merged("model", tokenizer, save_method = "merged_4bit",)
     try:
         tokenizer.save_pretrained(os.path.join(output_dir, "final"))
     except Exception:
         pass    
     return os.path.join(output_dir, "final")
 
-run_sft("data.json")
+#run_sft("data.json")
 
 from unsloth import FastLanguageModel
 """base_model, tokenizer = FastLanguageModel.from_pretrained(
