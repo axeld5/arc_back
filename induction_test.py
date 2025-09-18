@@ -114,7 +114,7 @@ with open('test_problems.json', 'w') as f:
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen2.5-7B-Coder-Instruct",
+    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
     learning_rate: float = 8e-5,
     num_train_epochs: int = 20,
     use_compile: bool = False,
@@ -198,7 +198,7 @@ run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen3-4B-Instruct-2507",
+        model_name = "unsloth/Qwen2.5-Coder-7B-Instruct",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
         load_in_4bit = True,
