@@ -256,21 +256,36 @@ for k in range(len(raw["conversations"])):
     ).to("cuda")
     #decoded = llm.generate(prompts, sampling_params)
     for p in range(5):
-        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
-        generated_tokens = outputs[:, inputs.shape[-1]:]
-        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        code_resolution = decoded[0]
-        cnt = 0
-        for inp_out in arrays:
-            input_array = inp_out["input"]
-            output_array = inp_out["output"]
-            if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
-                cnt += 1
-        if cnt == len(arrays):
-            print(f"✓ problem {k}")
-            total_valid += 1
-            break
+        import signal
+        
+        def timeout_handler(signum, frame):
+            raise TimeoutError("Generation timed out")
+        
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(90)  # 90 second timeout
+        
+        try:
+            outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+            temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
+            generated_tokens = outputs[:, inputs.shape[-1]:]
+            decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            code_resolution = decoded[0]
+            signal.alarm(0)  # Cancel the alarm
+            
+            cnt = 0
+            for inp_out in arrays:
+                input_array = inp_out["input"]
+                output_array = inp_out["output"]
+                if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
+                    cnt += 1
+            if cnt == len(arrays):
+                print(f"✓ problem {k}")
+                total_valid += 1
+                break
+        except TimeoutError:
+            signal.alarm(0)  # Cancel the alarm
+            print(f"⏰ Generation timed out for problem {k}")
+            continue
         else:
             print(f"✗ problem {k}")
 print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
