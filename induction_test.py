@@ -343,7 +343,7 @@ def run_rl(
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "qwen3_4b_singled_out_sft/final",
         max_seq_length = max_seq_length,
-        #load_in_4bit = False, # False for LoRA 16bit
+        load_in_4bit = False, # False for LoRA 16bit
         #fast_inference = True, # Enable vLLM fast inference
         #max_lora_rank = lora_rank,
         #gpu_memory_utilization = 0.2, # Reduce if out of memory
