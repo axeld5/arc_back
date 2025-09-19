@@ -117,7 +117,7 @@ with open('data.json', 'w') as f:
     json.dump(train_problems, f)
 
 from unsloth import FastLanguageModel
-base_model, tokenizer = FastLanguageModel.from_pretrained(
+model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen2.5-Coder-3B-Instruct",
         max_seq_length = 20000,
         dtype = torch.bfloat16,
@@ -125,7 +125,6 @@ base_model, tokenizer = FastLanguageModel.from_pretrained(
         fast_inference = True,
     )
 from peft import PeftModel
-model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
 FastLanguageModel.for_inference(model)
 
 with open("data.json") as f:
