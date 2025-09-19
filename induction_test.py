@@ -24,7 +24,28 @@ PROMPT_INDUCTION = (
     "OUTPUT:"
 )
 
+def format_comparison(output_array, predicted_output):
+                    expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
+                    got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
+                    
+                    expected_lines = expected_str.split('\n')
+                    got_lines = got_str.split('\n')
+                    
+                    max_lines = max(len(expected_lines), len(got_lines))
+                    
+                    comparison = []
+                    for i in range(max_lines):
+                        expected_line = expected_lines[i] if i < len(expected_lines) else ""
+                        got_line = got_lines[i] if i < len(got_lines) else ""
+                        comparison.append(f"{got_line} -> {expected_line}")
+                    return comparison
+
 def evaluate_prediction(input_array, output_array, response, debug=False):
+    import signal
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Code execution timed out")
+    
     try:
         start_marker = "```python"
         end_marker = "```"
@@ -40,35 +61,40 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
                 print(f"No closing code block marker found")
             return False
         code = response[start_idx:end_idx].strip()
-        local_namespace = {}
-        exec(code, local_namespace)
-        if 'p' not in local_namespace:
+        
+        # Set up timeout for code execution
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(90)  # 1 minute 30 seconds timeout
+        
+        try:
+            local_namespace = {}
+            exec(code, local_namespace)
+            if 'p' not in local_namespace:
+                if debug:
+                    print(f"Function 'p' not found in generated code")
+                signal.alarm(0)  # Cancel the alarm
+                return False
+            predicted_output = local_namespace['p'](input_array)
+            signal.alarm(0)  # Cancel the alarm
+            
+            if predicted_output == output_array:
+                if debug:
+                    print(f"✓ Correct prediction for input/output pair")
+                return True
+            else:
+                if debug:
+                    print(f"✗ Incorrect prediction for input/output pair")
+                    comparison = format_comparison(output_array, predicted_output)
+                    print(f"Comparison (Got -> Expected):\n" + '\n'.join(comparison))
+                return False
+        except TimeoutError:
+            signal.alarm(0)  # Cancel the alarm
             if debug:
-                print(f"Function 'p' not found in generated code")
-            return False
-        predicted_output = local_namespace['p'](input_array)
-        if predicted_output == output_array:
-            if debug:
-                print(f"✓ Correct prediction for input/output pair")
-            return True
-        else:
-            if debug:
-                print(f"✗ Incorrect prediction for input/output pair")
-            import difflib
-            expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
-            got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
-            diff = '\n'.join(difflib.unified_diff(
-                expected_str.splitlines(keepends=True),
-                got_str.splitlines(keepends=True),
-                fromfile='Expected',
-                tofile='Got',
-                lineterm=''
-            ))
-            if debug:
-                print(f"Diff:\n{diff}")
+                print(f"Code execution timed out after 90 seconds")
             return False
             
     except Exception as e:
+        signal.alarm(0)  # Cancel the alarm
         if debug:
             print(f"Error executing generated code: {e}")
             print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
