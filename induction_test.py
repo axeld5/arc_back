@@ -71,7 +71,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
     except Exception as e:
         if debug:
             print(f"Error executing generated code: {e}")
-        print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
+            print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         return False
 
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
@@ -100,7 +100,7 @@ def _format_code_solution(problem_id):
     {solver_code}
     ```"""
     return solution
-
+"""
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
 for problem_id in data[:10]:
@@ -126,6 +126,7 @@ with open('data.json', 'w') as f:
     json.dump(train_problems, f)
 with open('test_problems.json', 'w') as f:
     json.dump(test_problems, f)
+"""
 
 def run_sft(
     dataset_path: str,
@@ -224,18 +225,6 @@ base_model, tokenizer = FastLanguageModel.from_pretrained(
 from peft import PeftModel
 model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
 FastLanguageModel.for_inference(model)
-"""
-from vllm import LLM, SamplingParams
-import torch
-model_id = "Qwen/Qwen3-4B-Instruct-2507"
-llm = LLM(
-    model=model_id,
-    dtype=torch.bfloat16,
-    trust_remote_code=True,
-    #quantization="bitsandbytes"
-)
-sampling_params = SamplingParams(temperature=0.7, top_p=0.8, top_k=20, min_p=0, max_tokens=5000)
-"""
 with open("data.json") as f:
     raw = json.load(f)
 
@@ -376,8 +365,6 @@ def run_rl(
         raw = json.load(f)
     converted = convert_conversations(raw)
     dataset = Dataset.from_list(converted)  
-    print(dataset)
-    print("num examples:", len(dataset))  # should be > 0
     from vllm import SamplingParams
     vllm_sampling_params = SamplingParams(
         stop = [tokenizer.eos_token],
@@ -402,8 +389,8 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=4,
-        max_prompt_length=4096,
-        max_completion_length=2048,
+        max_prompt_length=15000,
+        max_completion_length=5000,
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
