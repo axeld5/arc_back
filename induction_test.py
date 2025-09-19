@@ -391,7 +391,7 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=4,
-        max_prompt_length=10000,
+        max_prompt_length=5000,
         max_completion_length=5000,
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
