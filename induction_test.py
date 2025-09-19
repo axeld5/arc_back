@@ -330,7 +330,7 @@ def run_rl(
     output_dir: str = "qwen3_4b_singled_out_rl",
     learning_rate: float = 1e-5,
     num_train_epochs: int = 1,
-    grad_accum: int = 4,
+    grad_accum: int = 2,
     num_generations: int = 4,
 ):
     from datasets import Dataset
@@ -390,8 +390,8 @@ def run_rl(
         save_steps=200,
         optim="paged_adamw_8bit",
         report_to="none",
-        num_generations=4,
-        max_prompt_length=5000,
+        num_generations=2,
+        max_prompt_length=30000,
         max_completion_length=5000,
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
