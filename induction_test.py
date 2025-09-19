@@ -213,7 +213,7 @@ def run_sft(
         pass    
     return os.path.join(output_dir, "final")
 
-run_sft("data.json")
+#run_sft("data.json")
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
