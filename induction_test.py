@@ -303,7 +303,7 @@ def evaluate_code_validity(
         for inp_out in array_list:
             input_array = inp_out["input"]
             output_array = inp_out["output"]
-            if not evaluate_prediction(input_array, output_array, value, debug=True):
+            if not evaluate_prediction(input_array, output_array, value):
                 rewards.append(-0.5)
                 break
         else:
