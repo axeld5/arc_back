@@ -375,7 +375,7 @@ def run_rl(
     
     from trl import GRPOConfig, GRPOTrainer
     training_args = GRPOConfig(
-        use_vllm=True,
+        #use_vllm=True,
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
