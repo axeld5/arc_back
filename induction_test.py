@@ -229,6 +229,7 @@ with open("data.json") as f:
     raw = json.load(f)
 
 total_valid = 0
+"""
 for k in range(len(raw["conversations"])):
     print(f"Processing problem {k}")
     sample_data = raw["conversations"][k][0]["content"]
@@ -278,6 +279,7 @@ for k in range(len(raw["conversations"])):
         else:
             print(f"✗ problem {k}")
 print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
+"""
 
 def evaluate_code_validity(
     completions: List[str],
