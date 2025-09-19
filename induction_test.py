@@ -145,6 +145,7 @@ def run_sft(
         max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
+        gpu_memory_utilization = 0.2, # Reduce if out of memory
     )
 
     model = FastLanguageModel.get_peft_model(
