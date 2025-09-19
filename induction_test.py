@@ -344,7 +344,7 @@ def run_rl(
         model_name = "qwen3_4b_singled_out_sft/final",
         max_seq_length = max_seq_length,
         load_in_4bit = False, # False for LoRA 16bit
-        #fast_inference = True, # Enable vLLM fast inference
+        fast_inference = True, # Enable vLLM fast inference
         #max_lora_rank = lora_rank,
         #gpu_memory_utilization = 0.2, # Reduce if out of memory
     )
@@ -375,7 +375,7 @@ def run_rl(
     
     from trl import GRPOConfig, GRPOTrainer
     training_args = GRPOConfig(
-        #use_vllm=True,
+        use_vllm=True,
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
