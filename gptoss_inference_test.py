@@ -13,6 +13,13 @@ from vllm import LLM, SamplingParams
 from loader import load_training_problem, list_training_problems
 from typing import *
 
+PROMPT_INDUCTION = (
+    "Solve the following problem\n\n"
+    "Given input/output pairs:\n{io_pairs}\n"
+    "Write a python program that solves the problem. Name your final function 'p'.\n"
+    "OUTPUT:"
+)
+
 
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
     return [' '.join(map(str, row)) for row in grid]
