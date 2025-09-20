@@ -18,7 +18,7 @@ dataset = load_dataset("HuggingFaceH4/Multilingual-Thinking", split="train")
 messages = dataset[0]["messages"]
 conversation = tokenizer.apply_chat_template(messages, tokenize=False)
 
-quantization_config = Mxfp4Config(dequantize=False)
+quantization_config = Mxfp4Config(dequantize=True)
 model_kwargs = dict(
     attn_implementation="eager",
     torch_dtype=torch.bfloat16,
