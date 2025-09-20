@@ -149,11 +149,6 @@ def main():
     stop_token_ids = encoding.stop_tokens_for_assistant_actions()
 
     # --- 2) Run vLLM with prefill ---
-    sampling = SamplingParams(
-        max_tokens=4096,
-        temperature=1.0,
-        stop_token_ids=stop_token_ids,
-    )
 
     llm = LLM(
         model="openai/gpt-oss-20b",
@@ -164,7 +159,11 @@ def main():
     start_time = time.time()
     from vllm.inputs import TokensPrompt
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
-
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+        stop_token_ids=stop_token_ids,
+    )
     outputs = llm.generate(
         prompts,  # batch size 1
         sampling_params=sampling,

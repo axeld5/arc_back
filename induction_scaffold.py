@@ -73,13 +73,68 @@ def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=F
         return False
 
 def get_model():
-    pass
+    llm = LLM(
+        model="openai/gpt-oss-20b",
+        trust_remote_code=True,
+    )
+    return llm
 
-def get_program_generation_prompt(model, task):
-    pass
+def _format_induction_prompt(problem) -> str:
+    input_output_pairs = ""
+    for i, elem in enumerate(problem['train']):
+        pb_input ="\n".join(grid_to_row_strings(elem['input']))
+        pb_output = "\n".join(grid_to_row_strings(elem['output']))
+        input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
+    return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
-def infer_program(model, task):
-    pass
+def get_program_generation_prompt(problem):
+    PROMPT_INDUCTION = (
+        "Solve the following problem\n\n"
+        "Given input/output pairs:\n{io_pairs}\n"
+        "Write a python program that solves the problem. Name your final function 'p'.\n"
+        "OUTPUT:"
+    )
+    input_output_pairs = _format_induction_prompt(problem)
+    return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
+
+def convert_to_gptoss_prompt(problem_list):
+    prefill_list = []
+    for problem in problem_list:
+        encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+        prompt = get_program_generation_prompt(problem)
+        convo = Conversation.from_messages(
+            [
+                Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
+                Message.from_role_and_content(Role.DEVELOPER, DeveloperContent.new()),
+                Message.from_role_and_content(Role.USER, prompt),
+            ]
+        )
+        prefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
+        prefill_list.append(prefill_ids)
+    stop_token_ids = encoding.stop_tokens_for_assistant_actions()
+    return prefill_list, stop_token_ids
+
+def infer_initial_programs(model, problem_list):
+    prefill_list, stop_token_ids = convert_to_gptoss_prompt(problem_list)
+    prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+        stop_token_ids=stop_token_ids,
+    )
+    outputs = model.generate(
+        prompts,
+        sampling_params=sampling,
+    )
+    text = gen.text
+    output_tokens = gen.token_ids
+    entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+    response = []
+    for message in entries:
+        message = message.to_dict()
+        if message["role"] == "assistant":
+            response.append(message["content"][0]["text"])
+    return response
 
 def extract_program(response, debug=False):
     start_marker = "```python"
@@ -100,11 +155,14 @@ def extract_program(response, debug=False):
 
 def make_train_library(model, library):
     loaded_training_arrays = [load_training_problem(problem_id) for problem_id in list_training_problems()]
+    initial_programs = infer_initial_programs(model, loaded_training_arrays)
     for training_array in loaded_training_arrays:
         input_array = training_array["train"][0]["input"]
         output_array = training_array["train"][0]["output"]
-        program = extract_program(infer_with_model(model, input_array, output_array))
-        library.append(program)
+        program = extract_program(model)
+        if program:
+            library.append(program)
+    print(f"Library size: {len(library)}")
     return library
 
 def make_program_generation_prompt(task_log, primitive):
@@ -188,7 +246,7 @@ if __name__ == "__main__":
     model = get_model()
     library = []
     library = make_train_library(model, library)
-    library, solved = make_round(model, library)
+    #library, solved = make_round(model, library)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
     print(f"Solved: {solved}")
