@@ -141,13 +141,11 @@ def infer_initial_programs(model, problem_list):
         prompts,
         sampling_params=sampling,
     )
-    print(len(outputs))
-    print(len(outputs[0].outputs))
+    response = []
     for output in outputs:
         for gen in output.outputs:
             output_tokens = gen.token_ids
             entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
-            response = []
             for message in entries:
                 message = message.to_dict()
                 if message["role"] == "assistant":
