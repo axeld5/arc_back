@@ -202,7 +202,7 @@ def make_program_generation_prompt(primitive, task_log):
     OUTPUT:
     """
 
-def convert_to_proggen_prompt(primitive, task_log, num_gen):
+def convert_to_proggen_prompt(primitive, task_log, num_gen, encoding):
     prefill_list = []
     for _ in range(num_gen):
         prompt = make_program_generation_prompt(primitive, task_log)
@@ -220,7 +220,7 @@ def convert_to_proggen_prompt(primitive, task_log, num_gen):
 
 def generate_new_program(model, primitive, task_log, num_gen=5):
     encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
-    prefill_list, stop_token_ids = convert_to_proggen_prompt(primitive, task_log, num_gen)
+    prefill_list, stop_token_ids = convert_to_proggen_prompt(primitive, task_log, num_gen, encoding)
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
     sampling = SamplingParams(
         max_tokens=4096,
