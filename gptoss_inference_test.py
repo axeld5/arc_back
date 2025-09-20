@@ -103,7 +103,7 @@ def main():
     for message in entries:
         message = message.to_dict()
         if message["role"] == "assistant":
-            print(message["content"]["text"])
+            print(message["content"][0]["text"])
 
     print(f"Time taken: {time.time() - start_time} seconds")
 
