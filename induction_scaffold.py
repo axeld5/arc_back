@@ -249,9 +249,9 @@ def list_solved_problems(library, tasks):
         for program in library:
             partial_values = []
             task_log = ""
-            for training_array in task:
-                input_array = training_array["train"][0]["input"]
-                output_array = training_array["train"][0]["output"]
+            for training_array in task["train"]:
+                input_array = training_array["input"]
+                output_array = training_array["output"]
                 value, log = evaluate_prediction(input_array, output_array, program, get_logs=True)
                 task_log += "\n" + log
                 if value:
@@ -275,9 +275,9 @@ def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
             for program in library:
                 partial_values = []
                 task_log = ""
-                for training_array in task:
-                    input_array = training_array["train"][0]["input"]
-                    output_array = training_array["train"][0]["output"]
+                for training_array in task["train"]:
+                    input_array = training_array["input"]
+                    output_array = training_array["output"]
                     value, log = evaluate_prediction(input_array, output_array, program, get_logs=True)
                     task_log += "\n" + log
                     if value:
