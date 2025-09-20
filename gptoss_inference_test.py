@@ -64,7 +64,6 @@ for problem_id in data[:10]:
 encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
 
 prompt = train_problems["conversations"][0][0]["content"]
-print(prompt)
 convo = Conversation.from_messages(
     [
         Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),

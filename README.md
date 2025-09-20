@@ -8,7 +8,7 @@ To create distant kernel uv run --active python -m ipykernel install --user --na
 
 git clone https://github.com/axeld5/arc_back.git && cd arc_back
 sudo snap install astral-uv --classic && sudo uv sync
-sudo uv pip install --force-reinstall vllm --torch-backend=auto
 sudo uv pip install unsloth unsloth-zoo
 sudo uv pip install triton && sudo uv pip install kernels
 sudo uv pip install openai-harmony
+sudo uv pip install --force-reinstall vllm --torch-backend=auto
