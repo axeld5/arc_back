@@ -83,6 +83,7 @@ stop_token_ids = encoding.stop_tokens_for_assistant_actions()
 # --- 2) Run vLLM with prefill ---
 llm = LLM(
     model="openai/gpt-oss-20b",
+    device="cuda",
     trust_remote_code=True,
 )
  
