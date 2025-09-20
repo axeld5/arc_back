@@ -101,8 +101,9 @@ def main():
     # --- 3) Parse back to Harmony entries ---
     entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
     for message in entries:
-        if message.role == "assistant":
-            print(message.content)
+        message = message.to_dict()
+        if message["role"] == "assistant":
+            print(message["content"]["text"])
 
     print(f"Time taken: {time.time() - start_time} seconds")
 
