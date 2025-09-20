@@ -141,14 +141,15 @@ def infer_initial_programs(model, problem_list):
         prompts,
         sampling_params=sampling,
     )
-    gen = outputs[0].outputs[0]
-    output_tokens = gen.token_ids
-    entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
-    response = []
-    for message in entries:
-        message = message.to_dict()
-        if message["role"] == "assistant":
-            response.append(message["content"][0]["text"])
+    for output in outputs:
+        gen = output.outputs[0]
+        output_tokens = gen.token_ids
+        entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+        response = []
+        for message in entries:
+            message = message.to_dict()
+            if message["role"] == "assistant":
+                response.append(message["content"][0]["text"])
     return response
 
 def extract_program(response, debug=False):
@@ -171,8 +172,7 @@ def extract_program(response, debug=False):
 def make_train_library(model, library):
     loaded_training_arrays = [load_training_problem(problem_id) for problem_id in list_training_problems()]
     initial_programs = infer_initial_programs(model, loaded_training_arrays)
-    for program in initial_programs:
-        print(program)
+    print(len(initial_programs))
     for initial_program in initial_programs:
         program = extract_program(initial_program)
         if program:
@@ -264,9 +264,8 @@ def list_solved_problems(library):
                 solved.append(task)
     return solved
 
-def make_round(model, library, solved,gen_num=5, round_num=2):
+def make_round(model, library, solved, gen_num=5, round_num=2):
     tasks = [load_training_problem(problem_id) for problem_id in list_training_problems()]
-    solved = list_solved_problems(library)
     for round in range(round_num):
         print(f"Round {round}")
         for task in tasks:
@@ -327,6 +326,7 @@ if __name__ == "__main__":
     model = get_model()
     library = []
     library = make_train_library(model, library)
+    solved = list_solved_problems(library)
     #library, solved = make_round(model, library, solved)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
