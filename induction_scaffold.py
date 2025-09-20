@@ -244,7 +244,7 @@ def generate_new_program(model, primitive, task_log, num_gen=5):
 
 def list_solved_problems(library, tasks):
     solved = []
-    for task in tasks:
+    for i,task in enumerate(tasks):
         scores = []
         task_logs = []
         for program in library:
@@ -261,14 +261,14 @@ def list_solved_problems(library, tasks):
                     partial_values.append(0)
             score = sum(partial_values) / len(partial_values)
             if score == 1:
-                print(f"✓ Solved problem {task} with initial library")
+                print(f"✓ Solved problem {i} with initial library")
                 solved.append(task)
     return solved
 
 def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
     for round in range(round_num):
         print(f"Round {round}")
-        for task in tasks:
+        for i,task in enumerate(tasks):
             if task in solved:
                 continue
             scores = []
@@ -288,7 +288,7 @@ def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
                 score = sum(partial_values) / len(partial_values)
                 if score == 1:
                     solved.append(task)
-                    print(f"✓ Solved problem {task} with additional program")
+                    print(f"✓ Solved problem {i} with additional program")
                     break
                 scores.append(score)
                 task_logs.append(task_log)
@@ -313,7 +313,7 @@ def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
                         partial_values.append(0)
                 score = sum(partial_values) / len(partial_values)
                 if score == 1:
-                    print(f"✓ Solved problem {task}")
+                    print(f"✓ Solved problem {i}")
                     library.append(program)
                     solved.append(task)
                     break
@@ -328,7 +328,7 @@ if __name__ == "__main__":
     library = []
     library = make_train_library(model, library)
     solved = list_solved_problems(library, tasks)
-    #library, solved = make_round(model, tasks, library, solved)
+    library, solved = make_round(model, tasks, library, solved)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
     #print(f"Solved: {solved}")
