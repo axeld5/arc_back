@@ -25,20 +25,17 @@ PROMPT_INDUCTION = (
 )
 
 def format_comparison(output_array, predicted_output):
-                    expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
-                    got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
-                    
-                    expected_lines = expected_str.split('\n')
-                    got_lines = got_str.split('\n')
-                    
-                    max_lines = max(len(expected_lines), len(got_lines))
-                    
-                    comparison = []
-                    for i in range(max_lines):
-                        expected_line = expected_lines[i] if i < len(expected_lines) else ""
-                        got_line = got_lines[i] if i < len(got_lines) else ""
-                        comparison.append(f"{got_line} -> {expected_line}")
-                    return comparison
+    expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
+    got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
+    expected_lines = expected_str.split('\n')
+    got_lines = got_str.split('\n')
+    max_lines = max(len(expected_lines), len(got_lines))
+    comparison = []
+    for i in range(max_lines):
+        expected_line = expected_lines[i] if i < len(expected_lines) else ""
+        got_line = got_lines[i] if i < len(got_lines) else ""
+        comparison.append(f"{got_line} -> {expected_line}")
+    return comparison
 
 def evaluate_prediction(input_array, output_array, response, debug=False):
     import signal
