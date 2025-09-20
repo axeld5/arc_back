@@ -171,6 +171,8 @@ def extract_program(response, debug=False):
 def make_train_library(model, library):
     loaded_training_arrays = [load_training_problem(problem_id) for problem_id in list_training_problems()]
     initial_programs = infer_initial_programs(model, loaded_training_arrays)
+    for program in initial_programs:
+        print(program)
     for initial_program in initial_programs:
         program = extract_program(initial_program)
         if program:
