@@ -94,13 +94,13 @@ def get_model():
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
     return [' '.join(map(str, row)) for row in grid]
 
-def _format_induction_prompt(problem) -> str:
+def get_input_output_pairs(problem) -> str:
     input_output_pairs = ""
     for i, elem in enumerate(problem['train']):
         pb_input ="\n".join(grid_to_row_strings(elem['input']))
         pb_output = "\n".join(grid_to_row_strings(elem['output']))
         input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
-    return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
+    return input_output_pairs
 
 def get_program_generation_prompt(problem):
     PROMPT_INDUCTION = (
@@ -109,7 +109,7 @@ def get_program_generation_prompt(problem):
         "Write a python program that solves the problem. Name your final function 'p'.\n"
         "OUTPUT:"
     )
-    input_output_pairs = _format_induction_prompt(problem)
+    input_output_pairs = get_input_output_pairs(problem)
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
 def convert_to_gptoss_prompt(problem_list):
