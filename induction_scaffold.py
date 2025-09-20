@@ -11,6 +11,7 @@ from openai_harmony import (
 )
 from vllm import LLM, SamplingParams
 from vllm.inputs import TokensPrompt
+from typing import *
 
 def format_comparison(output_array, predicted_output):
     max_rows = max(len(output_array), len(predicted_output) if predicted_output else 0)
@@ -89,6 +90,9 @@ def get_model():
         trust_remote_code=True,
     )
     return llm
+
+def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
+    return [' '.join(map(str, row)) for row in grid]
 
 def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
