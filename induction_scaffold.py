@@ -23,7 +23,7 @@ def format_comparison(output_array, predicted_output):
         comparison.append(' '.join(row_comparison))
     return comparison
 
-def evaluate_prediction(input_array, output_array, code, debug=False):
+def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=False):
     def timeout_handler(signum, frame):
         raise TimeoutError("Code execution timed out")
     try:
@@ -36,35 +36,49 @@ def evaluate_prediction(input_array, output_array, code, debug=False):
                 if debug:
                     print(f"Function 'p' not found in generated code")
                 signal.alarm(0)
+                if get_logs:
+                    return False, output_array
                 return False
             predicted_output = local_namespace['p'](input_array)
             signal.alarm(0)
             if predicted_output == output_array:
                 if debug:
                     print(f"✓ Correct prediction for input/output pair")
+                if get_logs:
+                    return True, output_array
                 return True
             else:
                 if debug:
                     print(f"✗ Incorrect prediction for input/output pair")
                     comparison = format_comparison(output_array, predicted_output)
                     print(f"Comparison (Got -> Expected):\n" + '\n'.join(comparison))
+                if get_logs:
+                    comparison = format_comparison(output_array, predicted_output)
+                    return False, comparison
                 return False
         except TimeoutError:
             signal.alarm(0)
             if debug:
                 print(f"Code execution timed out after 90 seconds")
+            if get_logs:
+                return False, output_array
             return False
     except Exception as e:
         signal.alarm(0)
         if debug:
             print(f"Error executing generated code: {e}")
             print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
+        if get_logs:
+            return False, output_array
         return False
 
 def get_model():
     pass
 
-def infer_with_model(model, input_array, output_array):
+def get_program_generation_prompt(model, task):
+    pass
+
+def infer_program(model, task):
     pass
 
 def extract_program(response, debug=False):
@@ -93,7 +107,29 @@ def make_train_library(model, library):
         library.append(program)
     return library
 
-def generate_new_program(model, task, primitive):
+def make_program_generation_prompt(task_log, primitive):
+    return f"""
+    You are a program refinement assistant. Your task is to fix a Python program that is not working correctly.
+
+    You are given:
+    1. A primitive program that attempts to solve a task but produces incorrect outputs
+    2. Test cases showing the input, the program's actual output, and the expected output
+
+    Your goal is to analyze the errors and refine the primitive program to correctly solve all test cases.
+
+    Original program to refine:
+    {primitive}
+
+    Test case results (showing where the program fails):
+    {task_log}
+
+    Please provide a corrected version of the program that will produce the expected outputs for all test cases. 
+    Wrap your solution in ```python``` code blocks and ensure the main function is named 'p'.
+
+    OUTPUT:
+    """
+
+def generate_new_program(model, task_log, primitive):
     pass
 
 def make_round(model, library, gen_num=5, round_num=2):
@@ -105,21 +141,27 @@ def make_round(model, library, gen_num=5, round_num=2):
             if task in solved:
                 continue
             scores = []
+            task_logs = []
             for program in library:
                 partial_values = []
+                task_log = ""
                 for training_array in task:
                     input_array = training_array["train"][0]["input"]
                     output_array = training_array["train"][0]["output"]
-                    if evaluate_prediction(input_array, output_array, program):
+                    value, log = evaluate_prediction(input_array, output_array, program, get_logs=True)
+                    task_log += "\n" + log
+                    if value:
                         partial_values.append(1)
                     else:
                         partial_values.append(0)
                 scores.append(sum(partial_values) / len(partial_values))
+                task_logs.append(task_log)
             chosen_index = scores.index(max(scores))
             primitive = library[chosen_index]
+            task_log = task_logs[chosen_index]
             generated_programs = []
             for _ in range(gen_num):
-                programs = generate_new_program(model, task, primitive)
+                programs = generate_new_program(model, task_log, primitive)
                 generated_programs.append(programs)
             new_scores = []
             for program in generated_programs:                
