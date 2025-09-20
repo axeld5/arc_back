@@ -304,9 +304,9 @@ def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
             new_scores = []
             for program in new_programs:                
                 partial_values = []
-                for training_array in task:
-                    input_array = training_array["train"][0]["input"]
-                    output_array = training_array["train"][0]["output"]
+                for training_array in task["train"]:
+                    input_array = training_array["input"]
+                    output_array = training_array["output"]
                     if evaluate_prediction(input_array, output_array, program):
                         partial_values.append(1)
                     else:
