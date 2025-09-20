@@ -81,7 +81,6 @@ def main():
 
     llm = LLM(
         model="openai/gpt-oss-20b",
-        device="cuda",               # make it explicit on NVIDIA
         trust_remote_code=True,
     )
 
