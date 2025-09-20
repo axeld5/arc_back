@@ -12,6 +12,10 @@ from openai_harmony import (
 from vllm import LLM, SamplingParams
 from loader import load_training_problem, list_training_problems
 
+
+def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
+    return [' '.join(map(str, row)) for row in grid]
+
 def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
     for i, elem in enumerate(problem['train']):
