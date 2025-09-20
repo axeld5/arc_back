@@ -316,10 +316,10 @@ def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
                     print(f"✓ Solved problem {i}")
                     library.append(program)
                     solved.append(task)
-                    break
                 new_scores.append(score)
-            chosen_index = new_scores.index(max(new_scores))
-            library.append(generated_programs[chosen_index])            
+            if new_scores:
+                chosen_index = new_scores.index(max(new_scores))
+                library.append(generated_programs[chosen_index])            
     return library, solved
 
 if __name__ == "__main__":
