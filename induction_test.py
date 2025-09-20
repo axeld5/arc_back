@@ -19,7 +19,7 @@ if os.getenv("HF_TOKEN"):
 
 PROMPT_INDUCTION = (
     "Solve the following problem\n\n"
-    "Given input/output pairs:\n{input}\n"
+    "Given input/output pairs:\n{io_pairs}\n"
     "Write a python program that solves the problem. Name your final function 'p'.\n"
     "OUTPUT:"
 )
@@ -109,7 +109,7 @@ def _format_induction_prompt(problem) -> str:
         pb_input ="\n".join(grid_to_row_strings(elem['input']))
         pb_output = "\n".join(grid_to_row_strings(elem['output']))
         input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
-    return PROMPT_INDUCTION.format(input=input_output_pairs)
+    return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
 def _format_code_solution(problem_id):
     reasoning_path = f"reasoning_files/{problem_id}.txt"

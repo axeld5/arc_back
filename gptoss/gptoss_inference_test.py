@@ -10,18 +10,40 @@ from openai_harmony import (
 )
  
 from vllm import LLM, SamplingParams
- 
+
+def _format_induction_prompt(problem) -> str:
+    input_output_pairs = ""
+    for i, elem in enumerate(problem['train']):
+        pb_input ="\n".join(grid_to_row_strings(elem['input']))
+        pb_output = "\n".join(grid_to_row_strings(elem['output']))
+        input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
+    return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
+
+train_problems = {"conversations":[], "arrays":[]}
+data = list_training_problems()
+for problem_id in data[:10]:
+    print(f"Processing problem {problem_id}")
+    problem = load_training_problem(problem_id)
+    user_content = {"role":"user", "content":""}
+    user_content["content"] = _format_induction_prompt(problem)
+    assistant_content = {"role":"assistant", "content":""}
+    assistant_content["content"] = _format_code_solution(problem_id)
+    train_problems["conversations"].append([user_content, assistant_content])
+    train_problems["arrays"].append(problem["train"])
+
 # --- 1) Render the prefill with Harmony ---
 encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
- 
+
+prompt = train_problems["conversations"][0][0]["content"]
+print(prompt)
 convo = Conversation.from_messages(
     [
         Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
         Message.from_role_and_content(
             Role.DEVELOPER,
-            DeveloperContent.new().with_instructions("Always respond in riddles"),
+            DeveloperContent.new(),
         ),
-        Message.from_role_and_content(Role.USER, "What is the weather like in SF?"),
+        Message.from_role_and_content(Role.USER, prompt),
     ]
 )
  
@@ -32,15 +54,18 @@ stop_token_ids = encoding.stop_tokens_for_assistant_actions()
  
 # --- 2) Run vLLM with prefill ---
 llm = LLM(
-    model="openai/gpt-oss-120b",
+    model="openai/gpt-oss-20b",
     trust_remote_code=True,
 )
  
 sampling = SamplingParams(
-    max_tokens=128,
+    max_tokens=4096,
     temperature=1,
     stop_token_ids=stop_token_ids,
 )
+
+import time
+start_time = time.time()
  
 outputs = llm.generate(
     prompt_token_ids=[prefill_ids],   # batch of size 1
@@ -58,4 +83,8 @@ entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASS
 # 'entries' is a sequence of structured conversation entries (assistant messages, tool calls, etc.).
 for message in entries:
     print(f"{json.dumps(message.to_dict())}")
+
+
+end_time = time.time()
+print(f"Time taken: {end_time - start_time} seconds")
 
