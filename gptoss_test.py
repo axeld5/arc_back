@@ -18,6 +18,7 @@ dataset = load_dataset("HuggingFaceH4/Multilingual-Thinking", split="train")
 messages = dataset[0]["messages"]
 conversation = tokenizer.apply_chat_template(messages, tokenize=False)
 
+
 quantization_config = Mxfp4Config(dequantize=True)
 model_kwargs = dict(
     attn_implementation="eager",
@@ -68,7 +69,7 @@ training_args = SFTConfig(
     logging_steps=1,
     per_device_train_batch_size=4,
     gradient_accumulation_steps=4,
-    max_length=4096,
+    max_length=512,
     warmup_ratio=0.03,
     lr_scheduler_type="cosine_with_min_lr",
     lr_scheduler_kwargs={"min_lr_rate": 0.1},

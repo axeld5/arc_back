@@ -10,3 +10,4 @@ git clone https://github.com/axeld5/arc_back.git && cd arc_back
 sudo snap install astral-uv --classic && sudo uv sync
 sudo uv pip install --force-reinstall vllm --torch-backend=auto
 sudo uv pip install unsloth unsloth-zoo
+sudo uv pip install triton && sudo uv pip install kernels
