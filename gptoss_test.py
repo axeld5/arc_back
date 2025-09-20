@@ -3,6 +3,15 @@ from transformers import AutoModelForCausalLM, Mxfp4Config, AutoTokenizer
 from datasets import load_dataset
 from peft import LoraConfig, get_peft_model
 from trl import SFTConfig, SFTTrainer
+from dotenv import load_dotenv
+from huggingface_hub import login
+import os
+load_dotenv()
+if os.getenv("HF_TOKEN"):
+    try:
+        login(os.getenv("HF_TOKEN"))
+    except Exception:
+        pass
 
 tokenizer = AutoTokenizer.from_pretrained("openai/gpt-oss-20b")
 dataset = load_dataset("HuggingFaceH4/Multilingual-Thinking", split="train")
