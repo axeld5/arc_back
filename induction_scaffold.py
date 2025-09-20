@@ -329,7 +329,6 @@ if __name__ == "__main__":
     library = make_train_library(model, library)
     solved = list_solved_problems(library, tasks)
     library, solved = make_round(model, tasks, library, solved)
-    solved = list_solved_problems(library, tasks)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
     #print(f"Solved: {solved}")
