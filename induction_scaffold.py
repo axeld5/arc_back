@@ -112,10 +112,9 @@ def get_program_generation_prompt(problem):
     input_output_pairs = get_input_output_pairs(problem)
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
-def convert_to_gptoss_prompt(problem_list):
+def convert_to_gptoss_prompt(problem_list, encoding):
     prefill_list = []
     for problem in problem_list:
-        encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
         prompt = get_program_generation_prompt(problem)
         convo = Conversation.from_messages(
             [
@@ -130,7 +129,8 @@ def convert_to_gptoss_prompt(problem_list):
     return prefill_list, stop_token_ids
 
 def infer_initial_programs(model, problem_list):
-    prefill_list, stop_token_ids = convert_to_gptoss_prompt(problem_list)
+    encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    prefill_list, stop_token_ids = convert_to_gptoss_prompt(problem_list, encoding)
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
     sampling = SamplingParams(
         max_tokens=4096,
@@ -205,9 +205,32 @@ def make_program_generation_prompt(task_log, primitive):
 def generate_new_program(model, task_log, primitive):
     pass
 
-def make_round(model, library, gen_num=5, round_num=2):
-    tasks = [load_training_problem(problem_id) for problem_id in list_training_problems()]
+def list_solved_problems(library):
     solved = []
+    for task in tasks:
+        scores = []
+        task_logs = []
+        for program in library:
+            partial_values = []
+            task_log = ""
+            for training_array in task:
+                input_array = training_array["train"][0]["input"]
+                output_array = training_array["train"][0]["output"]
+                value, log = evaluate_prediction(input_array, output_array, program, get_logs=True)
+                task_log += "\n" + log
+                if value:
+                    partial_values.append(1)
+                else:
+                    partial_values.append(0)
+            score = sum(partial_values) / len(partial_values)
+            if score == 1:
+                print(f"✓ Solved problem {task} with initial library")
+                solved.append(task)
+    return solved
+
+def make_round(model, library, solved,gen_num=5, round_num=2):
+    tasks = [load_training_problem(problem_id) for problem_id in list_training_problems()]
+    solved = list_solved_problems(library)
     for round in range(round_num):
         print(f"Round {round}")
         for task in tasks:
@@ -227,7 +250,12 @@ def make_round(model, library, gen_num=5, round_num=2):
                         partial_values.append(1)
                     else:
                         partial_values.append(0)
-                scores.append(sum(partial_values) / len(partial_values))
+                score = sum(partial_values) / len(partial_values)
+                if score == 1:
+                    solved.append(task)
+                    print(f"✓ Solved problem {task} with additional program")
+                    break
+                scores.append(score)
                 task_logs.append(task_log)
             chosen_index = scores.index(max(scores))
             primitive = library[chosen_index]
