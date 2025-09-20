@@ -200,7 +200,7 @@ def make_program_generation_prompt(primitive, task_log):
     OUTPUT:
     """
 
-def convert_to_proggen_prompt(task_log, primitive, num_gen):
+def convert_to_proggen_prompt(primitive, task_log, num_gen):
     prefill_list = []
     for _ in range(num_gen):
         prompt = make_program_generation_prompt(primitive, task_log)
@@ -216,9 +216,9 @@ def convert_to_proggen_prompt(task_log, primitive, num_gen):
     stop_token_ids = encoding.stop_tokens_for_assistant_actions()
     return prefill_list, stop_token_ids
 
-def generate_new_program(model, task_log, primitive, num_gen=5):
+def generate_new_program(model, primitive, task_log, num_gen=5):
     encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
-    prefill_list, stop_token_ids = convert_to_proggen_prompt(task_log, primitive, 5)
+    prefill_list, stop_token_ids = convert_to_proggen_prompt(primitive, task_log, num_gen)
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
     sampling = SamplingParams(
         max_tokens=4096,
@@ -294,7 +294,7 @@ def make_round(model, library, solved,gen_num=5, round_num=2):
             chosen_index = scores.index(max(scores))
             primitive = library[chosen_index]
             task_log = task_logs[chosen_index]
-            generated_programs = generate_new_program(model, task_log, primitive, gen_num)
+            generated_programs = generate_new_program(model, primitive, task_log, gen_num)
             new_programs = []
             for program in generated_programs:
                 program = extract_program(program)
