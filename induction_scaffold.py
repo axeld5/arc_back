@@ -49,7 +49,7 @@ def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=F
                     print(f"Function 'p' not found in generated code")
                 signal.alarm(0)
                 if get_logs:
-                    return False, output_array
+                    return False, format_comparison(output_array, output_array)
                 return False
             predicted_output = local_namespace['p'](input_array)
             signal.alarm(0)
@@ -57,7 +57,7 @@ def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=F
                 if debug:
                     print(f"✓ Correct prediction for input/output pair")
                 if get_logs:
-                    return True, output_array
+                    return True, format_comparison(output_array, output_array)
                 return True
             else:
                 if debug:
@@ -73,7 +73,7 @@ def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=F
             if debug:
                 print(f"Code execution timed out after 90 seconds")
             if get_logs:
-                return False, output_array
+                return False, format_comparison(output_array, output_array)
             return False
     except Exception as e:
         signal.alarm(0)
@@ -81,7 +81,7 @@ def evaluate_prediction(input_array, output_array, code, get_logs=False, debug=F
             print(f"Error executing generated code: {e}")
             print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         if get_logs:
-            return False, output_array
+            return False, format_comparison(output_array, output_array)
         return False
 
 def get_model():
