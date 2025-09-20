@@ -10,6 +10,7 @@ from openai_harmony import (
 )
  
 from vllm import LLM, SamplingParams
+from vllm.inputs import TokensPrompt
 from loader import load_training_problem, list_training_problems
 from typing import *
 
@@ -86,9 +87,10 @@ def main():
 
     import time
     start_time = time.time()
+    prompts = [TokensPrompt(prompt_token_ids=prefill_ids)]
 
     outputs = llm.generate(
-        inputs=[{"prompt_token_ids": prefill_ids}],  # batch size 1
+        inputs=prompts,  # batch size 1
         sampling_params=sampling,
     )
 
