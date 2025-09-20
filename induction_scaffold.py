@@ -1,5 +1,16 @@
 import signal
 from loader import load_training_problem, list_training_problems
+from openai_harmony import (
+    HarmonyEncodingName,
+    load_harmony_encoding,
+    Conversation,
+    Message,
+    Role,
+    SystemContent,
+    DeveloperContent,
+)
+from vllm import LLM, SamplingParams
+from vllm.inputs import TokensPrompt
 
 def format_comparison(output_array, predicted_output):
     max_rows = max(len(output_array), len(predicted_output) if predicted_output else 0)
