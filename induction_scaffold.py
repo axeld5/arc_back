@@ -231,14 +231,15 @@ def generate_new_program(model, primitive, task_log, num_gen=5):
         prompts,
         sampling_params=sampling,
     )
-    gen = outputs[0].outputs[0]
-    output_tokens = gen.token_ids
-    entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
     response = []
-    for message in entries:
-        message = message.to_dict()
-        if message["role"] == "assistant":
-            response.append(message["content"][0]["text"])
+    for output in outputs:
+        for gen in output.outputs:
+            output_tokens = gen.token_ids
+            entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+            for message in entries:
+                message = message.to_dict()
+                if message["role"] == "assistant":
+                    response.append(message["content"][0]["text"])
     return response
 
 def list_solved_problems(library, tasks):
