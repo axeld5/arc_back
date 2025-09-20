@@ -171,16 +171,14 @@ def extract_program(response, debug=False):
 def make_train_library(model, library):
     loaded_training_arrays = [load_training_problem(problem_id) for problem_id in list_training_problems()]
     initial_programs = infer_initial_programs(model, loaded_training_arrays)
-    for training_array in loaded_training_arrays:
-        input_array = training_array["train"][0]["input"]
-        output_array = training_array["train"][0]["output"]
-        program = extract_program(model)
+    for initial_program in initial_programs:
+        program = extract_program(initial_program)
         if program:
             library.append(program)
     print(f"Library size: {len(library)}")
     return library
 
-def make_program_generation_prompt(task_log, primitive):
+def make_program_generation_prompt(primitive, task_log):
     return f"""
     You are a program refinement assistant. Your task is to fix a Python program that is not working correctly.
 
@@ -202,8 +200,44 @@ def make_program_generation_prompt(task_log, primitive):
     OUTPUT:
     """
 
-def generate_new_program(model, task_log, primitive):
-    pass
+def convert_to_proggen_prompt(task_log, primitive, num_gen):
+    prefill_list = []
+    for _ in range(num_gen):
+        prompt = make_program_generation_prompt(primitive, task_log)
+        convo = Conversation.from_messages(
+            [
+                Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
+                Message.from_role_and_content(Role.DEVELOPER, DeveloperContent.new()),
+                Message.from_role_and_content(Role.USER, prompt),
+            ]
+        )
+        prefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
+        prefill_list.append(prefill_ids)
+    stop_token_ids = encoding.stop_tokens_for_assistant_actions()
+    return prefill_list, stop_token_ids
+
+def generate_new_program(model, task_log, primitive, num_gen=5):
+    encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    prefill_list, stop_token_ids = convert_to_proggen_prompt(task_log, primitive, 5)
+    prompts = [TokensPrompt(prompt_token_ids=prefill_ids) for prefill_ids in prefill_list]
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+        stop_token_ids=stop_token_ids,
+    )
+    outputs = model.generate(
+        prompts,
+        sampling_params=sampling,
+    )
+    gen = outputs[0].outputs[0]
+    output_tokens = gen.token_ids
+    entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+    response = []
+    for message in entries:
+        message = message.to_dict()
+        if message["role"] == "assistant":
+            response.append(message["content"][0]["text"])
+    return response
 
 def list_solved_problems(library):
     solved = []
@@ -260,12 +294,14 @@ def make_round(model, library, solved,gen_num=5, round_num=2):
             chosen_index = scores.index(max(scores))
             primitive = library[chosen_index]
             task_log = task_logs[chosen_index]
-            generated_programs = []
-            for _ in range(gen_num):
-                programs = generate_new_program(model, task_log, primitive)
-                generated_programs.append(programs)
+            generated_programs = generate_new_program(model, task_log, primitive, gen_num)
+            new_programs = []
+            for program in generated_programs:
+                program = extract_program(program)
+                if program:
+                    new_programs.append(program)
             new_scores = []
-            for program in generated_programs:                
+            for program in new_programs:                
                 partial_values = []
                 for training_array in task:
                     input_array = training_array["train"][0]["input"]
@@ -289,7 +325,7 @@ if __name__ == "__main__":
     model = get_model()
     library = []
     library = make_train_library(model, library)
-    #library, solved = make_round(model, library)
+    library, solved = make_round(model, library)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
     print(f"Solved: {solved}")
