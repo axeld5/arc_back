@@ -32,6 +32,22 @@ def _format_induction_prompt(problem) -> str:
         input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
+def _format_code_solution(problem_id):
+    reasoning_path = f"reasoning_files/{problem_id}.txt"
+    with open(reasoning_path, 'r', encoding='utf-8') as f:
+        reasoning = f.read()
+    solver_path = f"remapped_solvers/{problem_id}.py"
+    with open(solver_path, 'r', encoding='utf-8') as f:
+        solver_code = f.read()
+    solution = f"""<think>
+    {reasoning}
+    </think>
+    Here's the code that solves the problem:
+    ```python
+    {solver_code}
+    ```"""
+    return solution
+
 train_problems = {"conversations":[], "arrays":[]}
 data = list_training_problems()
 for problem_id in data[:10]:
