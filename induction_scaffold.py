@@ -330,5 +330,4 @@ if __name__ == "__main__":
     #library, solved = make_round(model, tasks, library, solved)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
-    print(f"Solved: {solved}")
-    print(f"Library: {library}")
+    #print(f"Solved: {solved}")
