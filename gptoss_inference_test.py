@@ -86,6 +86,7 @@ def main():
 
     import time
     start_time = time.time()
+    from vllm.inputs import TokensPrompt
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids)]
 
     outputs = llm.generate(
