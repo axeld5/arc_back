@@ -1,1 +1,0 @@
-PROMPT_V1 = """{train_pairs}\nI\n{test_input}\nP\n{test_output_placeholder}\nO\n"""
