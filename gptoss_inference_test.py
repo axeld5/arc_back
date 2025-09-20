@@ -10,7 +10,6 @@ from openai_harmony import (
 )
  
 from vllm import LLM, SamplingParams
-from vllm.inputs import TokensPrompt
 from loader import load_training_problem, list_training_problems
 from typing import *
 
@@ -101,8 +100,8 @@ def main():
     # --- 3) Parse back to Harmony entries ---
     entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
     for message in entries:
-        if message["role"] == "assistant":
-            print(message["content"])
+        if message.role == "assistant":
+            print(message.content)
 
     print(f"Time taken: {time.time() - start_time} seconds")
 
