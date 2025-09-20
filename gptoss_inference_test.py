@@ -48,71 +48,69 @@ def _format_code_solution(problem_id):
     ```"""
     return solution
 
-train_problems = {"conversations":[], "arrays":[]}
-data = list_training_problems()
-for problem_id in data[:10]:
-    print(f"Processing problem {problem_id}")
-    problem = load_training_problem(problem_id)
-    user_content = {"role":"user", "content":""}
-    user_content["content"] = _format_induction_prompt(problem)
-    assistant_content = {"role":"assistant", "content":""}
-    assistant_content["content"] = _format_code_solution(problem_id)
-    train_problems["conversations"].append([user_content, assistant_content])
-    train_problems["arrays"].append(problem["train"])
+def main():
+    train_problems = {"conversations": [], "arrays": []}
+    data = list_training_problems()
+    for problem_id in data[:10]:
+        print(f"Processing problem {problem_id}")
+        problem = load_training_problem(problem_id)
+        user_content = {"role": "user", "content": _format_induction_prompt(problem)}
+        assistant_content = {"role": "assistant", "content": _format_code_solution(problem_id)}
+        train_problems["conversations"].append([user_content, assistant_content])
+        train_problems["arrays"].append(problem["train"])
 
-# --- 1) Render the prefill with Harmony ---
-encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    # --- 1) Render the prefill with Harmony ---
+    encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    prompt = train_problems["conversations"][0][0]["content"]
+    convo = Conversation.from_messages(
+        [
+            Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
+            Message.from_role_and_content(Role.DEVELOPER, DeveloperContent.new()),
+            Message.from_role_and_content(Role.USER, prompt),
+        ]
+    )
+    prefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
+    stop_token_ids = encoding.stop_tokens_for_assistant_actions()
 
-prompt = train_problems["conversations"][0][0]["content"]
-convo = Conversation.from_messages(
-    [
-        Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
-        Message.from_role_and_content(
-            Role.DEVELOPER,
-            DeveloperContent.new(),
-        ),
-        Message.from_role_and_content(Role.USER, prompt),
-    ]
-)
- 
-prefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
- 
-# Harmony stop tokens (pass to sampler so they won't be included in output)
-stop_token_ids = encoding.stop_tokens_for_assistant_actions()
- 
-# --- 2) Run vLLM with prefill ---
-llm = LLM(
-    model="openai/gpt-oss-20b",
-    trust_remote_code=True,
-)
- 
-sampling = SamplingParams(
-    max_tokens=4096,
-    temperature=1,
-    stop_token_ids=stop_token_ids,
-)
+    # --- 2) Run vLLM with prefill ---
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+        stop_token_ids=stop_token_ids,
+    )
 
-import time
-start_time = time.time()
- 
-outputs = llm.generate(
-    prompt_token_ids=[prefill_ids],   # batch of size 1
-    sampling_params=sampling,
-)
- 
-# vLLM gives you both text and token IDs
-gen = outputs[0].outputs[0]
-text = gen.text
-output_tokens = gen.token_ids  # <-- these are the completion token IDs (no prefill)
- 
-# --- 3) Parse the completion token IDs back into structured Harmony messages ---
-entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
- 
-# 'entries' is a sequence of structured conversation entries (assistant messages, tool calls, etc.).
-for message in entries:
-    print(f"{json.dumps(message.to_dict())}")
+    llm = LLM(
+        model="openai/gpt-oss-20b",
+        device="cuda",               # make it explicit on NVIDIA
+        trust_remote_code=True,
+    )
 
+    import time
+    start_time = time.time()
 
-end_time = time.time()
-print(f"Time taken: {end_time - start_time} seconds")
+    outputs = llm.generate(
+        prompt_token_ids=[prefill_ids],  # batch size 1
+        sampling_params=sampling,
+    )
 
+    gen = outputs[0].outputs[0]
+    text = gen.text
+    output_tokens = gen.token_ids
+
+    # --- 3) Parse back to Harmony entries ---
+    entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+    for message in entries:
+        import json
+        print(json.dumps(message.to_dict()))
+
+    print(f"Time taken: {time.time() - start_time} seconds")
+
+if __name__ == "__main__":
+    # vLLM will also set this, but doing it here is fine and explicit.
+    import torch.multiprocessing as mp
+    try:
+        mp.set_start_method("spawn", force=True)
+    except RuntimeError:
+        # start method already set – safe to ignore
+        pass
+    main()
