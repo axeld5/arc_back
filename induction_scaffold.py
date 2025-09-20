@@ -141,7 +141,7 @@ def infer_initial_programs(model, problem_list):
         prompts,
         sampling_params=sampling,
     )
-    text = gen.text
+    gen = outputs[0].outputs[0]
     output_tokens = gen.token_ids
     entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
     response = []
