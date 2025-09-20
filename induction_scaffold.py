@@ -141,8 +141,10 @@ def infer_initial_programs(model, problem_list):
         prompts,
         sampling_params=sampling,
     )
-    for output in outputs:
-        gen = output.outputs[0]
+    print(outputs[0].outputs)
+    print(len(outputs[0].outputs))
+    for output in outputs[0].outputs:
+        gen = output
         output_tokens = gen.token_ids
         entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
         response = []
@@ -241,7 +243,7 @@ def generate_new_program(model, primitive, task_log, num_gen=5):
             response.append(message["content"][0]["text"])
     return response
 
-def list_solved_problems(library):
+def list_solved_problems(library, tasks):
     solved = []
     for task in tasks:
         scores = []
@@ -264,8 +266,7 @@ def list_solved_problems(library):
                 solved.append(task)
     return solved
 
-def make_round(model, library, solved, gen_num=5, round_num=2):
-    tasks = [load_training_problem(problem_id) for problem_id in list_training_problems()]
+def make_round(model, tasks, library, solved, gen_num=5, round_num=2):
     for round in range(round_num):
         print(f"Round {round}")
         for task in tasks:
@@ -324,10 +325,11 @@ def make_round(model, library, solved, gen_num=5, round_num=2):
 
 if __name__ == "__main__":
     model = get_model()
+    tasks = [load_training_problem(problem_id) for problem_id in list_training_problems()]
     library = []
     library = make_train_library(model, library)
-    solved = list_solved_problems(library)
-    #library, solved = make_round(model, library, solved)
+    solved = list_solved_problems(library, tasks)
+    #library, solved = make_round(model, tasks, library, solved)
     print(f"Solved {len(solved)} problems")
     print(f"Library size: {len(library)}")
     print(f"Solved: {solved}")
