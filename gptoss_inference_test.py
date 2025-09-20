@@ -90,7 +90,7 @@ def main():
     prompts = [TokensPrompt(prompt_token_ids=prefill_ids)]
 
     outputs = llm.generate(
-        inputs=prompts,  # batch size 1
+        prompts,  # batch size 1
         sampling_params=sampling,
     )
 
