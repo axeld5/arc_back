@@ -88,7 +88,7 @@ def main():
     start_time = time.time()
 
     outputs = llm.generate(
-        prompt_token_ids=[prefill_ids],  # batch size 1
+        inputs=[{"prompt_token_ids": prefill_ids}],  # batch size 1
         sampling_params=sampling,
     )
 
