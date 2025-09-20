@@ -11,6 +11,7 @@ from openai_harmony import (
  
 from vllm import LLM, SamplingParams
 from loader import load_training_problem, list_training_problems
+from typing import *
 
 
 def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
