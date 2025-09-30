@@ -155,16 +155,16 @@ def get_data(max_samples: Optional[int] = None):
     with open('test_problems.json', 'w') as f:
         json.dump(test_problems, f)
 
-def config_data_for_sft(dataset_path: str):
+def config_data_for_sft(dataset_path: str, tokenizer):
     with open(dataset_path, 'r') as f:
         data = json.load(f)
-    data = tokenizer.apply_chat_template(
-        raw["conversations"],
+    formatted_data = tokenizer.apply_chat_template(
+        data["conversations"],
         tokenize = False,
     )
-    data = pd.Series(data)
-    data.name = "text"
-    dataset = Dataset.from_pandas(pd.DataFrame(data))
+    formatted_data = pd.Series(formatted_data)
+    formatted_data.name = "text"
+    dataset = Dataset.from_pandas(pd.DataFrame(formatted_data))
     return dataset
 
 def run_sft(
@@ -189,7 +189,7 @@ def run_sft(
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
         random_state = 3407,
     )
-    dataset = config_data_for_sft(dataset_path)
+    dataset = config_data_for_sft(dataset_path, tokenizer)
     args = SFTConfig(
         output_dir=output_dir,
         dataset_text_field = "text",
@@ -404,9 +404,26 @@ def run_rl(
         pass
     return os.path.join(output_dir, "final")
 
-def inference_loop(model_path: str):
+def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Coder-7B-Instruct"):
+    from peft import PeftModel
+    
+    # Load base model and tokenizer
+    base_model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = base_model_name,
+        max_seq_length = 20000,
+        dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8 else torch.float16,
+        load_in_4bit = True,
+    )
+    
+    # Load fine-tuned model
     model = PeftModel.from_pretrained(base_model, model_path)
     FastLanguageModel.for_inference(model)
+    
+    # Load data
+    with open("data.json") as f:
+        raw = json.load(f)
+    
+    total_valid = 0
     for k in range(len(raw["conversations"])):
         print(f"Processing problem {k}")
         sample_data = raw["conversations"][k][0]["content"]
