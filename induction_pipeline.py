@@ -345,7 +345,7 @@ def run_rl(
     learning_rate: float = 5e-4,
     num_train_epochs: int = 1,
     grad_accum: int = 4,
-    num_generations: int = 8,
+    num_generations: int = 4,
 ):
     max_seq_length = 30000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
@@ -374,16 +374,16 @@ def run_rl(
         include_stop_str_in_output = True,
     )
     training_args = GRPOConfig(
-        #use_vllm=True,
+        use_vllm=True,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
         output_dir=output_dir,
-        per_device_train_batch_size=4,  # Reduced from 8 to help with memory
+        per_device_train_batch_size=2,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
-        max_steps=500,
+        max_steps=100,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         logging_steps=10,
@@ -391,8 +391,8 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=num_generations,
-        max_prompt_length=12000,  # Reduced from 20000
-        max_completion_length=6000,  # Reduced from 8192 (total ~18k < 20k model limit)
+        max_prompt_length=20000,  # Reduced from 20000
+        max_completion_length=4000,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
