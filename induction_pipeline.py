@@ -66,7 +66,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
         
         # Set up timeout for code execution
         signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(90)  # 1 minute 30 seconds timeout
+        signal.alarm(30)  # 1 minute 30 seconds timeout
         
         try:
             local_namespace = {}
