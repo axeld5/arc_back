@@ -341,8 +341,8 @@ def run_rl(
     output_dir: str = "qwen3_4b_singled_out_rl",
     learning_rate: float = 5e-4,
     num_train_epochs: int = 1,
-    grad_accum: int = 2,
-    num_generations: int = 32,
+    grad_accum: int = 4,
+    num_generations: int = 8,
 ):
     max_seq_length = 30000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
@@ -368,12 +368,10 @@ def run_rl(
     
     training_args = GRPOConfig(
         use_vllm=True,
-        vllm_device="cuda",
-        vllm_gpu_memory_utilization=0.3,  # Adjust based on available VRAM
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
-        per_device_train_batch_size=1,
+        per_device_train_batch_size=32,
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
