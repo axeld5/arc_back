@@ -376,7 +376,7 @@ def run_rl(
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
         output_dir=output_dir,
-        per_device_train_batch_size=8,
+        per_device_train_batch_size=4,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
@@ -388,8 +388,8 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=num_generations,
-        max_prompt_length=20000,
-        max_completion_length=8192,
+        max_prompt_length=12000,  # Reduced from 20000
+        max_completion_length=6000,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
