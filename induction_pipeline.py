@@ -185,7 +185,7 @@ def run_sft(
     model = FastLanguageModel.get_peft_model(
         model,
         r = 256,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
-        target_modules = "all-linear",
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
         random_state = 3407,
     )
@@ -355,7 +355,7 @@ def run_rl(
     model = FastLanguageModel.get_peft_model(
         model,
         r = 8,
-        target_modules = "all-linear",
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth"
     )
     with open("data.json") as f:
