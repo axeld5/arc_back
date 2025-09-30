@@ -460,7 +460,7 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
 
 
 if __name__ == "__main__":
-    get_data()
-    sft_model_save_path, sft_merged_save_path = run_sft("data.json")
+    #get_data()
+    #sft_model_save_path, sft_merged_save_path = run_sft("data.json")
     model_save_path = run_rl(sft_merged_save_path)
     inference_loop(model_save_path)
