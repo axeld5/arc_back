@@ -345,12 +345,15 @@ def run_rl(
     num_generations: int = 32,
 ):
     max_seq_length = 30000
+    use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
+    
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
+        dtype = compute_dtype,
         load_in_4bit = False,
-        fast_inference = True,
-        gpu_memory_utilization = 0.2, # Reduce if out of memory
+        # fast_inference = True,  # REMOVED: This conflicts with vLLM training mode
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -362,13 +365,11 @@ def run_rl(
         raw = json.load(f)
     converted = convert_conversations(raw)
     dataset = Dataset.from_list(converted)  
-    from vllm import SamplingParams
-    vllm_sampling_params = SamplingParams(
-        stop = [tokenizer.eos_token],
-        include_stop_str_in_output = True,
-    )
+    
     training_args = GRPOConfig(
         use_vllm=True,
+        vllm_device="cuda",
+        vllm_gpu_memory_utilization=0.3,  # Adjust based on available VRAM
         importance_sampling_level="sequence",
         loss_type="grpo",
         output_dir=output_dir,
