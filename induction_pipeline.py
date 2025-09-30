@@ -229,8 +229,7 @@ def run_sft(
         pass    
     return model_save_path, merged_save_path
 
-
-
+"""
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = "unsloth/Qwen2.5-Coder-3B-Instruct",
@@ -245,7 +244,6 @@ with open("data.json") as f:
     raw = json.load(f)
 
 total_valid = 0
-"""
 for k in range(len(raw["conversations"])):
     print(f"Processing problem {k}")
     sample_data = raw["conversations"][k][0]["content"]
