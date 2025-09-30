@@ -353,6 +353,7 @@ def run_rl(
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = True,
+        fast_inference = True, # Enable vLLM fast inference
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -364,11 +365,16 @@ def run_rl(
         raw = json.load(f)
     converted = convert_conversations(raw)
     dataset = Dataset.from_list(converted)  
-    
+    from vllm import SamplingParams
+    vllm_sampling_params = SamplingParams(
+        stop = [tokenizer.eos_token],
+        include_stop_str_in_output = True,
+    )
     training_args = GRPOConfig(
         #use_vllm=True,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
+        vllm_sampling_params=vllm_sampling_params,
         output_dir=output_dir,
         per_device_train_batch_size=8,
         gradient_accumulation_steps=grad_accum,
