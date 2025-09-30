@@ -12,6 +12,9 @@ from trl import SFTConfig, SFTTrainer, GRPOConfig, GRPOTrainer
 from unsloth import FastLanguageModel
 from datasets import Dataset
 
+from unsloth import FastLanguageModel, PatchFastRL
+PatchFastRL("GRPO", FastLanguageModel)
+
 load_dotenv()
 if os.getenv("HF_TOKEN"):
     try:
