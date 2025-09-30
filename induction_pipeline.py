@@ -352,8 +352,7 @@ def run_rl(
         model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
-        load_in_4bit = False,
-        fast_inference = True,
+        load_in_4bit = True,
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -367,9 +366,9 @@ def run_rl(
     dataset = Dataset.from_list(converted)  
     
     training_args = GRPOConfig(
-        use_vllm=True,
-        importance_sampling_level="sequence",
-        loss_type="grpo",
+        #use_vllm=True,
+        #importance_sampling_level="sequence",
+        #loss_type="grpo",
         output_dir=output_dir,
         per_device_train_batch_size=32,
         gradient_accumulation_steps=grad_accum,
