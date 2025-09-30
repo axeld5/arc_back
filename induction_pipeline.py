@@ -1,4 +1,5 @@
 import json
+import pandas as pd
 from typing import *
 from loader import load_training_problem, list_training_problems, load_evaluation_problem, list_evaluation_problems
 
@@ -7,8 +8,9 @@ import os
 import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
-from trl import SFTConfig, SFTTrainer
+from trl import SFTConfig, SFTTrainer, GRPOConfig, GRPOTrainer
 from unsloth import FastLanguageModel
+from datasets import Dataset
 
 load_dotenv()
 if os.getenv("HF_TOKEN"):
@@ -123,87 +125,76 @@ def _format_code_solution(problem_id):
     {solver_code}
     ```"""
     return solution
-"""
-train_problems = {"conversations":[], "arrays":[]}
-data = list_training_problems()
-for problem_id in data[:10]:
-    print(f"Processing problem {problem_id}")
-    problem = load_training_problem(problem_id)
-    user_content = {"role":"user", "content":""}
-    user_content["content"] = _format_induction_prompt(problem)
-    assistant_content = {"role":"assistant", "content":""}
-    assistant_content["content"] = _format_code_solution(problem_id)
-    train_problems["conversations"].append([user_content, assistant_content])
-    train_problems["arrays"].append(problem["train"])
 
-test_problems = {"conversations":[], "arrays":[]}
-eval_data = list_evaluation_problems()
-for problem_id in eval_data:
-    problem = load_evaluation_problem(problem_id)
-    user_content = {"role":"user", "content":""}
-    user_content["content"] = _format_induction_prompt(problem)
-    test_problems["conversations"].append([user_content])
-    test_problems["arrays"].append(problem["train"])
+def get_data(max_samples: Optional[int] = None):
+    train_problems = {"conversations":[], "arrays":[]}
+    data = list_training_problems()
+    if max_samples is None:
+        max_samples = len(data)
+    for problem_id in data[:max_samples]:
+        print(f"Processing problem {problem_id}")
+        problem = load_training_problem(problem_id)
+        user_content = {"role":"user", "content":""}
+        user_content["content"] = _format_induction_prompt(problem)
+        assistant_content = {"role":"assistant", "content":""}
+        assistant_content["content"] = _format_code_solution(problem_id)
+        train_problems["conversations"].append([user_content, assistant_content])
+        train_problems["arrays"].append(problem["train"])
 
-with open('data.json', 'w') as f:
-    json.dump(train_problems, f)
-with open('test_problems.json', 'w') as f:
-    json.dump(test_problems, f)
-"""
+    test_problems = {"conversations":[], "arrays":[]}
+    eval_data = list_evaluation_problems()
+    for problem_id in eval_data:
+        problem = load_evaluation_problem(problem_id)
+        user_content = {"role":"user", "content":""}
+        user_content["content"] = _format_induction_prompt(problem)
+        test_problems["conversations"].append([user_content])
+        test_problems["arrays"].append(problem["train"])
+
+    with open('data.json', 'w') as f:
+        json.dump(train_problems, f)
+    with open('test_problems.json', 'w') as f:
+        json.dump(test_problems, f)
+
+def config_data_for_sft(dataset_path: str):
+    with open(dataset_path, 'r') as f:
+        data = json.load(f)
+    data = tokenizer.apply_chat_template(
+        raw["conversations"],
+        tokenize = False,
+    )
+    data = pd.Series(data)
+    data.name = "text"
+    dataset = Dataset.from_pandas(pd.DataFrame(data))
+    return dataset
 
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen2.5-Coder-3B-Instruct",
-    learning_rate: float = 8e-5,
-    num_train_epochs: int = 100,
-    use_compile: bool = False,
+    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
+    learning_rate: float = 5e-4,
+    num_train_epochs: int = 10,
 ):      
-
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
-
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = base_model,                 # use the arg instead of hardcoding
         max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
-        gpu_memory_utilization = 0.2, # Reduce if out of memory
     )
-
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 32,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is optimized
-        # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
+        r = 256,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
+        target_modules = "all-linear",
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
         random_state = 3407,
-        use_rslora = False,   # We support rank stabilized LoRA
-        loftq_config = None,  # And LoftQ
     )
-    with open("data.json") as f:
-        raw = json.load(f)
-    data = tokenizer.apply_chat_template(
-        raw["conversations"],
-        tokenize = False,
-    )
-    import pandas as pd
-    data = pd.Series(data)
-    data.name = "text"
-    
-    from datasets import Dataset
-    dataset = Dataset.from_pandas(pd.DataFrame(data))
-    dataset = dataset.shuffle(seed = 3407)
-
+    dataset = config_data_for_sft(dataset_path)
     args = SFTConfig(
         output_dir=output_dir,
         dataset_text_field = "text",
-        per_device_train_batch_size = 2,
-        gradient_accumulation_steps = 4, # Use GA to mimic batch size!
+        per_device_train_batch_size = 4,
+        gradient_accumulation_steps = 8, # Use GA to mimic batch size!
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
         warmup_ratio=0.1,
@@ -219,25 +210,26 @@ def run_sft(
         ddp_find_unused_parameters=False,
         max_grad_norm=None,
     )
-    
     trainer = SFTTrainer(
         model=model,
         args=args,
         tokenizer=tokenizer,
         train_dataset=dataset,
     )
-        
     print("[sft] Starting training...")
     trainer.train()
     print("[sft] Saving final adapter...")
-    model.save_pretrained(os.path.join(output_dir, "final"))
+    model_save_path = os.path.join(output_dir, "final")
+    merged_save_path = os.path.join(output_dir, "merged")
+    model.save_pretrained(model_save_path)
     try:
-        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+        tokenizer.save_pretrained(model_save_path)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
     except Exception:
         pass    
-    return os.path.join(output_dir, "final")
+    return model_save_path, merged_save_path
 
-#run_sft("data.json")
+
 
 from unsloth import FastLanguageModel
 base_model, tokenizer = FastLanguageModel.from_pretrained(
@@ -337,7 +329,6 @@ def evaluate_code_validity(
 def convert_conversations(raw_json):
     result = []
     for convo, array_list in zip(raw_json["conversations"], raw_json["arrays"]):
-        # Expecting [ {"role":"user"}, {"role":"assistant"} ]
         user_msg = convo[0]["content"]
         result.append({
             "prompt": [
@@ -348,44 +339,26 @@ def convert_conversations(raw_json):
     return result
 
 def run_rl(
-    #base_model: str,
-    #lora_path: str,
-    #dataset_path: str,
+    sft_merged_save_path: str,
     output_dir: str = "qwen3_4b_singled_out_rl",
-    learning_rate: float = 1e-5,
+    learning_rate: float = 5e-4,
     num_train_epochs: int = 1,
     grad_accum: int = 2,
-    num_generations: int = 4,
+    num_generations: int = 32,
 ):
-    from datasets import Dataset
-    from trl import GRPOConfig, GRPOTrainer
-    from unsloth import FastLanguageModel
-    import torch
-    max_seq_length = 20000 # Can increase for longer reasoning traces
-    lora_rank = 128 # Larger rank = smarter, but slower
-    
+    max_seq_length = 30000
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "qwen3_4b_singled_out_sft/final",
+        model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
-        load_in_4bit = False, # False for LoRA 16bit
-        fast_inference = True, # Enable vLLM fast inference
-        #max_lora_rank = lora_rank,
-        #gpu_memory_utilization = 0.2, # Reduce if out of memory
+        load_in_4bit = False,
+        fast_inference = True,
+        gpu_memory_utilization = 0.2, # Reduce if out of memory
     )
     model = FastLanguageModel.get_peft_model(
-        
         model,
-        r = 32,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
-                        "gate_proj", "up_proj", "down_proj",],
-        lora_alpha = 32,  # Best to choose alpha = rank or rank*2
-        lora_dropout = 0, # Supports any, but = 0 is optimized
-        bias = "none",    # Supports any, but = "none" is optimized
-        # [NEW] "unsloth" uses 30% less VRAM, fits 2x larger batch sizes!
-        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-        random_state = 3407,
-        use_rslora = False,   # We support rank stabilized LoRA
-        loftq_config = None,  # And LoftQ
+        r = 8,
+        target_modules = "all-linear",
+        use_gradient_checkpointing = "unsloth"
     )
     with open("data.json") as f:
         raw = json.load(f)
@@ -396,8 +369,6 @@ def run_rl(
         stop = [tokenizer.eos_token],
         include_stop_str_in_output = True,
     )
-    
-    from trl import GRPOConfig, GRPOTrainer
     training_args = GRPOConfig(
         use_vllm=True,
         importance_sampling_level="sequence",
@@ -414,18 +385,16 @@ def run_rl(
         save_steps=200,
         optim="paged_adamw_8bit",
         report_to="none",
-        num_generations=2,
-        max_prompt_length=30000,
-        max_completion_length=5000,
+        num_generations=num_generations,
+        max_prompt_length=20000,
+        max_completion_length=8192,
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
     trainer = GRPOTrainer(
         model = model,
         processing_class = tokenizer,
-        reward_funcs = [
-            evaluate_code_validity
-        ],
+        reward_funcs = [evaluate_code_validity],
         args = training_args,
         train_dataset = dataset,
     )
@@ -437,39 +406,45 @@ def run_rl(
         pass
     return os.path.join(output_dir, "final")
 
-run_rl()
+def inference_loop(model_path: str):
+    model = PeftModel.from_pretrained(base_model, model_path)
+    FastLanguageModel.for_inference(model)
+    for k in range(len(raw["conversations"])):
+        print(f"Processing problem {k}")
+        sample_data = raw["conversations"][k][0]["content"]
+        messages = [
+            {"role": "user", "content": sample_data},
+        ]
+        arrays = raw["arrays"][k]
+        inputs = tokenizer.apply_chat_template(
+            messages,
+            tokenize = True,
+            add_generation_prompt = True,
+            return_tensors = "pt"
+        ).to("cuda")
+        for p in range(10):
+            outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+            temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
+            generated_tokens = outputs[:, inputs.shape[-1]:]
+            decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
+            code_resolution = decoded[0]
+            cnt = 0
+            for inp_out in arrays:
+                input_array = inp_out["input"]
+                output_array = inp_out["output"]
+                if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
+                    cnt += 1
+            if cnt == len(arrays):
+                print(f"✓ problem {k}")
+                total_valid += 1
+                break
+            else:
+                print(f"✗ problem {k}")
+    print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
-model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_rl/final")
-FastLanguageModel.for_inference(model)
-for k in range(len(raw["conversations"])):
-    print(f"Processing problem {k}")
-    sample_data = raw["conversations"][k][0]["content"]
-    messages = [
-        {"role": "user", "content": sample_data},
-    ]
-    arrays = raw["arrays"][k]
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        tokenize = True,
-        add_generation_prompt = True,
-        return_tensors = "pt"
-    ).to("cuda")
-    for p in range(10):
-        outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-        temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
-        generated_tokens = outputs[:, inputs.shape[-1]:]
-        decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-        code_resolution = decoded[0]
-        cnt = 0
-        for inp_out in arrays:
-            input_array = inp_out["input"]
-            output_array = inp_out["output"]
-            if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
-                cnt += 1
-        if cnt == len(arrays):
-            print(f"✓ problem {k}")
-            total_valid += 1
-            break
-        else:
-            print(f"✗ problem {k}")
-print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
+
+if __name__ == "__main__":
+    get_data()
+    sft_model_save_path, sft_merged_save_path = run_sft("data.json")
+    model_save_path = run_rl(sft_merged_save_path)
+    inference_loop(merged_save_path)
