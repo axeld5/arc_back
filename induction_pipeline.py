@@ -353,7 +353,7 @@ def run_rl(
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = False,
-        # fast_inference = True,  # REMOVED: This conflicts with vLLM training mode
+        fast_inference = True,
     )
     model = FastLanguageModel.get_peft_model(
         model,
