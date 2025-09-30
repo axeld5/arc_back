@@ -370,7 +370,7 @@ def run_rl(
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         output_dir=output_dir,
-        per_device_train_batch_size=32,
+        per_device_train_batch_size=16,
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
