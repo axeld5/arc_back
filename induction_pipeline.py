@@ -29,9 +29,12 @@ PROMPT_INDUCTION = (
     "OUTPUT:"
 )
 
+def array_to_string(arr):
+    return str(arr).replace(' ', '')
+
 def format_comparison(output_array, predicted_output):
-    expected_str = '\n'.join(' '.join(map(str, row)) for row in output_array)
-    got_str = '\n'.join(' '.join(map(str, row)) for row in predicted_output)
+    expected_str = '\n'.join(array_to_string(row) for row in output_array)
+    got_str = '\n'.join(array_to_string(row) for row in predicted_output)
     expected_lines = expected_str.split('\n')
     got_lines = got_str.split('\n')
     max_lines = max(len(expected_lines), len(got_lines))
@@ -44,10 +47,10 @@ def format_comparison(output_array, predicted_output):
 
 def evaluate_prediction(input_array, output_array, response, debug=False):
     import signal
-    
+
     def timeout_handler(signum, frame):
         raise TimeoutError("Code execution timed out")
-    
+
     try:
         start_marker = "```python"
         end_marker = "```"
@@ -63,11 +66,11 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
                 print(f"No closing code block marker found")
             return False
         code = response[start_idx:end_idx].strip()
-        
+
         # Set up timeout for code execution
         signal.signal(signal.SIGALRM, timeout_handler)
         signal.alarm(30)  # 1 minute 30 seconds timeout
-        
+
         try:
             local_namespace = {}
             exec(code, local_namespace)
@@ -78,7 +81,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
                 return False
             predicted_output = local_namespace['p'](input_array)
             signal.alarm(0)  # Cancel the alarm
-            
+
             if predicted_output == output_array:
                 if debug:
                     print(f"✓ Correct prediction for input/output pair")
@@ -94,7 +97,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
             if debug:
                 print(f"Code execution timed out after 90 seconds")
             return False
-            
+
     except Exception as e:
         signal.alarm(0)  # Cancel the alarm
         if debug:
@@ -102,14 +105,11 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
             print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         return False
 
-def grid_to_row_strings(grid: List[List[int]]) -> List[str]:
-    return [' '.join(map(str, row)) for row in grid]
-
 def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
     for i, elem in enumerate(problem['train']):
-        pb_input ="\n".join(grid_to_row_strings(elem['input']))
-        pb_output = "\n".join(grid_to_row_strings(elem['output']))
+        pb_input = array_to_string(elem['input'])
+        pb_output = array_to_string(elem['output'])
         input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
@@ -232,77 +232,16 @@ def run_sft(
         pass    
     return model_save_path, merged_save_path
 
-"""
-from unsloth import FastLanguageModel
-base_model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = "unsloth/Qwen2.5-Coder-3B-Instruct",
-        max_seq_length = 20000,
-        dtype = torch.bfloat16,
-        load_in_4bit = True,
-    )
-from peft import PeftModel
-model = PeftModel.from_pretrained(base_model, "qwen3_4b_singled_out_sft/final")
-FastLanguageModel.for_inference(model)
-with open("data.json") as f:
-    raw = json.load(f)
-
-total_valid = 0
-for k in range(len(raw["conversations"])):
-    print(f"Processing problem {k}")
-    sample_data = raw["conversations"][k][0]["content"]
-    messages = [
-        {"role": "user", "content": sample_data},
-    ]
-    #prompts = [sample_data]*10
-    arrays = raw["arrays"][k]
-    inputs = tokenizer.apply_chat_template(
-        messages,
-        tokenize = True,
-        add_generation_prompt = True,
-        return_tensors = "pt"
-    ).to("cuda")
-    #decoded = llm.generate(prompts, sampling_params)
-    for p in range(5):
-        import signal
-        
-        def timeout_handler(signum, frame):
-            raise TimeoutError("Generation timed out")
-        
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(90)  # 90 second timeout
-        
-        try:
-            outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
-            temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
-            generated_tokens = outputs[:, inputs.shape[-1]:]
-            decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
-            code_resolution = decoded[0]
-            signal.alarm(0)  # Cancel the alarm
-            
-            cnt = 0
-            for inp_out in arrays:
-                input_array = inp_out["input"]
-                output_array = inp_out["output"]
-                if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
-                    cnt += 1
-            if cnt == len(arrays):
-                print(f"✓ problem {k}")
-                total_valid += 1
-                break
-        except TimeoutError:
-            signal.alarm(0)  # Cancel the alarm
-            print(f"⏰ Generation timed out for problem {k}")
-            continue
-        else:
-            print(f"✗ problem {k}")
-print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
-"""
-
 def evaluate_code_validity(
     completions: List[str],
     arrays: List[str],
     **kwargs: Any
 ) -> List[float]:
+    import signal
+    
+    def timeout_handler(signum, frame):
+        raise TimeoutError("Code execution timed out")
+    
     rewards: List[float] = []
     for completion, array_list in zip(completions, arrays, strict=False):
         value = completion[0]["content"]
@@ -317,14 +256,45 @@ def evaluate_code_validity(
         if end_idx == -1:
             rewards.append(-1.0)
             continue
-        for inp_out in array_list:
-            input_array = inp_out["input"]
-            output_array = inp_out["output"]
-            if not evaluate_prediction(input_array, output_array, value):
+        
+        code = value[start_idx:end_idx].strip()
+        
+        # Set up timeout for code execution
+        signal.signal(signal.SIGALRM, timeout_handler)
+        signal.alarm(10)  # 10 second timeout
+        
+        try:
+            all_correct = True
+            for inp_out in array_list:
+                input_array = inp_out["input"]
+                output_array = inp_out["output"]
+                
+                try:
+                    local_namespace = {}
+                    exec(code, local_namespace)
+                    if 'p' not in local_namespace:
+                        all_correct = False
+                        break
+                    predicted_output = local_namespace['p'](input_array)
+                    
+                    if predicted_output != output_array:
+                        all_correct = False
+                        break
+                except Exception:
+                    all_correct = False
+                    break
+            
+            signal.alarm(0)  # Cancel the alarm
+            
+            if all_correct:
+                rewards.append(1.0)
+            else:
                 rewards.append(-0.5)
-                break
-        else:
-            rewards.append(1.0)
+                
+        except TimeoutError:
+            signal.alarm(0)  # Cancel the alarm
+            rewards.append(-1.0)  # Return -1 for timeout
+    
     return rewards
 
 def convert_conversations(raw_json):
@@ -350,7 +320,7 @@ def run_rl(
     max_seq_length = 20000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
-    
+
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
@@ -367,7 +337,7 @@ def run_rl(
     with open("data.json") as f:
         raw = json.load(f)
     converted = convert_conversations(raw)
-    dataset = Dataset.from_list(converted)  
+    dataset = Dataset.from_list(converted)
     from vllm import SamplingParams
     vllm_sampling_params = SamplingParams(
         stop = [tokenizer.eos_token],
@@ -413,7 +383,7 @@ def run_rl(
 
 def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Coder-7B-Instruct"):
     from peft import PeftModel
-    
+
     # Load base model and tokenizer
     base_model, tokenizer = FastLanguageModel.from_pretrained(
         model_name = base_model_name,
@@ -421,15 +391,15 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
         dtype = torch.bfloat16 if torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8 else torch.float16,
         load_in_4bit = True,
     )
-    
+
     # Load fine-tuned model
     model = PeftModel.from_pretrained(base_model, model_path)
     FastLanguageModel.for_inference(model)
-    
+
     # Load data
     with open("data.json") as f:
         raw = json.load(f)
-    
+
     total_valid = 0
     for k in range(len(raw["conversations"])):
         print(f"Processing problem {k}")
@@ -445,7 +415,7 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
             return_tensors = "pt"
         ).to("cuda")
         for p in range(10):
-            outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,  
+            outputs = model.generate(input_ids = inputs, max_new_tokens = 5000,
             temperature = 0.7, top_p = 0.8, top_k = 20, min_p = 0, use_cache = True)
             generated_tokens = outputs[:, inputs.shape[-1]:]
             decoded = tokenizer.batch_decode(generated_tokens, skip_special_tokens=True)
@@ -463,6 +433,9 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
             else:
                 print(f"✗ problem {k}")
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
+
+def vllm_inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Coder-7B-Instruct"):
+    pass
 
 
 if __name__ == "__main__":
