@@ -3,16 +3,15 @@ import pandas as pd
 from typing import *
 from loader import load_training_problem, list_training_problems, load_evaluation_problem, list_evaluation_problems
 
-#import unsloth
+import unsloth
 import os
 import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
-#from trl import SFTConfig, SFTTrainer, GRPOConfig, GRPOTrainer
-#from unsloth import FastLanguageModel, PatchFastRL
-from datasets import Dataset
-
-#PatchFastRL("GRPO", FastLanguageModel)
+from trl import SFTConfig, SFTTrainer, GRPOConfig, GRPOTrainer
+from unsloth import FastLanguageModel, PatchFastRL
+from datasets import Dataset``
+PatchFastRL("GRPO", FastLanguageModel)
 
 load_dotenv()
 if os.getenv("HF_TOKEN"):
@@ -109,7 +108,7 @@ def _format_induction_prompt(problem) -> str:
     for i, elem in enumerate(problem['train']):
         pb_input = array_to_string(elem['input'])
         pb_output = array_to_string(elem['output'])
-        input_output_pairs += f"Input {i+1}:\n{pb_input}\nOutput {i+1}:\n{pb_output}\n\n"
+        input_output_pairs += f"<input_{i+1}> {pb_input} </input_{i+1}> <output_{i+1}> {pb_output} </output_{i+1}>"
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
 def _format_code_solution(problem_id):
@@ -439,7 +438,7 @@ def vllm_inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5
 
 if __name__ == "__main__":
     get_data()
-    #sft_model_save_path, sft_merged_save_path = run_sft("data.json")
-    #sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
-    #model_save_path = run_rl(sft_merged_save_path)
-    #inference_loop(model_save_path)
+    sft_model_save_path, sft_merged_save_path = run_sft("data.json")
+    sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
+    model_save_path = run_rl(sft_merged_save_path)
+    inference_loop(model_save_path)
