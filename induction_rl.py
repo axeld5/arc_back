@@ -1,5 +1,6 @@
 import json
 import os
+os.environ["UNSLOTH_COMPILE_DISABLE"] = "1"
 import unsloth
 import torch
 from typing import List, Any
