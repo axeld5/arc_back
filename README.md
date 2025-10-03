@@ -13,5 +13,7 @@ sudo uv pip install triton && sudo uv pip install kernels
 sudo uv pip install openai-harmony
 sudo uv pip install --force-reinstall vllm --torch-backend=auto
 
-To serve vllm model
+To serve vllm model for RL
 CUDA_VISIBLE_DEVICES=0 sudo uv run vllm serve qwen3_4b_singled_out_sft/merged --tensor-parallel-size 1 --max-model-len 32768
+export CUDA_VISIBLE_DEVICES=0 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run trl vllm-serve --model qwen3_4b_singled_out_sft/merged --tensor- parallel-size 1 --max-model-len 32768
+export CUDA_VISIBLE_DEVICES=1 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run accelerate launch  --num_processes=1  --mixed_precision=bf16 induction_rl.py
