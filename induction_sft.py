@@ -75,6 +75,7 @@ def run_sft(
         model=model,
         args=args,
         train_dataset=dataset,
+        processing_class=tokenizer,
     )
     print("[sft] Starting training...")
     trainer.train()
