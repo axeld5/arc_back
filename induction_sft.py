@@ -1,6 +1,7 @@
 import json
 import pandas as pd
 import os
+import unsloth
 import torch
 from dotenv import load_dotenv
 from huggingface_hub import login
@@ -73,7 +74,6 @@ def run_sft(
     trainer = SFTTrainer(
         model=model,
         args=args,
-        tokenizer=tokenizer,
         train_dataset=dataset,
     )
     print("[sft] Starting training...")

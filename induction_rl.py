@@ -1,5 +1,6 @@
 import json
 import os
+import unsloth
 import torch
 from typing import List, Any
 from dotenv import load_dotenv
