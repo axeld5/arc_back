@@ -197,7 +197,7 @@ def run_sft(
         output_dir=output_dir,
         dataset_text_field = "text",
         per_device_train_batch_size = 4,
-        gradient_accumulation_steps = 8, # Use GA to mimic batch size!
+        gradient_accumulation_steps = 8,
         num_train_epochs=num_train_epochs,
         learning_rate=learning_rate,
         warmup_ratio=0.1,
