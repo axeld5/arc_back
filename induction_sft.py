@@ -1,6 +1,11 @@
 import json
 import pandas as pd
 import os
+
+os.environ["UNSLOTH_DISABLE_FUSED_LOSS"] = "1"
+os.environ["UNSLOTH_DISABLE_FAST_LOSS"] = "1"
+os.environ["UNSLOTH_DISABLE_LOSS_PATCHING"] = "1"
+
 import unsloth
 import torch
 from dotenv import load_dotenv
@@ -15,6 +20,28 @@ if os.getenv("HF_TOKEN"):
         login(os.getenv("HF_TOKEN"))
     except Exception:
         pass
+
+class UnslothFixedTrainer(SFTTrainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        """Fixed compute_loss that handles Unsloth's view tensor issue"""
+        if self.label_smoother is not None and "labels" in inputs:
+            labels = inputs.pop("labels")
+        else:
+            labels = None
+        outputs = model(**inputs)
+        if labels is not None:
+            unwrapped_model = self.accelerator.unwrap_model(model)
+            if hasattr(unwrapped_model, '_get_name') and 'unsloth' in unwrapped_model._get_name().lower():
+                loss = self.label_smoother(outputs, labels, shift_labels=True)
+            else:
+                loss = self.label_smoother(outputs, labels)
+        else:
+            loss = outputs["loss"] if isinstance(outputs, dict) else outputs[0]
+        if hasattr(loss, 'clone'):
+              loss = loss.clone()  # Converts view tensor to independent tensor
+        if self.accelerator.num_processes > 1:
+              loss = loss * self.accelerator.num_processes
+        return (loss, outputs) if return_outputs else loss
 
 def config_data_for_sft(dataset_path: str, tokenizer):
     with open(dataset_path, 'r') as f:
@@ -71,7 +98,7 @@ def run_sft(
         ddp_find_unused_parameters=False,
         max_grad_norm=None,
     )
-    trainer = SFTTrainer(
+    trainer = UnslothFixedTrainer(
         model=model,
         args=args,
         train_dataset=dataset,
