@@ -8,6 +8,7 @@ from huggingface_hub import login
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import FastLanguageModel, PatchFastRL
 from datasets import Dataset
+from urllib.parse import urlparse
 
 PatchFastRL("GRPO", FastLanguageModel)
 vllm_url = "http://127.0.0.1:8000"  # or read from argparse/env
