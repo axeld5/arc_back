@@ -10,6 +10,8 @@ from unsloth import FastLanguageModel, PatchFastRL
 from datasets import Dataset
 
 PatchFastRL("GRPO", FastLanguageModel)
+vllm_url = "http://127.0.0.1:8000"  # or read from argparse/env
+p = urlparse(vllm_url)
 
 load_dotenv()
 if os.getenv("HF_TOKEN"):
@@ -135,6 +137,8 @@ def run_rl(
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
+        vllm_server_host=p.hostname,   # "127.0.0.1"
+        vllm_server_port=p.port or 8000,
         output_dir=output_dir,
         per_device_train_batch_size=2,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
