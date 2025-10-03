@@ -113,7 +113,7 @@ def run_rl(
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = True,
-        fast_inference = True, # Enable vLLM fast inference
+        #fast_inference = True, # Enable vLLM fast inference
     )
     model = FastLanguageModel.get_peft_model(
         model,
