@@ -1,0 +1,97 @@
+import json
+import pandas as pd
+import os
+import torch
+from dotenv import load_dotenv
+from huggingface_hub import login
+from trl import SFTConfig, SFTTrainer
+from unsloth import FastLanguageModel
+from datasets import Dataset
+
+load_dotenv()
+if os.getenv("HF_TOKEN"):
+    try:
+        login(os.getenv("HF_TOKEN"))
+    except Exception:
+        pass
+
+def config_data_for_sft(dataset_path: str, tokenizer):
+    with open(dataset_path, 'r') as f:
+        data = json.load(f)
+    formatted_data = tokenizer.apply_chat_template(
+        data["conversations"],
+        tokenize = False,
+    )
+    formatted_data = pd.Series(formatted_data)
+    formatted_data.name = "text"
+    dataset = Dataset.from_pandas(pd.DataFrame(formatted_data))
+    return dataset
+
+def run_sft(
+    dataset_path: str,
+    output_dir: str = "qwen3_4b_singled_out_sft",
+    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
+    learning_rate: float = 5e-4,
+    num_train_epochs: int = 10,
+):      
+    use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
+    compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
+    model, tokenizer = FastLanguageModel.from_pretrained(
+        model_name = base_model,                 # use the arg instead of hardcoding
+        max_seq_length = 20000,
+        dtype = compute_dtype,
+        load_in_4bit = True,
+    )
+    model = FastLanguageModel.get_peft_model(
+        model,
+        r = 256,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
+        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+        use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
+        random_state = 3407,
+    )
+    dataset = config_data_for_sft(dataset_path, tokenizer)
+    args = SFTConfig(
+        output_dir=output_dir,
+        dataset_text_field = "text",
+        per_device_train_batch_size = 4,
+        gradient_accumulation_steps = 8,
+        num_train_epochs=num_train_epochs,
+        learning_rate=learning_rate,
+        warmup_ratio=0.1,
+        lr_scheduler_type="linear",
+        fp16=not use_bf16,
+        bf16=use_bf16,
+        logging_steps=25,
+        save_steps=200,
+        save_total_limit=2,
+        report_to="none",
+        remove_unused_columns=False,
+        optim="adamw_8bit",
+        ddp_find_unused_parameters=False,
+        max_grad_norm=None,
+    )
+    trainer = SFTTrainer(
+        model=model,
+        args=args,
+        tokenizer=tokenizer,
+        train_dataset=dataset,
+    )
+    print("[sft] Starting training...")
+    trainer.train()
+    print("[sft] Saving final adapter...")
+    model_save_path = os.path.join(output_dir, "final")
+    merged_save_path = os.path.join(output_dir, "merged")
+    model.save_pretrained(model_save_path)
+    try:
+        tokenizer.save_pretrained(model_save_path)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
+    except Exception:
+        pass    
+    return model_save_path, merged_save_path
+
+
+if __name__ == "__main__":
+    sft_model_save_path, sft_merged_save_path = run_sft("data.json")
+    print(f"SFT model saved to: {sft_model_save_path}")
+    print(f"SFT merged model saved to: {sft_merged_save_path}")
+
