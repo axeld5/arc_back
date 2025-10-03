@@ -134,11 +134,12 @@ def run_rl(
     )
     training_args = GRPOConfig(
         use_vllm=True,
+        vllm_mode="server",
+        vllm_server_host=p.hostname,
+        vllm_server_port=p.port or 8000,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
-        vllm_server_host=p.hostname,   # "127.0.0.1"
-        vllm_server_port=p.port or 8000,
         output_dir=output_dir,
         per_device_train_batch_size=2,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
