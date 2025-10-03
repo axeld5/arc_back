@@ -13,6 +13,14 @@ from huggingface_hub import login
 from trl import SFTConfig, SFTTrainer
 from unsloth import FastLanguageModel
 from datasets import Dataset
+from accelerate import Accelerator
+accel = Accelerator(device_placement=False)
+
+local_rank = int(os.environ.get("LOCAL_RANK", 0))
+
+torch.cuda.set_device(local_rank)
+
+device_map = {"": accel.local_process_index}  # one GPU per rank
 
 load_dotenv()
 if os.getenv("HF_TOKEN"):
@@ -69,6 +77,7 @@ def run_sft(
         max_seq_length = 20000,
         dtype = compute_dtype,
         load_in_4bit = True,
+        device_map = device_map,
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -95,6 +104,8 @@ def run_sft(
         report_to="none",
         remove_unused_columns=False,
         optim="adamw_8bit",
+        gradient_checkpointing=True,
+        gradient_checkpointing_kwargs={"use_reentrant": False},
         ddp_find_unused_parameters=False,
         max_grad_norm=None,
     )
