@@ -8,10 +8,6 @@ from huggingface_hub import login
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import FastLanguageModel, PatchFastRL
 from datasets import Dataset
-from urllib.parse import urlparse
-
-vllm_url = "http://127.0.0.1:8000"  # or read from argparse/env
-p = urlparse(vllm_url)
 
 load_dotenv()
 if os.getenv("HF_TOKEN"):
@@ -135,8 +131,8 @@ def run_rl(
     training_args = GRPOConfig(
         use_vllm=True,
         vllm_mode="server",
-        vllm_server_host=p.hostname,
-        vllm_server_port=p.port or 8000,
+        vllm_server_host="127.0.0.1",
+        vllm_server_port=8000,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
