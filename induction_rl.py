@@ -120,7 +120,7 @@ def run_rl(
         model,
         r = 8,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        use_gradient_checkpointing = "unsloth"
+        use_gradient_checkpointing = False
     )
     with open("data.json") as f:
         raw = json.load(f)
