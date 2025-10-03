@@ -61,7 +61,8 @@ def evaluate_code_validity(
                         all_correct = False
                         break
                     predicted_output = local_namespace['p'](input_array)
-                    
+                    print(predicted_output)
+                    print(output_array)
                     if predicted_output != output_array:
                         all_correct = False
                         break

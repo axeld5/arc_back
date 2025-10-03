@@ -67,5 +67,5 @@ def get_data(max_samples: Optional[int] = None):
 
 
 if __name__ == "__main__":
-    get_data()
+    get_data(num_samples=10)
 
