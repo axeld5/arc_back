@@ -167,8 +167,8 @@ def inference_loop_vllm(model_path: str):
                 print(f"✓ problem {k}")
                 total_valid += 1
                 break
-            else:
-                print(f"✗ problem {k}")
+        else:
+            print(f"✗ problem {k}")
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
 if __name__ == "__main__":
