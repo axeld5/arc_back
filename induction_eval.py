@@ -137,9 +137,7 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
 
 def inference_loop_vllm(model_path: str):
     model = LLM(
-        model="unsloth/Qwen3-4B-Instruct-2507",
-        lora_modules={"sft": {"adapter": "qwen3_4b_singled_out_sft/final", "scaling_factor": 1.0}},
-        dtype="bfloat16",
+        model=model_path,
     )
     sampling = SamplingParams(
         max_tokens=4096,
