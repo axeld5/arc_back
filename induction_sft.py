@@ -82,7 +82,7 @@ def run_sft(
     model = FastLanguageModel.get_peft_model(
         model,
         r = 256,
-        alpha = 32,
+        lora_alpha = 32,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
         random_state = 3407,
