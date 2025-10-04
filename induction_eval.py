@@ -157,6 +157,7 @@ def inference_loop_vllm(model_path: str):
         )
         for output in outputs:
             code_resolution = output.outputs[0].text
+            print(code_resolution)
             cnt = 0
             for inp_out in arrays:
                 input_array = inp_out["input"]
