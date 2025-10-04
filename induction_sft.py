@@ -67,8 +67,8 @@ def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
-    learning_rate: float = 1e-4,
-    num_train_epochs: int = 10,
+    learning_rate: float = 5e-5,
+    num_train_epochs: int = 15,
 ):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -76,15 +76,17 @@ def run_sft(
         model_name = base_model,                 # use the arg instead of hardcoding
         max_seq_length = 20000,
         dtype = compute_dtype,
-        load_in_4bit = True,
+        load_in_4bit = False,
         device_map = device_map,
     )
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 256,           # Choose any number > 0! Suggested 8, 16, 32, 64, 128
+        r = 256,
+        alpha = 32,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
         random_state = 3407,
+        use_rslora = True
     )
     dataset = config_data_for_sft(dataset_path, tokenizer)
     args = SFTConfig(
