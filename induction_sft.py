@@ -66,7 +66,7 @@ def config_data_for_sft(dataset_path: str, tokenizer):
 def run_sft(
     dataset_path: str,
     output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen3-Coder-30B-A3B-Instruct",
+    base_model: str = "unsloth/Qwen3-4B-Instruct-2507",
     learning_rate: float = 1e-4,
     num_train_epochs: int = 10,
 ):      
