@@ -146,16 +146,15 @@ def inference_loop_vllm(model_path: str):
     with open("data.json") as f:
         raw = json.load(f)
     total_valid = 0
+    prompts = [raw["conversations"][k][0]["content"] for _ in range(10) for k in range(len(raw["conversations"]))]
+    outputs = model.generate(
+        prompts,
+        sampling_params=sampling,
+    )
     for k in range(len(raw["conversations"])):
         print(f"Processing problem {k}")
-        sample_data = raw["conversations"][k][0]["content"]
         arrays = raw["arrays"][k]
-        prompts = [sample_data]*10
-        outputs = model.generate(
-            prompts,
-            sampling_params=sampling,
-        )
-        for output in outputs:
+        for output in outputs[k*10:(k+1)*10]:
             code_resolution = output.outputs[0].text
             print(code_resolution)
             cnt = 0
