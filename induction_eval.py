@@ -173,5 +173,5 @@ def inference_loop_vllm(model_path: str):
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
 if __name__ == "__main__":
-    sft_merged_save_path = "qwen3_4b_singled_out_sft/final"
-    inference_loop(sft_merged_save_path)
+    sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
+    inference_loop_vllm(sft_merged_save_path)
