@@ -143,11 +143,12 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
 
 def inference_loop_vllm(model_path: str):
     model = LLM(model=model_path)
-    sampling = SamplingParams(max_tokens=8192)
+    sampling = SamplingParams(max_tokens=8192, temperature=0.7, top_p=0.8, top_k=20, min_p=0)
     with open("data.json") as f:
         raw = json.load(f)
     total_valid = 0
     prompts = [raw["conversations"][k][0]["content"] for _ in range(10) for k in range(len(raw["conversations"]))]
+    print(prompts[0])
     outputs = model.generate(
         prompts,
         sampling_params=sampling,
