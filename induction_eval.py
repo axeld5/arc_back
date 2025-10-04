@@ -3,9 +3,9 @@ import os
 import torch
 from peft import PeftModel
 from unsloth import FastLanguageModel
-from induction_data_prep import get_data
-from induction_sft import run_sft
-from induction_rl import run_rl
+from vllm import LLM, SamplingParams
+from vllm.inputs import TokensPrompt
+from typing import *
 
 def array_to_string(arr):
     return str(arr).replace(' ', '')
@@ -135,10 +135,42 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
                 print(f"✗ problem {k}")
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
+def inference_loop_vllm(model_path: str):
+    model = LLM(
+        model=model_path,
+    )
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+    )
+    with open("data.json") as f:
+        raw = json.load(f)
+    total_valid = 0
+    for k in range(len(raw["conversations"])):
+        print(f"Processing problem {k}")
+        sample_data = raw["conversations"][k][0]["content"]
+        arrays = raw["arrays"][k]
+        prompts = [sample_data]*10
+        outputs = model.generate(
+            prompts,
+            sampling_params=sampling,
+        )
+        for output in outputs:
+            code_resolution = output.outputs[0].text
+            cnt = 0
+            for inp_out in arrays:
+                input_array = inp_out["input"]
+                output_array = inp_out["output"]
+                if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
+                    cnt += 1
+            if cnt == len(arrays):
+                print(f"✓ problem {k}")
+                total_valid += 1
+                break
+            else:
+                print(f"✗ problem {k}")
+    print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
 if __name__ == "__main__":
-    get_data()
-    sft_model_save_path, sft_merged_save_path = run_sft("data.json")
     sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
-    model_save_path = run_rl(sft_merged_save_path)
-    inference_loop(model_save_path)
+    inference_loop(sft_merged_save_path)
