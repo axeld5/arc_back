@@ -68,7 +68,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen2.5-Coder-3B-Instruct",
     learning_rate: float = 5e-4,
-    num_train_epochs: int = 10,
+    num_train_epochs: int = 100,
 ):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
