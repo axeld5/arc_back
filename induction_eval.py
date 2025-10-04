@@ -32,18 +32,24 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
     try:
         start_marker = "```python"
         end_marker = "```"
-        start_idx = response.find(start_marker)
-        if start_idx == -1:
+        # Find all python code blocks
+        code_blocks = []
+        search_pos = 0
+        while True:
+            start_idx = response.find(start_marker, search_pos)
+            if start_idx == -1:
+                break
+            start_idx += len(start_marker)
+            end_idx = response.find(end_marker, start_idx)
+            if end_idx == -1:
+                break
+            code_blocks.append(response[start_idx:end_idx].strip())
+            search_pos = end_idx + len(end_marker)
+        if not code_blocks:
             if debug:
                 print(f"No Python code block found in response")
             return False
-        start_idx += len(start_marker)
-        end_idx = response.find(end_marker, start_idx)
-        if end_idx == -1:
-            if debug:
-                print(f"No closing code block marker found")
-            return False
-        code = response[start_idx:end_idx].strip()
+        code = code_blocks[-1]
 
         # Set up timeout for code execution
         signal.signal(signal.SIGALRM, timeout_handler)
@@ -156,7 +162,6 @@ def inference_loop_vllm(model_path: str):
         arrays = raw["arrays"][k]
         for output in outputs[k*10:(k+1)*10]:
             code_resolution = output.outputs[0].text
-            print(code_resolution)
             cnt = 0
             for inp_out in arrays:
                 input_array = inp_out["input"]
