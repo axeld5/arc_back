@@ -173,4 +173,4 @@ def inference_loop_vllm(model_path: str):
 
 if __name__ == "__main__":
     sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
-    inference_loop(sft_merged_save_path)
+    inference_loop_vllm(sft_merged_save_path)
