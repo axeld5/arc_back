@@ -14,7 +14,8 @@ sudo uv pip install openai-harmony
 sudo uv pip install --force-reinstall vllm --torch-backend=auto
 
 For finetuning
-sudo uv run accelerate launch induction_sft.py
+sudo uv run induction_data_prep.py && sudo uv run accelerate launch induction_sft.py
+sudo uv run induction_eval.py
 
 To serve vllm model for RL
 CUDA_VISIBLE_DEVICES=0 sudo uv run vllm serve qwen3_4b_singled_out_sft/merged --tensor-parallel-size 1 --max-model-len 32768
