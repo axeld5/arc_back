@@ -143,7 +143,7 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
 
 def inference_loop_vllm(model_path: str):
     model = LLM(model=model_path)
-    sampling = SamplingParams(max_tokens=4096)
+    sampling = SamplingParams(max_tokens=4096, temperature=1.0)
     with open("data.json") as f:
         raw = json.load(f)
     total_valid = 0
