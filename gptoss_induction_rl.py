@@ -115,6 +115,7 @@ def run_rl(
         dtype = compute_dtype,
         load_in_4bit = True,
     )
+    print("model loaded")
     model = FastLanguageModel.get_peft_model(
         model,
         r = 8,
