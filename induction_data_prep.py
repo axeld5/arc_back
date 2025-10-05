@@ -27,10 +27,11 @@ def _format_code_solution(problem_id):
     solver_path = f"remapped_solvers/{problem_id}.py"
     with open(solver_path, 'r', encoding='utf-8') as f:
         solver_code = f.read()
-    solution = f"""<think>
-    {reasoning}
-    </think>
-    Here's the code that solves the problem:
+    #solution = f"""<think>
+    #{reasoning}
+    #</think>
+    #Here's the code that solves the problem:
+    solution = f"""
     ```python
     {solver_code}
     ```"""
