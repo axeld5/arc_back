@@ -347,4 +347,4 @@ if __name__ == "__main__":
     # inference_loop_vllm(sft_merged_save_path)
     
     # For gpt-oss models:
-    inference_loop_vllm_gptoss(model_name="openai/gpt-oss-20b")
+    inference_loop_vllm_gptoss(model_name="gptoss_induction_sft/merged")

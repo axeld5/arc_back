@@ -174,7 +174,7 @@ def run_rl(
 
 
 if __name__ == "__main__":
-    sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
+    sft_merged_save_path = "gptoss_induction_sft/merged"
     model_save_path = run_rl(sft_merged_save_path)
     print(f"RL model saved to: {model_save_path}")
 
