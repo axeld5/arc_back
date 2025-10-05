@@ -341,7 +341,7 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
 
 if __name__ == "__main__":
     sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
-    inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
+    #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
     inference_loop_vllm(sft_merged_save_path)
     
     # Choose which inference to run:
