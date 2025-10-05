@@ -165,9 +165,14 @@ def run_rl(
         train_dataset = dataset,
     )
     trainer.train()
-    trainer.save_model(os.path.join(output_dir, "final"))
+    model_save_path = os.path.join(output_dir, "final")
+    merged_save_path = os.path.join(output_dir, "merged")
+    model.save_pretrained(model_save_path)
     try:
-        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+        tokenizer.save_pretrained(model_save_path)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
+        if os.getenv("HF_TOKEN"):
+            model.push_to_hub_merged("axel-darmouni/gptoss-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass
     return os.path.join(output_dir, "final")

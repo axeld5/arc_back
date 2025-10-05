@@ -126,7 +126,7 @@ def run_sft(
     model.save_pretrained(model_save_path)
     try:
         tokenizer.save_pretrained(model_save_path)
-        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "mxfp4",)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
         if os.getenv("HF_TOKEN"):
             model.push_to_hub_merged("axel-darmouni/gptoss-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
