@@ -148,10 +148,6 @@ def inference_loop_vllm(model_path: str):
         raw = json.load(f)
     total_valid = 0
     prompts = [raw["conversations"][k][0]["content"] for _ in range(1) for k in range(len(raw["conversations"]))]
-    print(prompts[0])
-    params = SamplingParams(max_tokens=1, temperature=0.0, logprobs=5)  # greedy for clarity
-    res = model.generate([prompts[0]], params)[0]
-    print(res.outputs[0].logprobs[0]) 
     outputs = model.generate(
         prompts,
         sampling_params=sampling,
