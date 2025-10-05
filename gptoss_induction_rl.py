@@ -105,12 +105,12 @@ def run_rl(
     grad_accum: int = 4,
     num_generations: int = 4,
 ):
-    max_seq_length = 4000
+    max_seq_length = 15000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
 
     model, tokenizer = FastLanguageModel.from_pretrained(
-        model_name = sft_merged_save_path,
+        model_name = "unsloth/gpt-oss-20b",
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = True,
