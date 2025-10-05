@@ -113,7 +113,7 @@ def run_rl(
         model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
-        load_in_4bit = True,
+        load_in_4bit = False,
         fast_inference = True, # Enable vLLM fast inference
     )
     model = FastLanguageModel.get_peft_model(
