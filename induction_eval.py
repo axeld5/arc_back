@@ -86,7 +86,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
         signal.alarm(0)  # Cancel the alarm
         if debug:
             print(f"Error executing generated code: {e}")
-            print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
+            #print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         return False
 
 def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Coder-7B-Instruct"):
