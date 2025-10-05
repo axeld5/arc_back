@@ -68,7 +68,7 @@ def run_sft(
     output_dir: str = "qwen3_4b_singled_out_sft",
     base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
     learning_rate: float = 5e-5,
-    num_train_epochs: int = 15,
+    num_train_epochs: int = 100,
 ):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -125,6 +125,7 @@ def run_sft(
     try:
         tokenizer.save_pretrained(model_save_path)
         model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
+        model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass    
     return model_save_path, merged_save_path
