@@ -99,8 +99,8 @@ def convert_conversations(raw_json):
 
 def run_rl(
     sft_merged_save_path: str,
-    output_dir: str = "qwen3_4b_singled_out_rl",
-    learning_rate: float = 5e-4,
+    output_dir: str = "qwen2.5_7b_singled_out_rl",
+    learning_rate: float = 5e-5,
     num_train_epochs: int = 1,
     grad_accum: int = 4,
     num_generations: int = 4,
@@ -114,7 +114,7 @@ def run_rl(
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = True,
-        #fast_inference = True, # Enable vLLM fast inference
+        fast_inference = True, # Enable vLLM fast inference
     )
     model = FastLanguageModel.get_peft_model(
         model,
@@ -133,9 +133,9 @@ def run_rl(
     )
     training_args = GRPOConfig(
         use_vllm=True,
-        vllm_mode="server",
-        vllm_server_host="127.0.0.1",
-        vllm_server_port=8000,
+        #vllm_mode="server",
+        #vllm_server_host="127.0.0.1",
+        #vllm_server_port=8000,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
@@ -174,7 +174,7 @@ def run_rl(
 
 
 if __name__ == "__main__":
-    sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
+    sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
     model_save_path = run_rl(sft_merged_save_path)
     print(f"RL model saved to: {model_save_path}")
 
