@@ -131,14 +131,15 @@ def run_rl(
         stop = [tokenizer.eos_token],
         include_stop_str_in_output = True,
     )
+    print("starting training")
     training_args = GRPOConfig(
-        use_vllm=True,
+        #use_vllm=True,
         #vllm_mode="server",
         #vllm_server_host="127.0.0.1",
         #vllm_server_port=8000,
         importance_sampling_level="sequence",
         loss_type="grpo",
-        vllm_sampling_params=vllm_sampling_params,
+        #vllm_sampling_params=vllm_sampling_params,
         output_dir=output_dir,
         per_device_train_batch_size=2,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
