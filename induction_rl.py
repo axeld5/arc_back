@@ -142,7 +142,7 @@ def run_rl(
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
-        max_steps=100,
+        max_steps=50,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         logging_steps=10,
@@ -163,9 +163,14 @@ def run_rl(
         train_dataset = dataset,
     )
     trainer.train()
-    trainer.save_model(os.path.join(output_dir, "final"))
+    model_save_path = os.path.join(output_dir, "final")
+    merged_save_path = os.path.join(output_dir, "merged")
+    model.save_pretrained(model_save_path)
     try:
-        tokenizer.save_pretrained(os.path.join(output_dir, "final"))
+        tokenizer.save_pretrained(model_save_path)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
+        if os.getenv("HF_TOKEN"):
+            model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass
     return os.path.join(output_dir, "final")
