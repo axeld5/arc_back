@@ -141,37 +141,83 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
                 print(f"✗ problem {k}")
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
-def inference_loop_vllm(model_path: str):
-    model = LLM(model=model_path)
+def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
+    from transformers import AutoTokenizer
+    
+    # Load tokenizer and model once
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    model = LLM(model=model_path, trust_remote_code=True)
     sampling = SamplingParams(max_tokens=4096, temperature=1.0)
+    
     with open("data.json") as f:
         raw = json.load(f)
-    total_valid = 0
-    prompts = [raw["conversations"][k][0]["content"] for _ in range(1) for k in range(len(raw["conversations"]))]
+    
+    # Prepare ALL prompts upfront (outside loop)
+    all_prompts = []
+    problem_indices = []  # Track which problem each prompt belongs to
+    
+    for k in range(len(raw["conversations"])):
+        sample_data = raw["conversations"][k][0]["content"]
+        messages = [{"role": "user", "content": sample_data}]
+        
+        # Apply chat template once per problem
+        formatted_prompt = tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
+        
+        # Create multiple attempts per problem
+        for _ in range(attempts_per_problem):
+            all_prompts.append(formatted_prompt)
+            problem_indices.append(k)
+    
+    print(f"Generating {len(all_prompts)} outputs in batch ({attempts_per_problem} attempts × {len(raw['conversations'])} problems)...")
+    
+    # Generate ALL outputs in ONE batch call - this is where vLLM shines!
     outputs = model.generate(
-        prompts,
+        all_prompts,
         sampling_params=sampling,
     )
+    
+    print("Batch generation complete! Evaluating results...")
+    
+    # Process results
+    total_valid = 0
     for k in range(len(raw["conversations"])):
         print(f"Processing problem {k}")
         arrays = raw["arrays"][k]
-        for i, output in enumerate(outputs[k*10:(k+1)*10]):
+        
+        # Get all outputs for this problem
+        problem_outputs = [
+            outputs[i] for i, prob_idx in enumerate(problem_indices) 
+            if prob_idx == k
+        ]
+        
+        # Try each attempt
+        found_solution = False
+        for i, output in enumerate(problem_outputs):
+            code_resolution = output.outputs[0].text
             if i == 0:
-                code_resolution = output.outputs[0].text
-                print(code_resolution)
+                print(f"First attempt output preview: {code_resolution[:200]}...")
+            
             cnt = 0
             for inp_out in arrays:
                 input_array = inp_out["input"]
                 output_array = inp_out["output"]
-                if evaluate_prediction(input_array, output_array, code_resolution, debug=True):
+                if evaluate_prediction(input_array, output_array, code_resolution, debug=(i==0)):
                     cnt += 1
+            
             if cnt == len(arrays):
-                print(f"✓ problem {k}")
+                print(f"✓ problem {k} (solved on attempt {i+1}/{attempts_per_problem})")
                 total_valid += 1
+                found_solution = True
                 break
-        else:
-            print(f"✗ problem {k}")
-    print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
+        
+        if not found_solution:
+            print(f"✗ problem {k} (failed all {attempts_per_problem} attempts)")
+    
+    print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
 
 if __name__ == "__main__":
     sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
