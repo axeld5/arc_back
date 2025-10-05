@@ -219,6 +219,132 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
     
     print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
 
+def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_per_problem: int = 10):
+    from openai_harmony import (
+        HarmonyEncodingName,
+        load_harmony_encoding,
+        Conversation,
+        Message,
+        Role,
+        SystemContent,
+        DeveloperContent,
+    )
+    from vllm.inputs import TokensPrompt
+    
+    # Load Harmony encoding for gpt-oss
+    encoding = load_harmony_encoding(HarmonyEncodingName.HARMONY_GPT_OSS)
+    stop_token_ids = encoding.stop_tokens_for_assistant_actions()
+    
+    # Load model
+    model = LLM(
+        model=model_name,
+        trust_remote_code=True,
+    )
+    
+    sampling = SamplingParams(
+        max_tokens=4096,
+        temperature=1.0,
+        stop_token_ids=stop_token_ids,
+    )
+    
+    with open("data.json") as f:
+        raw = json.load(f)
+    
+    # Prepare ALL prompts upfront (outside loop)
+    all_token_prompts = []
+    problem_indices = []  # Track which problem each prompt belongs to
+    
+    print("Tokenizing all prompts with Harmony encoding...")
+    for k in range(len(raw["conversations"])):
+        sample_data = raw["conversations"][k][0]["content"]
+        
+        # Convert to Harmony conversation format
+        convo = Conversation.from_messages([
+            Message.from_role_and_content(Role.SYSTEM, SystemContent.new()),
+            Message.from_role_and_content(Role.DEVELOPER, DeveloperContent.new()),
+            Message.from_role_and_content(Role.USER, sample_data),
+        ])
+        
+        # Render to token IDs
+        prefill_ids = encoding.render_conversation_for_completion(convo, Role.ASSISTANT)
+        
+        # Create multiple attempts per problem
+        for _ in range(attempts_per_problem):
+            all_token_prompts.append(TokensPrompt(prompt_token_ids=prefill_ids))
+            problem_indices.append(k)
+    
+    print(f"Generating {len(all_token_prompts)} outputs in batch ({attempts_per_problem} attempts × {len(raw['conversations'])} problems)...")
+    
+    # Generate ALL outputs in ONE batch call
+    outputs = model.generate(
+        all_token_prompts,
+        sampling_params=sampling,
+    )
+    
+    print("Batch generation complete! Parsing with Harmony encoding...")
+    
+    # Parse all responses using Harmony encoding
+    all_responses = []
+    for output in outputs:
+        gen = output.outputs[0]
+        output_tokens = gen.token_ids
+        entries = encoding.parse_messages_from_completion_tokens(output_tokens, Role.ASSISTANT)
+        
+        # Extract text from assistant messages
+        response_text = ""
+        for message in entries:
+            message_dict = message.to_dict()
+            if message_dict["role"] == "assistant":
+                # Content is a list of content items
+                for content_item in message_dict["content"]:
+                    if "text" in content_item:
+                        response_text += content_item["text"]
+        all_responses.append(response_text)
+    
+    print("Evaluating results...")
+    
+    # Process results
+    total_valid = 0
+    for k in range(len(raw["conversations"])):
+        print(f"Processing problem {k}")
+        arrays = raw["arrays"][k]
+        
+        # Get all responses for this problem
+        problem_responses = [
+            all_responses[i] for i, prob_idx in enumerate(problem_indices) 
+            if prob_idx == k
+        ]
+        
+        # Try each attempt
+        found_solution = False
+        for i, code_resolution in enumerate(problem_responses):
+            if i == 0:
+                print(f"First attempt output preview: {code_resolution[:200]}...")
+            
+            cnt = 0
+            for inp_out in arrays:
+                input_array = inp_out["input"]
+                output_array = inp_out["output"]
+                if evaluate_prediction(input_array, output_array, code_resolution, debug=(i==0)):
+                    cnt += 1
+            
+            if cnt == len(arrays):
+                print(f"✓ problem {k} (solved on attempt {i+1}/{attempts_per_problem})")
+                total_valid += 1
+                found_solution = True
+                break
+        
+        if not found_solution:
+            print(f"✗ problem {k} (failed all {attempts_per_problem} attempts)")
+    
+    print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
+
 if __name__ == "__main__":
     sft_merged_save_path = "qwen3_4b_singled_out_sft/merged"
-    inference_loop_vllm(sft_merged_save_path)
+    
+    # Choose which inference to run:
+    # For Qwen models (SFT/RL fine-tuned):
+    # inference_loop_vllm(sft_merged_save_path)
+    
+    # For gpt-oss models:
+    inference_loop_vllm_gptoss(model_name="openai/gpt-oss-20b")

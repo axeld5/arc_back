@@ -57,6 +57,8 @@ def config_data_for_sft(dataset_path: str, tokenizer):
     formatted_data = tokenizer.apply_chat_template(
         data["conversations"],
         tokenize = False,
+        add_generation_prompt = False,
+        reasoning_effort = "medium",
     )
     formatted_data = pd.Series(formatted_data)
     formatted_data.name = "text"
@@ -65,8 +67,8 @@ def config_data_for_sft(dataset_path: str, tokenizer):
 
 def run_sft(
     dataset_path: str,
-    output_dir: str = "qwen3_4b_singled_out_sft",
-    base_model: str = "unsloth/Qwen2.5-Coder-7B-Instruct",
+    output_dir: str = "gptoss_induction_sft",
+    base_model: str = "unsloth/gpt-oss-20b", #if full tuning model_name = "unsloth/gpt-oss-20b-BF16"
     learning_rate: float = 5e-5,
     num_train_epochs: int = 100,
 ):      
@@ -76,7 +78,7 @@ def run_sft(
         model_name = base_model,                 # use the arg instead of hardcoding
         max_seq_length = 20000,
         dtype = compute_dtype,
-        load_in_4bit = False,
+        load_in_4bit = True,
         device_map = device_map,
     )
     model = FastLanguageModel.get_peft_model(
@@ -124,9 +126,9 @@ def run_sft(
     model.save_pretrained(model_save_path)
     try:
         tokenizer.save_pretrained(model_save_path)
-        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
+        model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "mxfp4",)
         if os.getenv("HF_TOKEN"):
-            model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
+            model.push_to_hub_merged("axel-darmouni/gptoss-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass    
     return model_save_path, merged_save_path
