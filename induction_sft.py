@@ -23,6 +23,7 @@ torch.cuda.set_device(local_rank)
 device_map = {"": accel.local_process_index}  # one GPU per rank
 
 load_dotenv()
+print(os.getenv("HF_TOKEN"))
 if os.getenv("HF_TOKEN"):
     try:
         login(os.getenv("HF_TOKEN"))
