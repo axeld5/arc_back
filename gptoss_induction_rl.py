@@ -114,7 +114,6 @@ def run_rl(
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
         load_in_4bit = True,
-        offload_embedding = True, # Reduces VRAM by 1GB
     )
     model = FastLanguageModel.get_peft_model(
         model,
