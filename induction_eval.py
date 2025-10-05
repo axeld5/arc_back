@@ -149,7 +149,7 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
     model = LLM(model=model_path, trust_remote_code=True)
     sampling = SamplingParams(max_tokens=4096, temperature=1.0)
     
-    with open("data.json") as f:
+    with open("test_examples.json") as f:
         raw = json.load(f)
     
     # Prepare ALL prompts upfront (outside loop)
@@ -343,7 +343,9 @@ if __name__ == "__main__":
     sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
     #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
     inference_loop_vllm(sft_merged_save_path)
-    rl_merged_save_path = "qwen2.5_7b_singled_out_rl/merged"
+    rl_merged_save_path = "qwen2.5_7b_singled_out_rl_partial/merged"
+    inference_loop_vllm(rl_merged_save_path)
+    rl_merged_save_path = "qwen2.5_7b_singled_out_rl_full/merged"
     inference_loop_vllm(rl_merged_save_path)
     
     # Choose which inference to run:
