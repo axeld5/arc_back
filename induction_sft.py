@@ -23,7 +23,6 @@ torch.cuda.set_device(local_rank)
 device_map = {"": accel.local_process_index}  # one GPU per rank
 
 load_dotenv()
-print(os.getenv("HF_TOKEN"))
 if os.getenv("HF_TOKEN"):
     try:
         login(os.getenv("HF_TOKEN"))
@@ -126,7 +125,8 @@ def run_sft(
     try:
         tokenizer.save_pretrained(model_save_path)
         model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
-        model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
+        if os.getenv("HF_TOKEN"):
+            model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass    
     return model_save_path, merged_save_path
