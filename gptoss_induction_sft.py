@@ -70,7 +70,7 @@ def run_sft(
     output_dir: str = "gptoss_induction_sft",
     base_model: str = "unsloth/gpt-oss-20b", #if full tuning model_name = "unsloth/gpt-oss-20b-BF16"
     learning_rate: float = 5e-5,
-    num_train_epochs: int = 100,
+    num_train_epochs: int = 10,
 ):      
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
@@ -87,7 +87,6 @@ def run_sft(
         lora_alpha = 32,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth", # True or "unsloth" for very long context
-        random_state = 3407
     )
     dataset = config_data_for_sft(dataset_path, tokenizer)
     args = SFTConfig(
