@@ -22,6 +22,7 @@ if os.getenv("HF_TOKEN"):
 def evaluate_code_validity(
     completions: List[str],
     arrays: List[str],
+    is_partial_rl: bool = False,
     **kwargs: Any
 ) -> List[float]:
     import signal
@@ -51,7 +52,9 @@ def evaluate_code_validity(
         signal.alarm(10)  # 10 second timeout
         
         try:
-            all_correct = True
+            n_examples = len(array_list)
+            n_examples_solved = 0
+            
             for inp_out in array_list:
                 input_array = inp_out["input"]
                 output_array = inp_out["output"]
@@ -60,22 +63,27 @@ def evaluate_code_validity(
                     local_namespace = {}
                     exec(code, local_namespace)
                     if 'p' not in local_namespace:
-                        all_correct = False
                         break
                     predicted_output = local_namespace['p'](input_array)
-                    if predicted_output != output_array:
-                        all_correct = False
-                        break
+                    if predicted_output == output_array:
+                        n_examples_solved += 1
                 except Exception:
-                    all_correct = False
-                    break
+                    pass  # Continue checking other examples in partial mode
             
             signal.alarm(0)  # Cancel the alarm
             
-            if all_correct:
-                rewards.append(1.0)
+            if is_partial_rl:
+                # Partial reward: proportional to examples solved
+                if n_examples > 0:
+                    rewards.append(n_examples_solved / n_examples)
+                else:
+                    rewards.append(0.0)
             else:
-                rewards.append(-0.5)
+                # Binary reward: all or nothing
+                if n_examples_solved == n_examples:
+                    rewards.append(1.0)
+                else:
+                    rewards.append(-0.5)
                 
         except TimeoutError:
             signal.alarm(0)  # Cancel the alarm
@@ -99,9 +107,11 @@ def run_rl(
     sft_merged_save_path: str,
     output_dir: str = "qwen2.5_7b_singled_out_rl",
     learning_rate: float = 5e-5,
-    num_train_epochs: int = 1,
+    num_steps: int = 100,
     grad_accum: int = 4,
     num_generations: int = 4,
+    data_dir: str = "data.json",
+    is_partial: bool = False,
 ):
     max_seq_length = 20000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
@@ -120,7 +130,7 @@ def run_rl(
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = False
     )
-    with open("data.json") as f:
+    with open(data_dir) as f:
         raw = json.load(f)
     converted = convert_conversations(raw)
     dataset = Dataset.from_list(converted)
@@ -142,7 +152,7 @@ def run_rl(
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
-        max_steps=50,
+        max_steps=num_steps,
         learning_rate=learning_rate,
         lr_scheduler_type="cosine",
         logging_steps=10,
@@ -155,10 +165,15 @@ def run_rl(
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
+    
+    # Create reward function with is_partial_rl parameter
+    def reward_func_with_partial(completions, arrays, **kwargs):
+        return evaluate_code_validity(completions, arrays, is_partial_rl=is_partial, **kwargs)
+    
     trainer = GRPOTrainer(
         model = model,
         processing_class = tokenizer,
-        reward_funcs = [evaluate_code_validity],
+        reward_funcs = [reward_func_with_partial],
         args = training_args,
         train_dataset = dataset,
     )
@@ -173,11 +188,54 @@ def run_rl(
             model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass
-    return os.path.join(output_dir, "final")
+    return model_save_path
 
 
 if __name__ == "__main__":
-    sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
-    model_save_path = run_rl(sft_merged_save_path)
-    print(f"RL model saved to: {model_save_path}")
+    import sys
+    
+    if len(sys.argv) < 2:
+        print("Usage: python induction_rl.py <sft_merged_save_path> [data_dir]")
+        sys.exit(1)
+    
+    sft_merged_save_path = sys.argv[1]
+    data_dir = sys.argv[2] if len(sys.argv) > 2 else "data.json"
+    
+    print("=" * 80)
+    print("Stage 1: Training with PARTIAL reward function")
+    print("=" * 80)
+    
+    # First stage: Train with partial reward (proportional to examples solved)
+    stage1_path = run_rl(
+        sft_merged_save_path=sft_merged_save_path,
+        output_dir="qwen2.5_7b_induction_rl_partial",
+        learning_rate=5e-5,
+        num_steps=100,
+        grad_accum=4,
+        num_generations=2,
+        data_dir=data_dir,
+        is_partial=True,
+    )
+    
+    print("\n" + "=" * 80)
+    print("Stage 2: Training with FULL reward function (binary)")
+    print("=" * 80)
+    
+    # Second stage: Train with full binary reward on the model from stage 1
+    stage2_path = run_rl(
+        sft_merged_save_path=stage1_path,
+        output_dir="qwen2.5_7b_induction_rl_full",
+        learning_rate=5e-5,
+        num_steps=100,
+        grad_accum=4,
+        num_generations=2,
+        data_dir=data_dir,
+        is_partial=False,
+    )
+    
+    print("\n" + "=" * 80)
+    print("Training complete!")
+    print(f"Stage 1 (partial) model saved at: {stage1_path}")
+    print(f"Stage 2 (full) model saved at: {stage2_path}")
+    print("=" * 80)
 
