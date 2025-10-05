@@ -105,7 +105,7 @@ def run_rl(
     grad_accum: int = 4,
     num_generations: int = 4,
 ):
-    max_seq_length = 15000
+    max_seq_length = 4000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
 
