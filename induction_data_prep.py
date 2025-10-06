@@ -61,10 +61,14 @@ def get_data(max_samples: Optional[int] = None):
         test_problems["conversations"].append([user_content])
         test_problems["arrays"].append(problem["train"])
 
+    full_set = {"conversations":train_problems["conversations"] + test_problems["conversations"], "arrays":train_problems["arrays"] + test_problems["arrays"]}
+
     with open('data.json', 'w') as f:
         json.dump(train_problems, f)
     with open('test_problems.json', 'w') as f:
         json.dump(test_problems, f)
+    with open('full_set.json', 'w') as f:
+        json.dump(full_set, f)
 
 
 if __name__ == "__main__":

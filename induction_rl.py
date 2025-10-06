@@ -141,9 +141,9 @@ def run_rl(
     )
     training_args = GRPOConfig(
         use_vllm=True,
-        #vllm_mode="server",
-        #vllm_server_host="127.0.0.1",
-        #vllm_server_port=8000,
+        vllm_mode="server",
+        vllm_server_host="127.0.0.1",
+        vllm_server_port=8000,
         #importance_sampling_level="sequence",
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
@@ -191,15 +191,8 @@ def run_rl(
     return model_save_path
 
 
-if __name__ == "__main__":
-    import sys
-    
-    if len(sys.argv) < 2:
-        print("Usage: python induction_rl.py <sft_merged_save_path> [data_dir]")
-        sys.exit(1)
-    
-    sft_merged_save_path = sys.argv[1]
-    data_dir = sys.argv[2] if len(sys.argv) > 2 else "data.json"
+if __name__ == "__main__":    
+    sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
     
     print("=" * 80)
     print("Stage 1: Training with PARTIAL reward function")
@@ -213,7 +206,7 @@ if __name__ == "__main__":
         num_steps=100,
         grad_accum=4,
         num_generations=2,
-        data_dir=data_dir,
+        data_dir="full_set.json",
         is_partial=True,
     )
     
@@ -226,10 +219,10 @@ if __name__ == "__main__":
         sft_merged_save_path=stage1_path,
         output_dir="qwen2.5_7b_induction_rl_full",
         learning_rate=5e-5,
-        num_steps=100,
+        num_steps=400,
         grad_accum=4,
         num_generations=2,
-        data_dir=data_dir,
+        data_dir="test_problems.json",
         is_partial=False,
     )
     
