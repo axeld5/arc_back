@@ -128,7 +128,7 @@ def run_rl(
     data_dir: str = "data.json",
     is_partial: bool = False,
 ):
-    max_seq_length = 20000
+    max_seq_length = 15000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
 
@@ -176,8 +176,8 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=num_generations,
-        max_prompt_length=12000,  # Reduced from 20000
-        max_completion_length=4000,  # Reduced from 8192 (total ~18k < 20k model limit)
+        max_prompt_length=10000,  # Reduced from 20000
+        max_completion_length=3000,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
