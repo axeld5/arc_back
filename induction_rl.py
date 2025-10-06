@@ -123,8 +123,8 @@ def run_rl(
     output_dir: str = "qwen2.5_7b_singled_out_rl",
     learning_rate: float = 5e-5,
     num_steps: int = 100,
-    grad_accum: int = 4,
-    num_generations: int = 4,
+    grad_accum: int = 2,
+    num_generations: int = 2,
     data_dir: str = "data.json",
     is_partial: bool = False,
 ):
@@ -175,8 +175,8 @@ def run_rl(
         save_steps=200,
         optim="paged_adamw_8bit",
         report_to="none",
-        num_generations=2,
-        max_prompt_length=15000,  # Reduced from 20000
+        num_generations=num_generations,
+        max_prompt_length=12000,  # Reduced from 20000
         max_completion_length=4000,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
