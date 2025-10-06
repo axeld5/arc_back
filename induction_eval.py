@@ -338,10 +338,9 @@ if __name__ == "__main__":
     #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
     inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_partial/merged"
-    #inference_loop_vllm(rl_merged_save_path)
+    inference_loop_vllm(rl_merged_save_path)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
-    #rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
-    #inference_loop_vllm(rl_merged_save_path)
+    inference_loop_vllm(rl_merged_save_path)
     
     # Choose which inference to run:
     # For Qwen models (SFT/RL fine-tuned):
