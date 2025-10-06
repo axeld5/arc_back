@@ -20,5 +20,5 @@ sudo uv run induction_rl.py "qwen2.5_7b_singled_out_sft/merged"
 
 To serve vllm model for RL
 CUDA_VISIBLE_DEVICES=0 sudo uv run vllm serve qwen3_4b_singled_out_sft/merged --tensor-parallel-size 1 --max-model-len 32768
-export CUDA_VISIBLE_DEVICES=0,1 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run trl vllm-serve --model qwen3_4b_singled_out_sft/merged --tensor- parallel-size 1 --max-model-len 32768
+export CUDA_VISIBLE_DEVICES=0,1 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run trl vllm-serve --model qwen2.5_7b_singled_out_sft/merged --host 127.0.0.1 --port 8000 --tensor-parallel-size 1 --max-model-len 32768
 export CUDA_VISIBLE_DEVICES=2,3 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run accelerate launch  --num_processes=2  --mixed_precision=bf16 induction_rl.py
