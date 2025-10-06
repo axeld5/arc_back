@@ -62,9 +62,9 @@ def evaluate_code_validity(
                 try:
                     local_namespace = {}
                     exec(code, local_namespace)
-                    if 'p' not in local_namespace:
+                    if 'transform' not in local_namespace:
                         break
-                    predicted_output = local_namespace['p'](input_array)
+                    predicted_output = local_namespace['transform'](input_array)
                     if predicted_output == output_array:
                         n_examples_solved += 1
                 except Exception:

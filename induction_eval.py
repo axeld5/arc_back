@@ -58,12 +58,12 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
         try:
             local_namespace = {}
             exec(code, local_namespace)
-            if 'p' not in local_namespace:
+            if 'transform' not in local_namespace:
                 if debug:
-                    print(f"Function 'p' not found in generated code")
+                    print(f"Function 'transform' not found in generated code")
                 signal.alarm(0)  # Cancel the alarm
                 return False
-            predicted_output = local_namespace['p'](input_array)
+            predicted_output = local_namespace['transform'](input_array)
             signal.alarm(0)  # Cancel the alarm
 
             if predicted_output == output_array:
