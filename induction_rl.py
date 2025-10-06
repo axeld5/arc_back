@@ -184,8 +184,8 @@ def run_rl(
     try:
         tokenizer.save_pretrained(model_save_path)
         model.save_pretrained_merged(merged_save_path, tokenizer, save_method = "merged_16bit",)
-        if os.getenv("HF_TOKEN"):
-            model.push_to_hub_merged("axel-darmouni/qwen2.5-coder-7b-instruct-induction-sft", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
+        if os.getenv("HF_TOKEN") and not is_partial:
+            model.push_to_hub_merged("axel-darmouni/qwen2.5-7b-soar-induction-rl", tokenizer, save_method = "merged_16bit", token = os.getenv("HF_TOKEN"))
     except Exception:
         pass
     return model_save_path
