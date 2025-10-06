@@ -18,6 +18,17 @@ device_map = {"": local_rank}                     # <- one GPU per rank
 
 PatchFastRL("GRPO", FastLanguageModel)
 
+class PatchedGRPOTrainer(GRPOTrainer):
+    def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
+        # Ensure DDP-wrapped models expose .config
+        try:
+            _ = model.config  # will raise on DDP
+        except AttributeError:
+            base = self.accelerator.unwrap_model(model)
+            # Attach the underlying config to the wrapper so downstream code works
+            object.__setattr__(model, "config", getattr(base, "config", None))
+        return super().compute_loss(model, inputs, return_outputs=return_outputs, **kwargs)
+
 load_dotenv()
 if os.getenv("HF_TOKEN"):
     try:
@@ -177,7 +188,7 @@ def run_rl(
     def reward_func_with_partial(completions, arrays, **kwargs):
         return evaluate_code_validity(completions, arrays, is_partial_rl=is_partial, **kwargs)
     
-    trainer = GRPOTrainer(
+    trainer = PatchedGRPOTrainer(
         model = model,
         processing_class = tokenizer,
         reward_funcs = [reward_func_with_partial],
