@@ -337,9 +337,9 @@ if __name__ == "__main__":
     sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
     #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
     inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5)
-    #rl_merged_save_path = "qwen2.5_7b_singled_out_rl_partial/merged"
+    rl_merged_save_path = "qwen2.5_7b_induction_rl_partial/merged"
     #inference_loop_vllm(rl_merged_save_path)
-    #rl_merged_save_path = "qwen2.5_7b_singled_out_rl_full/merged"
+    rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
     #rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
     #inference_loop_vllm(rl_merged_save_path)
     
