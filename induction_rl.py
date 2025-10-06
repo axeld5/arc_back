@@ -16,6 +16,8 @@ local_rank = int(os.environ.get("LOCAL_RANK", 0))
 torch.cuda.set_device(local_rank)                 # <- critical
 device_map = {"": local_rank}                     # <- one GPU per rank
 
+PatchFastRL("GRPO", FastLanguageModel)
+
 class PatchedGRPOTrainer(GRPOTrainer):
     def compute_loss(self, model, inputs, return_outputs=False, **kwargs):
         # Ensure DDP-wrapped models expose .config
