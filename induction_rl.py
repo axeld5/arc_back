@@ -9,6 +9,12 @@ from huggingface_hub import login
 from trl import GRPOConfig, GRPOTrainer
 from unsloth import FastLanguageModel, PatchFastRL
 from datasets import Dataset
+from accelerate import Accelerator
+accel = Accelerator(device_placement=False)
+
+local_rank = int(os.environ.get("LOCAL_RANK", 0))
+torch.cuda.set_device(local_rank)                 # <- critical
+device_map = {"": local_rank}                     # <- one GPU per rank
 
 PatchFastRL("GRPO", FastLanguageModel)
 
@@ -121,8 +127,9 @@ def run_rl(
         model_name = sft_merged_save_path,
         max_seq_length = max_seq_length,
         dtype = compute_dtype,
-        load_in_4bit = False,
-        #fast_inference = True, # Enable vLLM fast inference
+        load_in_4bit = False,        # <- be explicit
+        fast_inference = False,      # <- ensure no embedded vLLM
+        device_map = device_map,     # <- pin to the per-rank GPU
     )
     model = FastLanguageModel.get_peft_model(
         model,
