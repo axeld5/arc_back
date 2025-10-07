@@ -9,6 +9,9 @@ from typing import *
 from multiprocessing import Pool, TimeoutError as MPTimeoutError
 from functools import partial
 
+# Disable tokenizers parallelism to avoid fork warnings
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 def array_to_string(arr):
     return str(arr).replace(' ', '')
 
