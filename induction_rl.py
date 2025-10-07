@@ -177,7 +177,7 @@ def run_rl(
         report_to="none",
         num_generations=num_generations,
         max_prompt_length=10000,  # Reduced from 20000
-        max_completion_length=3000,  # Reduced from 8192 (total ~18k < 20k model limit)
+        max_completion_length=2048,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False,
     )
