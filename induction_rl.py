@@ -202,7 +202,7 @@ def run_rl(
     )
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 4,
+        r = 1,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth"
     )
@@ -268,8 +268,8 @@ def run_rl(
 
 
 if __name__ == "__main__":    
-    sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
-    
+    #sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
+    sft_merged_save_path = "julien31/Soar-qwen-7b"
     print("=" * 80)
     print("Stage 1: Training with PARTIAL reward function")
     print("=" * 80)
