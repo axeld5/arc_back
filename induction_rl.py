@@ -35,79 +35,135 @@ if os.getenv("HF_TOKEN"):
         pass
 
 def evaluate_code_validity(
-    completions: List[str],
-    arrays: List[str],
+    completions,
+    arrays,
     is_partial_rl: bool = False,
-    **kwargs: Any
-) -> List[float]:
-    import signal, io, os, contextlib, gc
+    timeout_seconds: int = 10,
+    **kwargs
+):
+    """
+    Cross-platform, hard timeout using subprocess. Safely executes each completion's Python
+    block in an isolated interpreter, so infinite loops get killed cleanly.
 
-    def timeout_handler(signum, frame):
-        raise TimeoutError("Code execution timed out")
+    Args:
+        completions: list of model outputs (strings or {content: str} etc.)
+        arrays: list of example lists; each example is a dict with keys "input" and "output"
+        is_partial_rl: if True, reward = solved/total else +1.0 only if all solved (else -0.5)
+        timeout_seconds: per-completion wall-clock timeout
+
+    Returns:
+        List[float]: rewards per completion
+    """
+    import json, os, sys, subprocess, textwrap
 
     def extract_text(c):
         if c is None: return ""
         if isinstance(c, str): return c
-        if isinstance(c, dict): return c.get("content", "")
+        if isinstance(c, dict): return c.get("content", "") or c.get("text", "")
         if isinstance(c, list):
+            # handle [{"type":"text","text":"..."}, {"content":"..."}]
             for item in c:
-                if isinstance(item, dict) and "content" in item:
-                    return item["content"]
+                if isinstance(item, dict):
+                    if "content" in item and item["content"]:
+                        return item["content"]
+                    if "text" in item and item["text"]:
+                        return item["text"]
         return ""
+    WORKER = textwrap.dedent(r"""
+        import json, sys, os, io, contextlib, gc
 
+        def main():
+            payload = json.loads(sys.stdin.read())
+            code = payload["code"]
+            array_list = payload.get("array_list") or []
+            is_partial = payload.get("is_partial", False)
+
+            devnull = open(os.devnull, "w")
+
+            local_namespace = {}
+            try:
+                # Silence user prints/errors
+                with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+                    exec(code, local_namespace)
+                fn = local_namespace.get("transform")
+                if not callable(fn):
+                    reward = -1.0
+                else:
+                    n_examples = len(array_list)
+                    solved = 0
+                    for ex in array_list:
+                        try:
+                            with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+                                pred = fn(ex.get("input"))
+                            if pred == ex.get("output"):
+                                solved += 1
+                        except Exception:
+                            pass
+                    if is_partial:
+                        reward = (solved / n_examples) if n_examples > 0 else 0.0
+                    else:
+                        reward = 1.0 if (n_examples > 0 and solved == n_examples) else -0.5
+            except Exception:
+                reward = -1.0
+            finally:
+                try:
+                    devnull.close()
+                except Exception:
+                    pass
+                local_namespace.clear()
+                gc.collect()
+
+            sys.stdout.write(json.dumps({"reward": reward}))
+
+        if __name__ == "__main__":
+            main()
+    """)
+    start_marker, end_marker = "```python", "```"
     rewards = []
-    devnull = open(os.devnull, "w")
     for completion, array_list in zip(completions, arrays, strict=False):
         value = extract_text(completion)
         if not value:
-            rewards.append(-1.0); continue
-
-        start_marker, end_marker = "```python", "```"
+            rewards.append(-1.0)
+            continue
         start_idx = value.find(start_marker)
-        if start_idx == -1: rewards.append(-1.0); continue
+        if start_idx == -1:
+            rewards.append(-1.0)
+            continue
         start_idx += len(start_marker)
         end_idx = value.find(end_marker, start_idx)
-        if end_idx == -1: rewards.append(-1.0); continue
-
+        if end_idx == -1:
+            rewards.append(-1.0)
+            continue
         code = value[start_idx:end_idx].strip()
+        payload = json.dumps({
+            "code": code,
+            "array_list": array_list or [],
+            "is_partial": is_partial_rl,
+        }).encode("utf-8")
 
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(10)
-
-        local_namespace = {}
         try:
-            # Exec ONCE, with output suppressed
-            with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
-                exec(code, local_namespace)
-            fn = local_namespace.get("transform", None)
-            if not callable(fn):
+            proc = subprocess.run(
+                [sys.executable, "-u", "-c", WORKER],
+                input=payload,
+                capture_output=True,
+                timeout=timeout_seconds,
+                check=False,
+            )
+            if proc.returncode != 0:
                 rewards.append(-1.0)
-            else:
-                n_examples = len(array_list) if array_list else 0
-                solved = 0
-                for ex in array_list or []:
-                    try:
-                        with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
-                            pred = fn(ex.get("input"))
-                        if pred == ex.get("output"):
-                            solved += 1
-                    except Exception:
-                        pass
-                if is_partial_rl:
-                    rewards.append((solved / n_examples) if n_examples > 0 else 0.0)
-                else:
-                    rewards.append(1.0 if n_examples > 0 and solved == n_examples else -0.5)
-        except TimeoutError:
+                continue
+
+            try:
+                out = json.loads(proc.stdout.decode("utf-8") or "{}")
+                rewards.append(float(out.get("reward", -1.0)))
+            except Exception:
+                rewards.append(-1.0)
+
+        except subprocess.TimeoutExpired:
             rewards.append(-1.0)
         except Exception:
             rewards.append(-1.0)
-        finally:
-            signal.alarm(0)
-            # Drop references & GC to curb growth
-            del local_namespace
-            gc.collect()
 
-    devnull.close()
     return rewards
 
 def convert_conversations(raw_json):
