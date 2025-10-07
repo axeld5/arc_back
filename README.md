@@ -26,3 +26,4 @@ export CUDA_VISIBLE_DEVICES=2,3 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv r
 other potential case
 export CUDA_VISIBLE_DEVICES=0,1 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run trl vllm-serve --model julien31/Soar-qwen-7b --host 12
 7.0.0.1 --port 8000 --tensor-parallel-size 1 --max-model-len 32768
+export CUDA_VISIBLE_DEVICES=0,1 && sudo --preserve-env=CUDA_VISIBLE_DEVICES uv run trl vllm-serve --model qwen2.5_7b_induction_rl_partial/merged --host 127.0.0.1 --port 8000 --tensor-parallel-size 1 --max-model-len 32768

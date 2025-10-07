@@ -287,11 +287,11 @@ if __name__ == "__main__":
         data_dir="full_set.json",
         is_partial=True,
     )
-    
+    """
     print("\n" + "=" * 80)
     print("Stage 2: Training with FULL reward function (binary)")
     print("=" * 80)
-    stage1_path = "qwen2.5_7b_induction_rl_partial/merged""""
+    stage1_path = "qwen2.5_7b_induction_rl_partial/merged"
     
     # Second stage: Train with full binary reward on the model from stage 1
     stage2_path = run_rl(
