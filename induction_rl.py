@@ -281,9 +281,9 @@ if __name__ == "__main__":
         output_dir="qwen2.5_7b_induction_rl_partial",
         learning_rate=5e-5,
         num_steps=400,
-        batch_size=4,
-        grad_accum=16,
-        num_generations=4,
+        batch_size=2,
+        grad_accum=2,
+        num_generations=2,
         data_dir="full_set.json",
         is_partial=True,
     )
