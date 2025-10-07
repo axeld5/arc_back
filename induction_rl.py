@@ -291,14 +291,14 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("Stage 2: Training with FULL reward function (binary)")
     print("=" * 80)
-    stage1_path = "qwen2.5_7b_induction_rl_partial/merged"
+    stage1_path = "qwen2.5_7b_induction_rl_full/merged"
     
     # Second stage: Train with full binary reward on the model from stage 1
     stage2_path = run_rl(
         sft_merged_save_path=stage1_path,
         output_dir="qwen2.5_7b_induction_rl_full",
         learning_rate=5e-5,
-        num_steps=800,
+        num_steps=2000,
         batch_size=2,
         grad_accum=4,
         num_generations=2,
