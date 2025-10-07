@@ -157,9 +157,9 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
     # Load tokenizer and model once
     tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
     model = LLM(model=model_path, trust_remote_code=True)
-    sampling = SamplingParams(max_tokens=4096, temperature=1.0)
+    sampling = SamplingParams(max_tokens=4096)
     
-    with open("test_problems.json") as f:
+    with open("data.json") as f:
         raw = json.load(f)
     
     # Prepare ALL prompts upfront (outside loop)
