@@ -6,6 +6,8 @@ from unsloth import FastLanguageModel
 from vllm import LLM, SamplingParams
 from vllm.inputs import TokensPrompt
 from typing import *
+from multiprocessing import Pool, TimeoutError as MPTimeoutError
+from functools import partial
 
 def array_to_string(arr):
     return str(arr).replace(' ', '')
@@ -23,12 +25,19 @@ def format_comparison(output_array, predicted_output):
         comparison.append(f"{got_line} -> {expected_line}")
     return comparison
 
-def evaluate_prediction(input_array, output_array, response, debug=False):
-    import signal
+def _execute_code_safely(code, input_array):
+    """Helper function to execute code in a separate process."""
+    try:
+        local_namespace = {}
+        exec(code, local_namespace)
+        if 'transform' not in local_namespace:
+            return None
+        return local_namespace['transform'](input_array)
+    except Exception as e:
+        return None
 
-    def timeout_handler(signum, frame):
-        raise TimeoutError("Code execution timed out")
-
+def evaluate_prediction(input_array, output_array, response, debug=False, timeout=30):
+    """Cross-platform code evaluation with timeout using multiprocessing."""
     try:
         start_marker = "```python"
         end_marker = "```"
@@ -51,20 +60,16 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
             return False
         code = code_blocks[-1]
 
-        # Set up timeout for code execution
-        signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(30)  # 1 minute 30 seconds timeout
-
+        # Execute code with timeout using multiprocessing (cross-platform)
         try:
-            local_namespace = {}
-            exec(code, local_namespace)
-            if 'transform' not in local_namespace:
+            with Pool(processes=1) as pool:
+                result = pool.apply_async(_execute_code_safely, (code, input_array))
+                predicted_output = result.get(timeout=timeout)
+                
+            if predicted_output is None:
                 if debug:
-                    print(f"Function 'transform' not found in generated code")
-                signal.alarm(0)  # Cancel the alarm
+                    print(f"Function 'transform' not found or execution error")
                 return False
-            predicted_output = local_namespace['transform'](input_array)
-            signal.alarm(0)  # Cancel the alarm
 
             if predicted_output == output_array:
                 if debug:
@@ -76,17 +81,14 @@ def evaluate_prediction(input_array, output_array, response, debug=False):
                     comparison = format_comparison(output_array, predicted_output)
                     print(f"Comparison (Got -> Expected):\n" + '\n'.join(comparison))
                 return False
-        except TimeoutError:
-            signal.alarm(0)  # Cancel the alarm
+        except MPTimeoutError:
             if debug:
-                print(f"Code execution timed out after 90 seconds")
+                print(f"Code execution timed out after {timeout} seconds")
             return False
 
     except Exception as e:
-        signal.alarm(0)  # Cancel the alarm
         if debug:
             print(f"Error executing generated code: {e}")
-            #print(f"Generated code was: {code if 'code' in locals() else 'N/A'}")
         return False
 
 def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Coder-7B-Instruct"):
@@ -141,7 +143,12 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
                 print(f"✗ problem {k}")
     print(f"Total valid: {total_valid}/{len(raw['conversations'])}")
 
-def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
+def _evaluate_single_attempt(args):
+    """Helper function for parallel evaluation of a single attempt."""
+    input_array, output_array, code_resolution, debug = args
+    return evaluate_prediction(input_array, output_array, code_resolution, debug=debug)
+
+def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_workers: int = 4):
     from transformers import AutoTokenizer
     
     # Load tokenizer and model once
@@ -180,10 +187,11 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
         sampling_params=sampling,
     )
     
-    print("Batch generation complete! Evaluating results...")
+    print("Batch generation complete! Evaluating results in parallel...")
     
-    # Process results
+    # Process results with parallel evaluation
     total_valid = 0
+    
     for k in range(len(raw["conversations"])):
         print(f"Processing problem {k}")
         arrays = raw["arrays"][k]
@@ -194,16 +202,22 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10):
             if prob_idx == k
         ]
         
-        # Try each attempt
+        # Try each attempt (still sequential per problem to allow early stopping)
         found_solution = False
         for i, output in enumerate(problem_outputs):
-            code_resolution = output.outputs[0].text            
-            cnt = 0
-            for inp_out in arrays:
-                input_array = inp_out["input"]
-                output_array = inp_out["output"]
-                if evaluate_prediction(input_array, output_array, code_resolution, debug=(i==0)):
-                    cnt += 1
+            code_resolution = output.outputs[0].text
+            
+            # Prepare evaluation tasks for all test cases in parallel
+            eval_tasks = [
+                (inp_out["input"], inp_out["output"], code_resolution, (i==0))
+                for inp_out in arrays
+            ]
+            
+            # Evaluate all test cases for this attempt in parallel
+            with Pool(processes=num_workers) as pool:
+                results = pool.map(_evaluate_single_attempt, eval_tasks)
+            
+            cnt = sum(results)
             
             if cnt == len(arrays):
                 print(f"✓ problem {k} (solved on attempt {i+1}/{attempts_per_problem})")
@@ -334,13 +348,14 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
     print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
 
 if __name__ == "__main__":
+    # Required for multiprocessing on Windows
     sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
-    #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct")
-    inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5)
+    #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct", num_workers=4)
+    inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5, num_workers=4)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_partial/merged"
-    inference_loop_vllm(rl_merged_save_path)
+    inference_loop_vllm(rl_merged_save_path, num_workers=4)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
-    inference_loop_vllm(rl_merged_save_path)
+    inference_loop_vllm(rl_merged_save_path, num_workers=4)
     
     # Choose which inference to run:
     # For Qwen models (SFT/RL fine-tuned):
