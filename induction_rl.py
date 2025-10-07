@@ -128,7 +128,7 @@ def run_rl(
     data_dir: str = "data.json",
     is_partial: bool = False,
 ):
-    max_seq_length = 20000
+    max_seq_length = 15000
     use_bf16 = torch.cuda.is_available() and torch.cuda.get_device_capability(0)[0] >= 8
     compute_dtype = torch.bfloat16 if use_bf16 else torch.float16
 
@@ -176,8 +176,8 @@ def run_rl(
         optim="paged_adamw_8bit",
         report_to="none",
         num_generations=num_generations,
-        max_prompt_length=15000,  # Reduced from 20000
-        max_completion_length=4096,  # Reduced from 8192 (total ~18k < 20k model limit)
+        max_prompt_length=10000,  # Reduced from 20000
+        max_completion_length=2048,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
         ddp_find_unused_parameters=False
     )
@@ -220,7 +220,7 @@ if __name__ == "__main__":
         output_dir="qwen2.5_7b_induction_rl_partial",
         learning_rate=5e-5,
         num_steps=400,
-        grad_accum=4,
+        grad_accum=2,
         num_generations=2,
         data_dir="full_set.json",
         is_partial=True,
@@ -236,7 +236,7 @@ if __name__ == "__main__":
         output_dir="qwen2.5_7b_induction_rl_full",
         learning_rate=5e-5,
         num_steps=800,
-        grad_accum=4,
+        grad_accum=2,
         num_generations=2,
         data_dir="test_problems.json",
         is_partial=False,
