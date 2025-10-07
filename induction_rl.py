@@ -40,70 +40,72 @@ def evaluate_code_validity(
     is_partial_rl: bool = False,
     **kwargs: Any
 ) -> List[float]:
-    import signal
-    
+    import signal, io, os, contextlib, gc
+
     def timeout_handler(signum, frame):
         raise TimeoutError("Code execution timed out")
-    
-    rewards: List[float] = []
+
+    def extract_text(c):
+        if c is None: return ""
+        if isinstance(c, str): return c
+        if isinstance(c, dict): return c.get("content", "")
+        if isinstance(c, list):
+            for item in c:
+                if isinstance(item, dict) and "content" in item:
+                    return item["content"]
+        return ""
+
+    rewards = []
+    devnull = open(os.devnull, "w")
     for completion, array_list in zip(completions, arrays, strict=False):
-        value = completion[0]["content"]
-        start_marker = "```python"
-        end_marker = "```"
+        value = extract_text(completion)
+        if not value:
+            rewards.append(-1.0); continue
+
+        start_marker, end_marker = "```python", "```"
         start_idx = value.find(start_marker)
-        if start_idx == -1:
-            rewards.append(-1.0)
-            continue
+        if start_idx == -1: rewards.append(-1.0); continue
         start_idx += len(start_marker)
         end_idx = value.find(end_marker, start_idx)
-        if end_idx == -1:
-            rewards.append(-1.0)
-            continue
-        
+        if end_idx == -1: rewards.append(-1.0); continue
+
         code = value[start_idx:end_idx].strip()
-        
-        # Set up timeout for code execution
+
         signal.signal(signal.SIGALRM, timeout_handler)
-        signal.alarm(10)  # 10 second timeout
-        
+        signal.alarm(10)
+
+        local_namespace = {}
         try:
-            n_examples = len(array_list)
-            n_examples_solved = 0
-            
-            for inp_out in array_list:
-                input_array = inp_out["input"]
-                output_array = inp_out["output"]
-                
-                try:
-                    local_namespace = {}
-                    exec(code, local_namespace)
-                    if 'transform' not in local_namespace:
-                        break
-                    predicted_output = local_namespace['transform'](input_array)
-                    if predicted_output == output_array:
-                        n_examples_solved += 1
-                except Exception:
-                    pass  # Continue checking other examples in partial mode
-            
-            signal.alarm(0)  # Cancel the alarm
-            
-            if is_partial_rl:
-                # Partial reward: proportional to examples solved
-                if n_examples > 0:
-                    rewards.append(n_examples_solved / n_examples)
-                else:
-                    rewards.append(0.0)
+            # Exec ONCE, with output suppressed
+            with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+                exec(code, local_namespace)
+            fn = local_namespace.get("transform", None)
+            if not callable(fn):
+                rewards.append(-1.0)
             else:
-                # Binary reward: all or nothing
-                if n_examples_solved == n_examples:
-                    rewards.append(1.0)
+                n_examples = len(array_list) if array_list else 0
+                solved = 0
+                for ex in array_list or []:
+                    try:
+                        with contextlib.redirect_stdout(devnull), contextlib.redirect_stderr(devnull):
+                            pred = fn(ex.get("input"))
+                        if pred == ex.get("output"):
+                            solved += 1
+                    except Exception:
+                        pass
+                if is_partial_rl:
+                    rewards.append((solved / n_examples) if n_examples > 0 else 0.0)
                 else:
-                    rewards.append(-0.5)
-                
+                    rewards.append(1.0 if n_examples > 0 and solved == n_examples else -0.5)
         except TimeoutError:
-            signal.alarm(0)  # Cancel the alarm
-            rewards.append(-1.0)  # Return -1 for timeout
-    
+            rewards.append(-1.0)
+        finally:
+            signal.alarm(0)
+            # Drop references & GC to curb growth
+            del local_namespace
+            gc.collect()
+
+    devnull.close()
     return rewards
 
 def convert_conversations(raw_json):
@@ -142,7 +144,7 @@ def run_rl(
     )
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 8,
+        r = 4,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = "unsloth"
     )
