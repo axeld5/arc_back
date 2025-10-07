@@ -3,21 +3,51 @@ from typing import Optional
 from loader import load_training_problem, list_training_problems, load_evaluation_problem, list_evaluation_problems
 
 PROMPT_INDUCTION = (
-    "Solve the following problem\n\n"
-    "Given input/output pairs:\n{io_pairs}\n"
-    "Write a python program that solves the problem. Name your final function 'transform'.\n"
-    "OUTPUT:"
+    """You are an AI assistant specialized in solving Abstract Reasoning Corpus (ARC-AGI) tasks by
+    generating Python code.
+    Your goal is to analyze input-output grid pairs. The outputs were produced by applying a
+    transformation rule to the inputs. Implement the transformation rules as a Python function.
+    You should only write the implemented the transformation in code.
+    You must write code in triple backticks (```python and then ```). You must write a function
+    called ```transform``` which takes a single argument, the input grid as ```list[list[int]]```, and
+    returns the transformed grid (also as ```list[list[int]]```).
+    You should make sure that you implement a version of the transformation which works in general
+    (at least for all given input-output pairs and test input pairs).
+    The number in the input grid can be mapped to the following colors: 0:Black; 1:Blue; 2:Red; 3:
+    Green; 4:Yellow; 5:Grey; 6:Pink; 7:Orange; 8:Purple; 9:Brown
+    Now, solve the following ARC-AGI task:
+    # Task to solve
+    {io_pairs}"""
 )
 
 def array_to_string(arr):
     return str(arr).replace(' ', '')
 
+def format_grid_display(grid):
+    """Format a grid in a nice 2D display format."""
+    import numpy as np
+    arr = np.array(grid)
+    height, width = arr.shape
+    
+    # Format the grid with brackets
+    lines = []
+    for i, row in enumerate(arr):
+        row_str = " ".join(str(x) for x in row)
+        if i == 0:
+            lines.append(f"[[{row_str}]")
+        elif i == len(arr) - 1:
+            lines.append(f" [{row_str}]]")
+        else:
+            lines.append(f" [{row_str}]")
+    
+    return f"(grid shape: {height} by {width}):\n" + "\n".join(lines)
+
 def _format_induction_prompt(problem) -> str:
     input_output_pairs = ""
     for i, elem in enumerate(problem['train']):
-        pb_input = array_to_string(elem['input'])
-        pb_output = array_to_string(elem['output'])
-        input_output_pairs += f"<input_{i+1}> {pb_input} </input_{i+1}> <output_{i+1}> {pb_output} </output_{i+1}>"
+        pb_input = format_grid_display(elem['input'])
+        pb_output = format_grid_display(elem['output'])
+        input_output_pairs += f"## Input {i+1} {pb_input}\n## Output {i+1} {pb_output}\n"
     return PROMPT_INDUCTION.format(io_pairs=input_output_pairs)
 
 def _format_code_solution(problem_id):
