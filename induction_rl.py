@@ -282,7 +282,7 @@ if __name__ == "__main__":
         learning_rate=5e-5,
         num_steps=400,
         batch_size=4,
-        grad_accum=4,
+        grad_accum=16,
         num_generations=4,
         data_dir="full_set.json",
         is_partial=True,
