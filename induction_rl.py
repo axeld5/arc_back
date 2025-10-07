@@ -142,7 +142,7 @@ def run_rl(
     )
     model = FastLanguageModel.get_peft_model(
         model,
-        r = 4,
+        r = 1,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
         use_gradient_checkpointing = False
     )
