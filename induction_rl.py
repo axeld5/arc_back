@@ -275,7 +275,7 @@ if __name__ == "__main__":
     print("Stage 1: Training with PARTIAL reward function")
     print("=" * 80)
     
-    # First stage: Train with partial reward (proportional to examples solved)
+    """# First stage: Train with partial reward (proportional to examples solved)
     stage1_path = run_rl(
         sft_merged_save_path=sft_merged_save_path,
         output_dir="qwen2.5_7b_induction_rl_partial",
@@ -291,9 +291,9 @@ if __name__ == "__main__":
     print("\n" + "=" * 80)
     print("Stage 2: Training with FULL reward function (binary)")
     print("=" * 80)
-    stage1_path = "qwen2.5_7b_induction_rl_partial/merged"
+    stage1_path = "qwen2.5_7b_induction_rl_partial/merged""""
     
-    """# Second stage: Train with full binary reward on the model from stage 1
+    # Second stage: Train with full binary reward on the model from stage 1
     stage2_path = run_rl(
         sft_merged_save_path=stage1_path,
         output_dir="qwen2.5_7b_induction_rl_full",
