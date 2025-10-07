@@ -183,6 +183,7 @@ def run_rl(
     output_dir: str = "qwen2.5_7b_singled_out_rl",
     learning_rate: float = 5e-5,
     num_steps: int = 100,
+    batch_size: int = 2,
     grad_accum: int = 2,
     num_generations: int = 2,
     data_dir: str = "data.json",
@@ -224,7 +225,7 @@ def run_rl(
         #loss_type="grpo",
         vllm_sampling_params=vllm_sampling_params,
         output_dir=output_dir,
-        per_device_train_batch_size=2,  # Reduced from 8 to help with memory
+        per_device_train_batch_size=batch_size,  # Reduced from 8 to help with memory
         gradient_accumulation_steps=grad_accum,
         beta=0.04,
         epsilon=3e-4,
@@ -280,8 +281,9 @@ if __name__ == "__main__":
         output_dir="qwen2.5_7b_induction_rl_partial",
         learning_rate=5e-5,
         num_steps=400,
-        grad_accum=2,
-        num_generations=32,
+        batch_size=8,
+        grad_accum=4,
+        num_generations=8,
         data_dir="full_set.json",
         is_partial=True,
     )
@@ -297,8 +299,9 @@ if __name__ == "__main__":
         output_dir="qwen2.5_7b_induction_rl_full",
         learning_rate=5e-5,
         num_steps=800,
-        grad_accum=2,
-        num_generations=2,
+        batch_size=8,
+        grad_accum=4,
+        num_generations=8,
         data_dir="test_problems.json",
         is_partial=False,
     )
