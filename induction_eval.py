@@ -331,7 +331,9 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
         
         # Try each attempt
         found_solution = False
-        for i, code_resolution in enumerate(problem_responses):            
+        for i, code_resolution in enumerate(problem_responses):   
+            if i == 0 and k < 20:
+                print(code_resolution)         
             cnt = 0
             for inp_out in arrays:
                 input_array = inp_out["input"]
