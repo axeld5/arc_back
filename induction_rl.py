@@ -99,6 +99,8 @@ def evaluate_code_validity(
                     rewards.append(1.0 if n_examples > 0 and solved == n_examples else -0.5)
         except TimeoutError:
             rewards.append(-1.0)
+        except Exception:
+            rewards.append(-1.0)
         finally:
             signal.alarm(0)
             # Drop references & GC to curb growth
