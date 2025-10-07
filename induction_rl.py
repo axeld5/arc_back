@@ -144,7 +144,7 @@ def run_rl(
         model,
         r = 1,
         target_modules = ["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
-        use_gradient_checkpointing = False
+        use_gradient_checkpointing = "unsloth"
     )
     with open(data_dir) as f:
         raw = json.load(f)
@@ -156,7 +156,7 @@ def run_rl(
         include_stop_str_in_output = True,
     )
     training_args = GRPOConfig(
-        #use_vllm=True,
+        use_vllm=True,
         vllm_mode="server",
         vllm_server_host="127.0.0.1",
         vllm_server_port=8000,
@@ -179,7 +179,7 @@ def run_rl(
         max_prompt_length=10000,  # Reduced from 20000
         max_completion_length=2048,  # Reduced from 8192 (total ~18k < 20k model limit)
         remove_unused_columns=False,
-        ddp_find_unused_parameters=False,
+        ddp_find_unused_parameters=False
     )
     
     # Create reward function with is_partial_rl parameter
