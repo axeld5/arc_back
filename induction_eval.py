@@ -209,6 +209,8 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
         found_solution = False
         for i, output in enumerate(problem_outputs):
             code_resolution = output.outputs[0].text
+            if i == 0 and k < 20:
+                print(code_resolution)        
             
             # Prepare evaluation tasks for all test cases in parallel
             eval_tasks = [
