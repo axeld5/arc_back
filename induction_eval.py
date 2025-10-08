@@ -1,6 +1,7 @@
 import json
 import os
 import gc
+import signal
 import torch
 from peft import PeftModel
 from unsloth import FastLanguageModel
@@ -12,6 +13,14 @@ from functools import partial
 
 # Disable tokenizers parallelism to avoid fork warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+class TimeoutException(Exception):
+    """Custom exception for timeout."""
+    pass
+
+def timeout_handler(signum, frame):
+    """Signal handler for timeout."""
+    raise TimeoutException("Code execution timed out")
 
 def clear_cache():
     """Clear Python garbage collection and CUDA cache to free up RAM/VRAM."""
@@ -83,8 +92,15 @@ def evaluate_prediction(input_array, output_array, response, debug=False, timeou
                     result = pool.apply_async(_execute_code_safely, (code, input_array))
                     predicted_output = result.get(timeout=timeout)
             else:
-                # Direct execution (when already in a pool worker)
-                predicted_output = _execute_code_safely(code, input_array)
+                # Direct execution with signal-based timeout (for Linux/Unix in pool workers)
+                # Set up signal alarm for timeout
+                signal.signal(signal.SIGALRM, timeout_handler)
+                signal.alarm(timeout)
+                try:
+                    predicted_output = _execute_code_safely(code, input_array)
+                finally:
+                    # Cancel the alarm
+                    signal.alarm(0)
                 
             if predicted_output is None:
                 if debug:
@@ -101,7 +117,7 @@ def evaluate_prediction(input_array, output_array, response, debug=False, timeou
                     comparison = format_comparison(output_array, predicted_output)
                     print(f"Comparison (Got -> Expected):\n" + '\n'.join(comparison))
                 return False
-        except MPTimeoutError:
+        except (MPTimeoutError, TimeoutException):
             if debug:
                 print(f"Code execution timed out after {timeout} seconds")
             return False
