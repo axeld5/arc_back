@@ -1,5 +1,6 @@
 import json
 import os
+import gc
 import torch
 from peft import PeftModel
 from unsloth import FastLanguageModel
@@ -11,6 +12,13 @@ from functools import partial
 
 # Disable tokenizers parallelism to avoid fork warnings
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+def clear_cache():
+    """Clear Python garbage collection and CUDA cache to free up RAM/VRAM."""
+    gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+        torch.cuda.synchronize()
 
 def array_to_string(arr):
     return str(arr).replace(' ', '')
@@ -202,6 +210,9 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
     
     print("Batch generation complete! Evaluating results in parallel...")
     
+    # Clear cache after batch generation
+    clear_cache()
+    
     # Process results with parallel evaluation
     total_valid = 0
     
@@ -234,6 +245,9 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
             
             cnt = sum(results)
             
+            # Clean up evaluation tasks immediately
+            del eval_tasks
+            
             if cnt == len(arrays):
                 print(f"✓ problem {k} (solved on attempt {i+1}/{attempts_per_problem})")
                 total_valid += 1
@@ -242,8 +256,18 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
         
         if not found_solution:
             print(f"✗ problem {k} (failed all {attempts_per_problem} attempts)")
+        
+        # Clean up problem-specific data
+        del problem_outputs, arrays
+        
+        # Clear cache after each problem to free up memory
+        clear_cache()
     
     print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
+    
+    # Final cleanup
+    del outputs, all_prompts, problem_indices, raw
+    clear_cache()
 
 def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_per_problem: int = 10):
     from openai_harmony import (
@@ -309,6 +333,9 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
     
     print("Batch generation complete! Parsing with Harmony encoding...")
     
+    # Clear cache after batch generation
+    clear_cache()
+    
     # Parse all responses using Harmony encoding
     all_responses = []
     for output in outputs:
@@ -326,6 +353,10 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
                     if "text" in content_item:
                         response_text += content_item["text"]
         all_responses.append(response_text)
+    
+    # Clean up outputs after parsing
+    del outputs
+    clear_cache()
     
     print("Evaluating results...")
     
@@ -361,8 +392,16 @@ def inference_loop_vllm_gptoss(model_name: str = "openai/gpt-oss-20b", attempts_
         
         if not found_solution:
             print(f"✗ problem {k} (failed all {attempts_per_problem} attempts)")
+        
+        # Clean up problem-specific data
+        del problem_responses, arrays
+        clear_cache()
     
     print(f"\nTotal valid: {total_valid}/{len(raw['conversations'])}")
+    
+    # Final cleanup
+    del all_responses, raw
+    clear_cache()
 
 if __name__ == "__main__":
     # Required for multiprocessing on Windows
