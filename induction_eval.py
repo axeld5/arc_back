@@ -39,7 +39,7 @@ def _execute_code_safely(code, input_array):
     except Exception as e:
         return None
 
-def evaluate_prediction(input_array, output_array, response, debug=False, timeout=30, use_multiprocessing=True):
+def evaluate_prediction(input_array, output_array, response, debug=False, timeout=10, use_multiprocessing=True):
     """Cross-platform code evaluation with timeout using multiprocessing.
     
     Args:
