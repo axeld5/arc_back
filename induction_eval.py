@@ -358,9 +358,9 @@ if __name__ == "__main__":
     # Required for multiprocessing on Windows
     sft_merged_save_path = "qwen2.5_7b_singled_out_sft/merged"
     #inference_loop_vllm("unsloth/Qwen2.5-Coder-7B-Instruct", num_workers=4)
-    inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5, num_workers=4)
+    #inference_loop_vllm(sft_merged_save_path, attempts_per_problem=5, num_workers=4)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_partial/merged"
-    inference_loop_vllm(rl_merged_save_path, num_workers=4)
+    #inference_loop_vllm(rl_merged_save_path, num_workers=4)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
     inference_loop_vllm(rl_merged_save_path, num_workers=4)
     
