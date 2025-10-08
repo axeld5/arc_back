@@ -427,7 +427,8 @@ if __name__ == "__main__":
     rl_merged_save_path = "qwen2.5_7b_induction_rl_partial/merged"
     #inference_loop_vllm(rl_merged_save_path, num_workers=4)
     rl_merged_save_path = "qwen2.5_7b_induction_rl_full/merged"
-    inference_loop_vllm(rl_merged_save_path, num_workers=4)
+    #inference_loop_vllm(rl_merged_save_path, num_workers=4)
+    inference_loop_vllm("julien31/Soar-qwen-7b", num_workers=4)
     
     # Choose which inference to run:
     # For Qwen models (SFT/RL fine-tuned):
