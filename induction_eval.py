@@ -39,8 +39,12 @@ def _execute_code_safely(code, input_array):
     except Exception as e:
         return None
 
-def evaluate_prediction(input_array, output_array, response, debug=False, timeout=30):
-    """Cross-platform code evaluation with timeout using multiprocessing."""
+def evaluate_prediction(input_array, output_array, response, debug=False, timeout=30, use_multiprocessing=True):
+    """Cross-platform code evaluation with timeout using multiprocessing.
+    
+    Args:
+        use_multiprocessing: If False, executes code directly without timeout (for use within Pool workers)
+    """
     try:
         start_marker = "```python"
         end_marker = "```"
@@ -63,11 +67,16 @@ def evaluate_prediction(input_array, output_array, response, debug=False, timeou
             return False
         code = code_blocks[-1]
 
-        # Execute code with timeout using multiprocessing (cross-platform)
+        # Execute code with or without timeout based on context
         try:
-            with Pool(processes=1) as pool:
-                result = pool.apply_async(_execute_code_safely, (code, input_array))
-                predicted_output = result.get(timeout=timeout)
+            if use_multiprocessing:
+                # Use multiprocessing for timeout (only when not already in a pool)
+                with Pool(processes=1) as pool:
+                    result = pool.apply_async(_execute_code_safely, (code, input_array))
+                    predicted_output = result.get(timeout=timeout)
+            else:
+                # Direct execution (when already in a pool worker)
+                predicted_output = _execute_code_safely(code, input_array)
                 
             if predicted_output is None:
                 if debug:
@@ -149,7 +158,8 @@ def inference_loop(model_path: str, base_model_name: str = "unsloth/Qwen2.5-Code
 def _evaluate_single_attempt(args):
     """Helper function for parallel evaluation of a single attempt."""
     input_array, output_array, code_resolution, debug = args
-    return evaluate_prediction(input_array, output_array, code_resolution, debug=debug)
+    # Disable multiprocessing timeout since we're already in a pool worker
+    return evaluate_prediction(input_array, output_array, code_resolution, debug=debug, use_multiprocessing=False)
 
 def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_workers: int = 4):
     from transformers import AutoTokenizer
