@@ -169,7 +169,7 @@ def inference_loop_vllm(model_path: str, attempts_per_problem: int = 10, num_wor
     model = LLM(model=model_path, trust_remote_code=True)
     sampling = SamplingParams(max_tokens=4096)
     
-    with open("data.json") as f:
+    with open("test_problems.json") as f:
         raw = json.load(f)
     
     # Prepare ALL prompts upfront (outside loop)
